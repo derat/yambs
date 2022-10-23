@@ -34,6 +34,20 @@ Song #1	4:35	info from https://example.org/song1.html
 Song #2	53.234	info from https://example.org/song2.html
 ```
 
+To edit existing recordings, specify their [MBID]s via the `mbid` field:
+
+```sh
+yambs \
+  -type recording \
+  -fields mbid,title \
+  <recordings.tsv
+```
+
+```tsv
+c55e74ff-bd7d-40ff-a591-c6993c59bda8	Sgt. Pepper’s Lonely Hearts Club Band
+...
+```
+
 To add more-complicated artist credits:
 
 ```
@@ -47,11 +61,13 @@ yambs \
   ...
 ```
 
-To list names of available fields:
+To list all available fields:
 
 ```
 yambs -type recording -list-fields
 ```
+
+[MBID]: https://musicbrainz.org/doc/MusicBrainz_Identifier
 
 ## Further reading
 

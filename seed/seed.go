@@ -11,10 +11,13 @@ import (
 )
 
 // Recording holds data used to seed the "Add Standalone Recording" form at
-// https://musicbrainz.org/recording/create. See https://musicbrainz.org/doc/Recording
-// for more information about recording entities.
-// TODO: Add MBID and also use this to edit existing recordings?
+// https://musicbrainz.org/recording/create and the edit-recording form at
+// https://musicbrainz.org/recording/<MBID>/edit.
+// See https://musicbrainz.org/doc/Recording for more information about recording entities.
 type Recording struct {
+	// MBID contains the recording's MBID (for editing an existing recording rather than
+	// creating a new one).
+	MBID string
 	// Title contains the recording's title.
 	Title string
 	// Artist contains the MBID of the artist primarily credited with the recording.
@@ -43,9 +46,14 @@ type Recording struct {
 	// I couldn't find one. Is it possible to do this through a separate edit?
 }
 
-// URL returns a URL to seed the "Add Standalone Recording" form via a GET request.
+// URL returns a URL to seed the "Add Standalone Recording" or edit-recording form via a GET request.
 func (rec *Recording) URL() string {
-	u, _ := url.Parse("https://musicbrainz.org/recording/create")
+	us := "https://musicbrainz.org/recording/create"
+	if rec.MBID != "" {
+		us = "https://musicbrainz.org/recording/" + rec.MBID + "/edit"
+	}
+	u, _ := url.Parse(us)
+
 	vals := make(url.Values)
 	rec.SetParams(vals)
 	u.RawQuery = vals.Encode()

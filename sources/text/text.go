@@ -136,6 +136,7 @@ var recordingFields = map[string](func(r *seed.Recording, k, v string) error){
 	"edit_note":      func(r *seed.Recording, k, v string) error { return setString(&r.EditNote, v) },
 	"isrcs":          func(r *seed.Recording, k, v string) error { return setStringSlice(&r.ISRCs, v, ",") },
 	"length":         func(r *seed.Recording, k, v string) error { return setDuration(&r.Length, v) },
+	"mbid":           func(r *seed.Recording, k, v string) error { return setString(&r.MBID, v) },
 	"title":          func(r *seed.Recording, k, v string) error { return setString(&r.Title, v) },
 	"video":          func(r *seed.Recording, k, v string) error { return setBool(&r.Video, v) },
 
