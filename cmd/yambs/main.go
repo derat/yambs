@@ -1,0 +1,93 @@
+// Copyright 2022 Daniel Erat.
+// All rights reserved.
+
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"github.com/derat/yambs/sources/text"
+)
+
+const (
+	actionPrint = "print"
+
+	typeRecording = "recording"
+)
+
+func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <FILE>\n"+
+			"Seeds MusicBrainz edits.\n\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
+	action := enumFlag{val: actionPrint, allowed: []string{actionPrint}}
+	entType := enumFlag{val: typeRecording, allowed: []string{typeRecording}}
+	format := enumFlag{val: string(text.TSV), allowed: []string{string(text.CSV), string(text.TSV)}}
+	var setCmds repeatedFlag
+
+	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
+	fields := flag.String("fields", "", `Comma-separated fields for text input columns (e.g. "artist,title,length")`)
+	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
+	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
+	flag.Var(&setCmds, "set", `Set a value for all entities (e.g. "artist=The Beatles")`)
+	flag.Var(&entType, "type", fmt.Sprintf("Type of entity to create (%v)", entType.allowedList()))
+	flag.Parse()
+
+	os.Exit(func() int {
+		if *listFields {
+			var names []string
+			switch entType.val {
+			case typeRecording:
+				names = text.RecordingFields()
+			}
+			for _, n := range names {
+				fmt.Println(n)
+			}
+			return 0
+		}
+
+		var r io.Reader
+		switch flag.NArg() {
+		case 0:
+			r = os.Stdin
+		case 1:
+			f, err := os.Open(flag.Arg(0))
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			defer f.Close()
+			r = f
+		default:
+			flag.Usage()
+			return 2
+		}
+
+		var urls []string
+		switch entType.val {
+		case typeRecording:
+			recs, err := text.ReadRecordings(r, text.Format(format.val), *fields, setCmds)
+			if err != nil {
+				fmt.Fprintln(os.Stderr, "Failed reading recordings:", err)
+				return 1
+			}
+			for _, rec := range recs {
+				urls = append(urls, rec.URL())
+			}
+		}
+
+		switch action.val {
+		case actionPrint:
+			for _, u := range urls {
+				fmt.Println(u)
+			}
+		}
+
+		return 0
+	}())
+}
