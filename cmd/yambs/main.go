@@ -34,7 +34,7 @@ func main() {
 	fields := flag.String("fields", "", `Comma-separated fields for text input columns (e.g. "artist,title,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
-	flag.Var(&setCmds, "set", `Set a value for all entities (e.g. "artist=The Beatles")`)
+	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
 	flag.Var(&entType, "type", fmt.Sprintf("Type of entity to create (%v)", entType.allowedList()))
 	flag.Parse()
 

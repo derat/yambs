@@ -16,6 +16,24 @@ go install ./cmd/yambs
 
 [Go]: https://go.dev/
 
+```
+Usage yambs: [flag]... <FILE>
+Seeds MusicBrainz edits.
+
+  -action value
+    	Action to perform with seed URLs (print) (default print)
+  -fields string
+    	Comma-separated fields for text input columns (e.g. "artist,title,length")
+  -format value
+    	Format for text input (csv, tsv) (default tsv)
+  -list-fields
+    	Print available fields for -type and exit
+  -set value
+    	Set a field for all entities (e.g. "artist=The Beatles")
+  -type value
+    	Type of entity to create (recording) (default recording)
+```
+
 To add multiple non-album recordings for a single artist, you can run a command
 like the following:
 
