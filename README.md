@@ -17,7 +17,7 @@ go install ./cmd/yambs
 [Go]: https://go.dev/
 
 ```
-Usage yambs: [flag]... <FILE>
+Usage yambs: [flag]... <FILE/URL>
 Seeds MusicBrainz edits.
 
   -action value

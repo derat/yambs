@@ -4,12 +4,15 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"regexp"
 
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
 )
 
@@ -22,17 +25,16 @@ const (
 )
 
 func main() {
-	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <FILE>\n"+
-			"Seeds MusicBrainz edits.\n\n", os.Args[0])
-		flag.PrintDefaults()
-	}
-
 	action := enumFlag{val: actionOpen, allowed: []string{actionOpen, actionPrint, actionWrite}}
 	entType := enumFlag{val: typeRecording, allowed: []string{typeRecording}}
 	format := enumFlag{val: string(text.TSV), allowed: []string{string(text.CSV), string(text.TSV)}}
 	var setCmds repeatedFlag
 
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <FILE/URL>\n"+
+			"Seeds MusicBrainz edits.\n\n", os.Args[0])
+		flag.PrintDefaults()
+	}
 	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
 	fields := flag.String("fields", "", `Comma-separated fields for text input columns (e.g. "artist,title,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
@@ -42,6 +44,8 @@ func main() {
 	flag.Parse()
 
 	os.Exit(func() int {
+		ctx := context.Background()
+
 		if *listFields {
 			var names []string
 			switch entType.val {
@@ -55,32 +59,48 @@ func main() {
 		}
 
 		var r io.Reader
+		var url string
+
 		switch flag.NArg() {
 		case 0:
 			r = os.Stdin
 		case 1:
-			f, err := os.Open(flag.Arg(0))
-			if err != nil {
-				fmt.Fprintln(os.Stderr, err)
-				return 1
+			if arg := flag.Arg(0); urlRegexp.MatchString(arg) {
+				url = arg
+			} else {
+				f, err := os.Open(arg)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, err)
+					return 1
+				}
+				defer f.Close()
+				r = f
 			}
-			defer f.Close()
-			r = f
 		default:
 			flag.Usage()
 			return 2
 		}
 
 		var edits []seed.Edit
-		switch entType.val {
-		case typeRecording:
-			recs, err := text.ReadRecordings(r, text.Format(format.val), *fields, setCmds)
+
+		if url != "" {
+			rel, err := bandcamp.FetchRelease(ctx, url)
 			if err != nil {
-				fmt.Fprintln(os.Stderr, "Failed reading recordings:", err)
+				fmt.Fprintln(os.Stderr, "Failed fetching release:", err)
 				return 1
 			}
-			for i := range recs {
-				edits = append(edits, &recs[i])
+			edits = append(edits, rel)
+		} else {
+			switch entType.val {
+			case typeRecording:
+				recs, err := text.ReadRecordings(r, text.Format(format.val), *fields, setCmds)
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Failed reading recordings:", err)
+					return 1
+				}
+				for i := range recs {
+					edits = append(edits, &recs[i])
+				}
 			}
 		}
 
@@ -108,3 +128,5 @@ func main() {
 		return 0
 	}())
 }
+
+var urlRegexp = regexp.MustCompile("(?i)^https?://")
