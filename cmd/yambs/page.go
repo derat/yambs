@@ -144,7 +144,7 @@ const pageTmpl = `
           <td><input type="checkbox" /></td>
           <td>
             <form action="{{.URL}}" method="{{.Method}}" target="_blank">
-              {{range $k, $v := .Params -}}
+              {{- range $k, $v := .Params}}
               <input type="hidden" name="{{$k}}" value="{{$v}}" />
               {{- end}}
             </form>
