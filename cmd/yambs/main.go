@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	actionPage  = "page"
-	actionPrint = "print"
+	actionOpen  = "open"  // open the page
+	actionPrint = "print" // print URLs
+	actionWrite = "write" // write the page to stdout
 
 	typeRecording = "recording"
 )
@@ -27,7 +28,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	action := enumFlag{val: actionPage, allowed: []string{actionPage, actionPrint}}
+	action := enumFlag{val: actionOpen, allowed: []string{actionOpen, actionPrint, actionWrite}}
 	entType := enumFlag{val: typeRecording, allowed: []string{typeRecording}}
 	format := enumFlag{val: string(text.TSV), allowed: []string{string(text.CSV), string(text.TSV)}}
 	var setCmds repeatedFlag
@@ -84,14 +85,23 @@ func main() {
 		}
 
 		switch action.val {
-		case actionPage:
+		case actionOpen:
 			if err := openPage(edits); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed opening page:", err)
 				return 1
 			}
 		case actionPrint:
 			for _, ed := range edits {
+				if !ed.CanGet() {
+					fmt.Fprintln(os.Stderr, "Can't print bare URL; edit requires POST request")
+					return 1
+				}
 				fmt.Println(ed.URL())
+			}
+		case actionWrite:
+			if err := writePage(os.Stdout, edits); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed writing page:", err)
+				return 1
 			}
 		}
 

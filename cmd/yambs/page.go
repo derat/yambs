@@ -36,12 +36,27 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 		return err
 	}
 	type editInfo struct {
-		Desc string
-		URL  template.URL
+		Desc   string
+		URL    template.URL
+		Method string
+		Params map[string]string
 	}
 	infos := make([]editInfo, len(edits))
 	for i, ed := range edits {
-		infos[i] = editInfo{ed.Description(), template.URL(ed.URL())}
+		info := editInfo{
+			Desc:   ed.Description(),
+			URL:    template.URL(ed.URL()),
+			Method: "post",
+		}
+		if ed.CanGet() {
+			info.Method = "get"
+		}
+		params := ed.Params()
+		info.Params = make(map[string]string, len(params))
+		for k := range params {
+			info.Params[k] = params.Get(k)
+		}
+		infos[i] = info
 	}
 	return tmpl.Execute(w, struct{ Edits []editInfo }{infos})
 }
@@ -51,13 +66,17 @@ const pageTmpl = `
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1"
+    />
     <title>yambs</title>
     <style>
       :root {
         --border-color: #ccc;
-        --margin: 8px;
         --header-color: #eee;
+        --link-color: #444;
+        --margin: 8px;
       }
       body {
         font-family: Roboto, Arial, Helvetica, sans-serif;
@@ -93,6 +112,11 @@ const pageTmpl = `
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      #edits-table a {
+        color: var(--link-color);
+        cursor: pointer;
+        text-decoration: underline;
+      }
       #header-checkbox.partial {
         opacity: 0.4;
       }
@@ -118,7 +142,14 @@ const pageTmpl = `
         {{range .Edits -}}
         <tr>
           <td><input type="checkbox" /></td>
-          <td><a href="{{.URL}}">{{.Desc}}</a></td>
+          <td>
+            <form action="{{.URL}}" method="{{.Method}}" target="_blank">
+              {{range $k, $v := .Params -}}
+              <input type="hidden" name="{{$k}}" value="{{$v}}" />
+              {{- end}}
+            </form>
+            <a>{{.Desc}}</a>
+          </td>
         </tr>
         {{- end}}
       </tbody>
@@ -135,8 +166,10 @@ const pageTmpl = `
     const openAllButton = $('open-all-button');
     const openSelectedButton = $('open-selected-button');
     const rows = [...document.querySelectorAll('#edits-table tbody tr')];
-    const checkboxes = rows.map((r) => r.querySelector('input[type="checkbox"]'));
-    const allUrls = rows.map((r) => r.querySelector('a').href);
+    const checkboxes = rows.map((r) =>
+      r.querySelector('input[type="checkbox"]')
+    );
+    const forms = rows.map((r) => r.querySelector('form'));
     const defaultSelectionSize = 5;
 
     let lastClickIndex = -1;
@@ -165,14 +198,17 @@ const pageTmpl = `
       // Update the "Open selected" button's text and disabled state.
       const range = getSelectionRange();
       openSelectedButton.innerText =
-        range && range[1] < rows.length - 1 ? 'Open selected and advance' : 'Open selected';
+        range && range[1] < rows.length - 1
+          ? 'Open selected and advance'
+          : 'Open selected';
       openSelectedButton.disabled = getNumSelected() === 0;
 
       // Make the header checkbox checked if any rows are selected, and translucent if only some of
       // the rows are selected.
       const count = getNumSelected();
       headerCheckbox.checked = count > 0;
-      if (count > 0 && count < checkboxes.length) headerCheckbox.classList.add('partial');
+      const partial = count > 0 && count < checkboxes.length;
+      if (partial) headerCheckbox.classList.add('partial');
       else headerCheckbox.classList.remove('partial');
     }
 
@@ -183,19 +219,25 @@ const pageTmpl = `
 
       const start = range[1] + 1;
       const end = start + (range[1] - range[0] + 1);
-      checkboxes.forEach((cb, idx) => (cb.checked = idx >= start && idx <= end));
+      checkboxes.forEach(
+        (cb, idx) => (cb.checked = idx >= start && idx <= end)
+      );
       updateState();
-    }
-
-    // Opens |urls| in new tabs.
-    function openUrls(urls) {
-      // TODO: Figure out how to avoid Chrome's popup blocker here.
-      for (const url of urls) window.open(url, '_blank');
     }
 
     // Initialize the page.
     (() => {
-      for (let i = 0; i < Math.min(defaultSelectionSize, checkboxes.length); i++) {
+      // If there's a single edit, just open it.
+      if (forms.length === 1) {
+        forms[0].target = '_self';
+        forms[0].submit();
+      }
+
+      for (
+        let i = 0;
+        i < Math.min(defaultSelectionSize, checkboxes.length);
+        i++
+      ) {
         checkboxes[i].checked = true;
       }
       updateState();
@@ -214,6 +256,14 @@ const pageTmpl = `
         })
       );
 
+      rows
+        .map((r) => r.querySelector('a'))
+        .forEach((a, idx) => {
+          a.addEventListener('click', () => {
+            forms[idx].submit();
+          });
+        });
+
       headerCheckbox.addEventListener('click', () => {
         lastClickIndex = -1;
         const empty = getNumSelected() === 0;
@@ -222,11 +272,15 @@ const pageTmpl = `
       });
 
       openSelectedButton.addEventListener('click', () => {
-        openUrls(allUrls.filter((_, i) => checkboxes[i].checked));
+        forms
+          .filter((_, i) => checkboxes[i].checked)
+          .forEach((f) => f.submit());
         advanceSelection();
       });
 
-      openAllButton.addEventListener('click', () => openUrls(allUrls));
+      openAllButton.addEventListener('click', () => {
+        for (const f of forms) f.submit();
+      });
     })();
   </script>
 </html>

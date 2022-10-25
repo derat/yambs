@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestRecording_SetParams(t *testing.T) {
+func TestRecording_Params(t *testing.T) {
 	rec := Recording{
 		Title:  "Creating Cyclical Headaches",
 		Artist: "Prefuse 73",
@@ -39,10 +39,7 @@ func TestRecording_SetParams(t *testing.T) {
 		"edit-recording.length=" + fmt.Sprintf("%d", rec.Length/time.Millisecond),
 		"edit-recording.name=" + url.QueryEscape(rec.Title),
 	}, "&")
-
-	vals := make(url.Values)
-	rec.SetParams(vals)
-	if got := vals.Encode(); got != want {
+	if got := rec.Params().Encode(); got != want {
 		t.Errorf("Incorrect query params for recording:\ngot  %q\nwant %q", got, want)
 	}
 }

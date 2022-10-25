@@ -20,8 +20,13 @@ const (
 type Edit interface {
 	// Description returns a human-readable description of the edit.
 	Description() string
-	// URL returns a URL to seed the edit form via a GET request.
+	// URL returns a URL to seed the edit form.
 	URL() string
+	// Params returns form values that should be sent to seed the edit form.
+	Params() url.Values
+	// CanGet() returns true if the request for URL can use the GET method rather than POST.
+	// GET is preferable since it avoids an anti-CSRF interstitial page.
+	CanGet() bool
 }
 
 // Recording holds data used to seed the "Add Standalone Recording" form at
@@ -93,20 +98,14 @@ func (rec *Recording) Description() string {
 }
 
 func (rec *Recording) URL() string {
-	us := "https://musicbrainz.org/recording/create"
 	if rec.MBID != "" {
-		us = "https://musicbrainz.org/recording/" + rec.MBID + "/edit"
+		return "https://musicbrainz.org/recording/" + rec.MBID + "/edit"
 	}
-	u, _ := url.Parse(us)
-
-	vals := make(url.Values)
-	rec.SetParams(vals)
-	u.RawQuery = vals.Encode()
-	return u.String()
+	return "https://musicbrainz.org/recording/create"
 }
 
-// SetParams sets query parameters in vals corresponding to non-empty fields in rec.
-func (rec *Recording) SetParams(vals url.Values) {
+func (rec *Recording) Params() url.Values {
+	vals := make(url.Values)
 	if rec.Title != "" {
 		vals.Set("edit-recording.name", rec.Title)
 	}
@@ -114,7 +113,7 @@ func (rec *Recording) SetParams(vals url.Values) {
 		vals.Set("artist", rec.Artist)
 	}
 	for i, ac := range rec.ArtistCredits {
-		ac.SetParams(vals, fmt.Sprintf("edit-recording.artist_credit.names.%d.", i))
+		ac.setParams(vals, fmt.Sprintf("edit-recording.artist_credit.names.%d.", i))
 	}
 	if rec.Length != 0 {
 		vals.Set("edit-recording.length", fmt.Sprintf("%d", rec.Length.Milliseconds()))
@@ -131,7 +130,10 @@ func (rec *Recording) SetParams(vals url.Values) {
 	if rec.EditNote != "" {
 		vals.Set("edit-recording.edit_note", rec.EditNote)
 	}
+	return vals
 }
+
+func (rec *Recording) CanGet() bool { return true }
 
 // ArtistCredit holds detailed information about a credited artist.
 type ArtistCredit struct {
@@ -151,9 +153,9 @@ type ArtistCredit struct {
 	JoinPhrase string
 }
 
-// SetParams sets query parameters in vals corresponding to non-empty fields in ac.
+// setParams sets query parameters in vals corresponding to non-empty fields in ac.
 // The supplied prefix (e.g. "artist_credit.names.0.") is prepended before each parameter name.
-func (ac *ArtistCredit) SetParams(vals url.Values, prefix string) {
+func (ac *ArtistCredit) setParams(vals url.Values, prefix string) {
 	var id string
 	if ac.ID > 0 {
 		id = fmt.Sprint(ac.ID)
