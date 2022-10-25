@@ -21,7 +21,7 @@ Usage yambs: [flag]... <FILE>
 Seeds MusicBrainz edits.
 
   -action value
-    	Action to perform with seed URLs (print) (default print)
+    	Action to perform with seed URLs (page, print) (default page)
   -fields string
     	Comma-separated fields for text input columns (e.g. "artist,title,length")
   -format value

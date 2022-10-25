@@ -9,10 +9,12 @@ import (
 	"io"
 	"os"
 
+	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/text"
 )
 
 const (
+	actionPage  = "page"
 	actionPrint = "print"
 
 	typeRecording = "recording"
@@ -25,7 +27,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 
-	action := enumFlag{val: actionPrint, allowed: []string{actionPrint}}
+	action := enumFlag{val: actionPage, allowed: []string{actionPage, actionPrint}}
 	entType := enumFlag{val: typeRecording, allowed: []string{typeRecording}}
 	format := enumFlag{val: string(text.TSV), allowed: []string{string(text.CSV), string(text.TSV)}}
 	var setCmds repeatedFlag
@@ -68,7 +70,7 @@ func main() {
 			return 2
 		}
 
-		var urls []string
+		var edits []seed.Edit
 		switch entType.val {
 		case typeRecording:
 			recs, err := text.ReadRecordings(r, text.Format(format.val), *fields, setCmds)
@@ -76,15 +78,20 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Failed reading recordings:", err)
 				return 1
 			}
-			for _, rec := range recs {
-				urls = append(urls, rec.URL())
+			for i := range recs {
+				edits = append(edits, &recs[i])
 			}
 		}
 
 		switch action.val {
+		case actionPage:
+			if err := openPage(edits); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed opening page:", err)
+				return 1
+			}
 		case actionPrint:
-			for _, u := range urls {
-				fmt.Println(u)
+			for _, ed := range edits {
+				fmt.Println(ed.URL())
 			}
 		}
 

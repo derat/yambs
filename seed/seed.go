@@ -7,8 +7,22 @@ package seed
 import (
 	"fmt"
 	"net/url"
+	"strings"
 	"time"
 )
+
+const (
+	maxDescLen    = 40 // max length for description components
+	mbidPrefixLen = 8
+)
+
+// Edit represents a seeded MusicBrainz edit.
+type Edit interface {
+	// Description returns a human-readable description of the edit.
+	Description() string
+	// URL returns a URL to seed the edit form via a GET request.
+	URL() string
+}
 
 // Recording holds data used to seed the "Add Standalone Recording" form at
 // https://musicbrainz.org/recording/create and the edit-recording form at
@@ -46,7 +60,38 @@ type Recording struct {
 	// I couldn't find one. Is it possible to do this through a separate edit?
 }
 
-// URL returns a URL to seed the "Add Standalone Recording" or edit-recording form via a GET request.
+func (rec *Recording) Description() string {
+	var parts []string
+	if rec.MBID != "" {
+		parts = append(parts, truncate(rec.MBID, mbidPrefixLen, false))
+	}
+	if rec.Title != "" {
+		parts = append(parts, truncate(rec.Title, maxDescLen, true))
+	}
+	if len(rec.ArtistCredits) > 0 {
+		var s string
+		for _, ac := range rec.ArtistCredits {
+			if ac.NameAsCredited != "" {
+				s += ac.NameAsCredited
+			} else if ac.Name != "" {
+				s += ac.Name
+			} else if ac.MBID != "" {
+				s += truncate(ac.MBID, mbidPrefixLen, false)
+			} else {
+				continue
+			}
+			s += ac.JoinPhrase
+		}
+		if s != "" {
+			parts = append(parts, s)
+		}
+	}
+	if len(parts) == 0 {
+		return "[unknown]"
+	}
+	return strings.Join(parts, " / ")
+}
+
 func (rec *Recording) URL() string {
 	us := "https://musicbrainz.org/recording/create"
 	if rec.MBID != "" {
@@ -124,4 +169,14 @@ func (ac *ArtistCredit) SetParams(vals url.Values, prefix string) {
 			vals.Set(prefix+k, v)
 		}
 	}
+}
+
+func truncate(orig string, max int, ellide bool) string {
+	if len(orig) <= max {
+		return orig
+	}
+	if ellide {
+		return orig[:max-1] + "…"
+	}
+	return orig[:max]
 }
