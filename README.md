@@ -25,9 +25,9 @@ Seeds MusicBrainz edits.
   -addr string
     	Address to listen on for HTTP requests (default "localhost:8999")
   -fields string
-    	Comma-separated fields for text input columns (e.g. "artist,title,length")
+    	Comma-separated fields for CSV/TSV columns (e.g. "artist,title,length")
   -format value
-    	Format for text input (csv, tsv) (default tsv)
+    	Format for text input (csv, keyval, tsv) (default tsv)
   -list-fields
     	Print available fields for -type and exit
   -set value
@@ -79,6 +79,25 @@ yambs \
   -set 'artist0_join_phrase= & ' \
   -set artist1_name=Rush \
   ...
+```
+
+The `keyval` format can be used to specify a single entity across multiple
+lines:
+
+```
+yambs \
+  -type recording \
+  -format keyval \
+  <recording.txt
+```
+
+with a `recording.txt` file like the following:
+
+```txt
+artist_credited=Some Artist
+title=Test Title
+length=3:56
+edit_note=from http://www.example.org
 ```
 
 To list all available fields:

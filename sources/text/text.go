@@ -29,6 +29,9 @@ const (
 	// CSV corresponds to lines of comma-separated values as described in RFC 4180.
 	// See https://pkg.go.dev/encoding/csv.
 	CSV Format = "csv"
+	// KeyVal corresponds to an individual "field=value" pair on each line.
+	// Unlike the other formats, this is used to specify a single entity.
+	KeyVal Format = "keyval"
 	// TSV corresponds to lines of tab-separated values. No escaping is supported.
 	TSV Format = "tsv"
 
@@ -37,7 +40,7 @@ const (
 
 // ReadRecordings reads lines describing recordings from r in the specified format.
 // rawFields is a comma-separated list specifying the field associated with each column.
-// rawSets contains "field=val" directives describing values to set for all recordings.
+// rawSets contains "field=value" directives describing values to set for all recordings.
 func ReadRecordings(r io.Reader, format Format, rawFields string, rawSetCmds []string) ([]seed.Recording, error) {
 	setPairs := make([][2]string, len(rawSetCmds))
 	for i, cmd := range rawSetCmds {
@@ -48,27 +51,26 @@ func ReadRecordings(r io.Reader, format Format, rawFields string, rawSetCmds []s
 		setPairs[i] = [2]string{parts[0], parts[1]}
 	}
 
-	fieldsList := strings.Split(rawFields, ",")
-	lines, err := readLines(r, format, len(fieldsList))
+	rows, fields, err := readInput(r, format, rawFields)
 	if err != nil {
 		return nil, err
 	}
 
-	recs := make([]seed.Recording, 0, len(lines))
-	for i, cols := range lines {
+	recs := make([]seed.Recording, 0, len(rows))
+	for _, cols := range rows {
 		var rec seed.Recording
 		for _, pair := range setPairs {
 			if err := setRecordingField(&rec, pair[0], pair[1]); err != nil {
 				return nil, fmt.Errorf("failed setting %q: %v", pair[0]+"="+pair[1], err)
 			}
 		}
-		for j, field := range fieldsList {
+		for j, field := range fields {
 			val := cols[j]
 			err := setRecordingField(&rec, field, val)
 			if _, ok := err.(*fieldNameError); ok {
 				return nil, err
 			} else if err != nil {
-				return nil, fmt.Errorf("bad %v %q on line %d: %v", field, val, i+1, err)
+				return nil, fmt.Errorf("bad %v %q: %v", field, val, err)
 			}
 		}
 		recs = append(recs, rec)
@@ -76,28 +78,46 @@ func ReadRecordings(r io.Reader, format Format, rawFields string, rawSetCmds []s
 	return recs, nil
 }
 
-// readLines reads all lines from r and splits each into fields per the specified format.
-// An error is returned if any line does not contain nfields fields.
-func readLines(r io.Reader, format Format, nfields int) ([][]string, error) {
+// readInput reads data from r in the specified format and returns one row per
+// entity and a list of field names corresponding to the columns in each row.
+func readInput(r io.Reader, format Format, rawFields string) (rows [][]string, fields []string, err error) {
 	switch format {
 	case CSV:
+		fields = strings.Split(rawFields, ",")
 		cr := csv.NewReader(r)
-		cr.FieldsPerRecord = nfields
-		return cr.ReadAll()
-	case TSV:
-		sc := bufio.NewScanner(r)
-		var lines [][]string
-		for sc.Scan() {
-			fields := strings.Split(sc.Text(), "\t")
-			if len(fields) != nfields {
-				return nil, fmt.Errorf("line %d (%q) has %v field(s); want %v",
-					len(lines)+1, sc.Text(), len(fields), nfields)
-			}
-			lines = append(lines, fields)
+		cr.FieldsPerRecord = len(fields)
+		rows, err = cr.ReadAll()
+		return rows, fields, err
+	case KeyVal:
+		// Transform the input into a single row, and use it to synthesize the field list.
+		if rawFields != "" {
+			return nil, nil, fmt.Errorf("%s format doesn't need field list", KeyVal)
 		}
-		return lines, sc.Err()
+		rows = append(rows, []string{})
+		sc := bufio.NewScanner(r)
+		for sc.Scan() {
+			parts := strings.SplitN(sc.Text(), "=", 2)
+			if len(parts) != 2 {
+				return nil, nil, fmt.Errorf(`line %d (%q) not "field=value" format`, len(fields)+1, sc.Text())
+			}
+			fields = append(fields, parts[0])
+			rows[0] = append(rows[0], parts[1])
+		}
+		return rows, fields, sc.Err()
+	case TSV:
+		fields = strings.Split(rawFields, ",")
+		sc := bufio.NewScanner(r)
+		for sc.Scan() {
+			cols := strings.Split(sc.Text(), "\t")
+			if len(cols) != len(fields) {
+				return nil, nil, fmt.Errorf("line %d (%q) has %v field(s); want %v",
+					len(rows)+1, sc.Text(), len(cols), len(fields))
+			}
+			rows = append(rows, cols)
+		}
+		return rows, fields, sc.Err()
 	default:
-		return nil, fmt.Errorf("unknown format %q", format)
+		return nil, nil, fmt.Errorf("unknown format %q", format)
 	}
 }
 
