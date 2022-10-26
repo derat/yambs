@@ -19,13 +19,17 @@ import (
 const (
 	actionOpen  = "open"  // open the page
 	actionPrint = "print" // print URLs
+	actionServe = "serve" // serve the page locally over HTTP
 	actionWrite = "write" // write the page to stdout
 
 	typeRecording = "recording"
 )
 
 func main() {
-	action := enumFlag{val: actionOpen, allowed: []string{actionOpen, actionPrint, actionWrite}}
+	action := enumFlag{
+		val:     actionOpen,
+		allowed: []string{actionOpen, actionPrint, actionServe, actionWrite},
+	}
 	entType := enumFlag{val: typeRecording, allowed: []string{typeRecording}}
 	format := enumFlag{val: string(text.TSV), allowed: []string{string(text.CSV), string(text.TSV)}}
 	var setCmds repeatedFlag
@@ -36,6 +40,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
+	addr := flag.String("addr", "localhost:8999", "Address to listen on for HTTP requests")
 	fields := flag.String("fields", "", `Comma-separated fields for text input columns (e.g. "artist,title,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
@@ -117,6 +122,11 @@ func main() {
 					return 1
 				}
 				fmt.Println(ed.URL())
+			}
+		case actionServe:
+			if err := servePage(ctx, *addr, edits); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed serving page:", err)
+				return 1
 			}
 		case actionWrite:
 			if err := writePage(os.Stdout, edits); err != nil {

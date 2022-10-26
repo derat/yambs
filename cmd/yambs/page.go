@@ -4,10 +4,15 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
 	"io/ioutil"
+	"log"
+	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -27,6 +32,63 @@ func openPage(edits []seed.Edit) error {
 		return err
 	}
 	return browser.OpenFile(tf.Name())
+}
+
+// servePage starts a local HTTP server at addr and opens an HTML page containing
+// edits in a browser. This is fairly complicated but it can be convenient if the
+// browser doesn't have direct filesystem access (e.g. the server is running in a
+// Chrome OS VM), and I think that a fixed host:port may be needed in order to
+// permanently tell Chrome to avoid blocking popups.
+func servePage(ctx context.Context, addr string, edits []seed.Edit) error {
+	var b bytes.Buffer
+	if err := writePage(&b, edits); err != nil {
+		return err
+	}
+
+	// Bind to the port first.
+	ls, err := net.Listen("tcp", addr)
+	if err != nil {
+		return err
+	}
+	defer ls.Close()
+
+	// Get the real address in case the port wasn't specified and launch the browser.
+	url := fmt.Sprintf("http://%s/", ls.Addr().String())
+	log.Printf("Listening at %v", url)
+	if err := browser.OpenURL(url); err != nil {
+		return err
+	}
+
+	// Report that we're done after we've served the page a single time.
+	done := make(chan struct{})
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			w.Header().Set("Content-Type", "text/html")
+			w.Write(b.Bytes())
+			close(done)
+		} else {
+			http.NotFound(w, r)
+		}
+	})
+
+	// Run the server in a goroutine.
+	var srv http.Server
+	start := make(chan error)
+	go func() { start <- srv.Serve(ls) }()
+	for {
+		select {
+		case err := <-start:
+			// Serve immediately returns ErrServerClosed after Shutdown is called,
+			// but we also need to handle earlier errors.
+			if err != nil && err != http.ErrServerClosed {
+				return err
+			}
+		case <-done:
+			// Shutdown blocks until all connections are closed.
+			log.Print("Shutting down after serving page")
+			return srv.Shutdown(ctx)
+		}
+	}
 }
 
 // writePage writes an HTML page containing the supplied edits to w.

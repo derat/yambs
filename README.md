@@ -21,7 +21,9 @@ Usage yambs: [flag]... <FILE/URL>
 Seeds MusicBrainz edits.
 
   -action value
-    	Action to perform with seed URLs (open, print, write) (default open)
+    	Action to perform with seed URLs (open, print, serve, write) (default open)
+  -addr string
+    	Address to listen on for HTTP requests (default "localhost:8999")
   -fields string
     	Comma-separated fields for text input columns (e.g. "artist,title,length")
   -format value
