@@ -10,10 +10,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/derat/yambs/seed"
 )
 
 // Format represents a textual format for supplying seed data.
@@ -24,11 +28,87 @@ const (
 	// See https://pkg.go.dev/encoding/csv.
 	CSV Format = "csv"
 	// KeyVal corresponds to an individual "field=value" pair on each line.
-	// Unlike the other formats, this is used to specify a single entity.
+	// Unlike the other formats, this is used to specify a single edit.
 	KeyVal Format = "keyval"
 	// TSV corresponds to lines of tab-separated values. No escaping is supported.
 	TSV Format = "tsv"
 )
+
+// ReadEdits reads one or more edits of the specified type from r in the specified format.
+// rawFields is a comma-separated list specifying the field associated with each column.
+// rawSets contains "field=value" directives describing values to set for all edits.
+func ReadEdits(r io.Reader, format Format, typ seed.Type,
+	rawFields string, rawSetCmds []string) ([]seed.Edit, error) {
+	setPairs, err := readSetCommands(rawSetCmds)
+	if err != nil {
+		return nil, err
+	}
+	rows, fields, err := readInput(r, format, rawFields)
+	if err != nil {
+		return nil, err
+	}
+
+	edits := make([]seed.Edit, 0, len(rows))
+	for _, cols := range rows {
+		var edit seed.Edit
+		switch typ {
+		case seed.RecordingType:
+			edit = &seed.Recording{}
+		case seed.ReleaseType:
+			edit = &seed.Release{}
+		default:
+			return nil, fmt.Errorf("unknown edit type %q", typ)
+		}
+
+		for _, pair := range setPairs {
+			if err := setField(edit, pair[0], pair[1]); err != nil {
+				return nil, fmt.Errorf("failed setting %q: %v", pair[0]+"="+pair[1], err)
+			}
+		}
+		for j, field := range fields {
+			val := cols[j]
+			err := setField(edit, field, val)
+			if _, ok := err.(*fieldNameError); ok {
+				return nil, err
+			} else if err != nil {
+				return nil, fmt.Errorf("bad %v %q: %v", field, val, err)
+			}
+		}
+		edits = append(edits, edit)
+	}
+	return edits, nil
+}
+
+// ListFields returns the names of fields that can be passed to ReadEdits for typ.
+func ListFields(typ seed.Type) []string {
+	m, ok := fieldFuncs[typ]
+	if !ok {
+		return nil
+	}
+	var fields []string
+	for _, kv := range reflect.ValueOf(m).MapKeys() {
+		fields = append(fields, kv.String())
+	}
+	return fields
+}
+
+var fieldFuncs = map[seed.Type]interface{}{
+	seed.RecordingType: recordingFields,
+	seed.ReleaseType:   releaseFields,
+}
+
+// readSetCommands parses a list of "field=val" commands.
+func readSetCommands(cmds []string) ([][2]string, error) {
+	pairs := make([][2]string, len(cmds))
+	for i, cmd := range cmds {
+		parts := strings.SplitN(cmd, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(`malformed set command %q (want "field=val")`, cmd)
+		}
+		pairs[i] = [2]string{parts[0], parts[1]}
+	}
+	return pairs, nil
+}
 
 // readInput reads data from r in the specified format and returns one row per
 // entity and a list of field names corresponding to the columns in each row.
@@ -41,7 +121,7 @@ func readInput(r io.Reader, format Format, rawFields string) (rows [][]string, f
 		rows, err = cr.ReadAll()
 		return rows, fields, err
 	case KeyVal:
-		// Transform the input into a single row, and use it to synthesize the field list.
+		// Transform the input into a single row and use it to synthesize the field list.
 		if rawFields != "" {
 			return nil, nil, fmt.Errorf("%s format doesn't need field list", KeyVal)
 		}
@@ -73,17 +153,59 @@ func readInput(r io.Reader, format Format, rawFields string) (rows [][]string, f
 	}
 }
 
-// readSetCommands parses a list of "field=val" commands.
-func readSetCommands(cmds []string) ([][2]string, error) {
-	pairs := make([][2]string, len(cmds))
-	for i, cmd := range cmds {
-		parts := strings.SplitN(cmd, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf(`malformed set command %q (want "field=val")`, cmd)
-		}
-		pairs[i] = [2]string{parts[0], parts[1]}
+// setField sets the named field in edit.
+func setField(edit seed.Edit, field, val string) error {
+	// TODO: Maybe try to rewrite all of this code to use generics at some point.
+	fn, err := findFieldFunc(edit.Type(), field)
+	if err != nil {
+		return err
 	}
-	return pairs, nil
+	switch tedit := edit.(type) {
+	case *seed.Recording:
+		return fn.(recordingFunc)(tedit, field, val)
+	case *seed.Release:
+		return fn.(releaseFunc)(tedit, field, val)
+	default:
+		return fmt.Errorf("unknown edit type %q", edit.Type())
+	}
+}
+
+// findFieldFunc looks for a function in fieldFuncs corresponding to the supplied field name.
+// It returns an error if the field name is invalid or ambiguous.
+func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
+	m, ok := fieldFuncs[typ]
+	if !ok {
+		return nil, fmt.Errorf("unknown edit type %q", typ)
+	}
+	if field == "" {
+		return nil, &fieldNameError{"missing field name"}
+	}
+	mv := reflect.ValueOf(m)
+	if v := mv.MapIndex(reflect.ValueOf(field)); v.IsValid() {
+		return v.Interface(), nil
+	}
+	var fn interface{}
+	for _, kv := range mv.MapKeys() {
+		if sv := kv.String(); strings.HasPrefix(sv, field) || globMatches(sv, field) {
+			if fn != nil {
+				return nil, &fieldNameError{fmt.Sprintf("multiple fields matched by %q", field)}
+			}
+			fn = mv.MapIndex(kv).Interface()
+		}
+	}
+	if fn == nil {
+		return nil, &fieldNameError{fmt.Sprintf("unknown field %q", field)}
+	}
+	return fn, nil
+}
+
+// globMatches returns true if glob contains '*' and matches name per filepath.Match.
+func globMatches(glob, name string) bool {
+	if !strings.ContainsRune(glob, '*') {
+		return false
+	}
+	matched, err := filepath.Match(glob, name)
+	return err == nil && matched
 }
 
 // fieldNameError describes a problem with a field name.
@@ -113,10 +235,30 @@ func setBool(dst *bool, val string) error {
 	return nil
 }
 
+func setDate(dst *time.Time, val string) error {
+	var err error
+	*dst, err = parseDate(val)
+	return err
+}
+
 func setDuration(dst *time.Duration, val string) error {
 	var err error
 	*dst, err = parseDuration(val)
 	return err
+}
+
+// parseDate parses string dates in a variety of formats.
+func parseDate(s string) (time.Time, error) {
+	for _, layout := range []string{
+		"2006-01-02",
+		"2006-01",
+		"2006",
+	} {
+		if t, err := time.Parse(layout, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, errors.New("invalid date")
 }
 
 var durationRegexp = regexp.MustCompile(`^` +

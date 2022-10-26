@@ -21,8 +21,6 @@ const (
 	actionPrint = "print" // print URLs
 	actionServe = "serve" // serve the page locally over HTTP
 	actionWrite = "write" // write the page to stdout
-
-	typeRecording = "recording"
 )
 
 func main() {
@@ -30,7 +28,10 @@ func main() {
 		val:     actionOpen,
 		allowed: []string{actionOpen, actionPrint, actionServe, actionWrite},
 	}
-	entType := enumFlag{val: typeRecording, allowed: []string{typeRecording}}
+	editType := enumFlag{
+		val:     string(seed.RecordingType),
+		allowed: []string{string(seed.RecordingType), string(seed.ReleaseType)},
+	}
 	format := enumFlag{
 		val:     string(text.TSV),
 		allowed: []string{string(text.CSV), string(text.KeyVal), string(text.TSV)},
@@ -48,19 +49,14 @@ func main() {
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
-	flag.Var(&entType, "type", fmt.Sprintf("Type of entity to create (%v)", entType.allowedList()))
+	flag.Var(&editType, "type", fmt.Sprintf("Type of entity to edit (%v)", editType.allowedList()))
 	flag.Parse()
 
 	os.Exit(func() int {
 		ctx := context.Background()
 
 		if *listFields {
-			var names []string
-			switch entType.val {
-			case typeRecording:
-				names = text.RecordingFields()
-			}
-			for _, n := range names {
+			for _, n := range text.ListFields(seed.Type(editType.val)) {
 				fmt.Println(n)
 			}
 			return 0
@@ -68,7 +64,6 @@ func main() {
 
 		var r io.Reader
 		var url string
-
 		switch flag.NArg() {
 		case 0:
 			r = os.Stdin
@@ -90,8 +85,8 @@ func main() {
 		}
 
 		var edits []seed.Edit
-
 		if url != "" {
+			// TODO: Look at editType here?
 			rel, err := bandcamp.FetchRelease(ctx, url)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Failed fetching release:", err)
@@ -99,16 +94,11 @@ func main() {
 			}
 			edits = append(edits, rel)
 		} else {
-			switch entType.val {
-			case typeRecording:
-				recs, err := text.ReadRecordings(r, text.Format(format.val), *fields, setCmds)
-				if err != nil {
-					fmt.Fprintln(os.Stderr, "Failed reading recordings:", err)
-					return 1
-				}
-				for i := range recs {
-					edits = append(edits, &recs[i])
-				}
+			var err error
+			if edits, err = text.ReadEdits(r, text.Format(format.val), seed.Type(editType.val),
+				*fields, setCmds); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed reading edits:", err)
+				return 1
 			}
 		}
 

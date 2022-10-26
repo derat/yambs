@@ -6,12 +6,8 @@ package text
 import (
 	"context"
 	"fmt"
-	"io"
-	"path/filepath"
 	"regexp"
-	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
@@ -19,66 +15,11 @@ import (
 
 const maxArtistCredits = 100
 
-// ReadRecordings reads lines describing recordings from r in the specified format.
-// rawFields is a comma-separated list specifying the field associated with each column.
-// rawSets contains "field=value" directives describing values to set for all recordings.
-func ReadRecordings(r io.Reader, format Format, rawFields string, rawSetCmds []string) ([]seed.Recording, error) {
-	setPairs, err := readSetCommands(rawSetCmds)
-	if err != nil {
-		return nil, err
-	}
-	rows, fields, err := readInput(r, format, rawFields)
-	if err != nil {
-		return nil, err
-	}
-
-	recs := make([]seed.Recording, 0, len(rows))
-	for _, cols := range rows {
-		var rec seed.Recording
-		for _, pair := range setPairs {
-			if err := setRecordingField(&rec, pair[0], pair[1]); err != nil {
-				return nil, fmt.Errorf("failed setting %q: %v", pair[0]+"="+pair[1], err)
-			}
-		}
-		for j, field := range fields {
-			val := cols[j]
-			err := setRecordingField(&rec, field, val)
-			if _, ok := err.(*fieldNameError); ok {
-				return nil, err
-			} else if err != nil {
-				return nil, fmt.Errorf("bad %v %q: %v", field, val, err)
-			}
-		}
-		recs = append(recs, rec)
-	}
-	return recs, nil
-}
-
-// setRecordingField sets rec's named field to the supplied value.
-func setRecordingField(rec *seed.Recording, field, val string) error {
-	if field == "" {
-		return &fieldNameError{"missing field name"}
-	}
-	fn, ok := recordingFields[field]
-	if !ok {
-		for k, v := range recordingFields {
-			if strings.HasPrefix(k, field) || globMatches(k, field) {
-				if fn != nil {
-					return &fieldNameError{fmt.Sprintf("multiple fields matched by %q", field)}
-				}
-				fn = v
-			}
-		}
-	}
-	if fn == nil {
-		return &fieldNameError{fmt.Sprintf("unknown field %q", field)}
-	}
-	return fn(rec, field, val)
-}
+type recordingFunc func(r *seed.Recording, k, v string) error
 
 // recordingFields maps from user-supplied field names to functions that set the appropriate
 // field in a seed.Recording.
-var recordingFields = map[string](func(r *seed.Recording, k, v string) error){
+var recordingFields = map[string]recordingFunc{
 	"artist":         func(r *seed.Recording, k, v string) error { return setString(&r.Artist, v) },
 	"disambiguation": func(r *seed.Recording, k, v string) error { return setString(&r.Disambiguation, v) },
 	"edit_note":      func(r *seed.Recording, k, v string) error { return setString(&r.EditNote, v) },
@@ -121,15 +62,6 @@ var recordingFields = map[string](func(r *seed.Recording, k, v string) error){
 	},
 }
 
-// globMatches returns true if glob contains '*' and matches name per filepath.Match.
-func globMatches(glob, name string) bool {
-	if !strings.ContainsRune(glob, '*') {
-		return false
-	}
-	matched, err := filepath.Match(glob, name)
-	return err == nil && matched
-}
-
 var artistFieldRegexp = regexp.MustCompile(`^artist(\d*)_.*`)
 
 // getArtistCredit extracts a zero-based index from field (e.g. "artist3_name") and returns
@@ -156,14 +88,4 @@ func getArtistCredit(rec *seed.Recording, field string) (*seed.ArtistCredit, err
 		copy(rec.ArtistCredits, old)
 	}
 	return &rec.ArtistCredits[idx], nil
-}
-
-// RecordingFields returns the names of fields that can be passed to ReadRecordings.
-func RecordingFields() []string {
-	v := make([]string, 0, len(recordingFields))
-	for n := range recordingFields {
-		v = append(v, n)
-	}
-	sort.Strings(v)
-	return v
 }

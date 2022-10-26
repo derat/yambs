@@ -8,6 +8,20 @@ import (
 	"time"
 )
 
+func TestParseDate(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"2022-05-04", "2022-05-04"},
+		{"2022-05", "2022-05-01"},
+		{"2022", "2022-01-01"},
+	} {
+		if d, err := parseDate(tc.in); err != nil {
+			t.Errorf("parseDate(%q) failed: %v", tc.in, err)
+		} else if got := d.Format("2006-01-02"); got != tc.want {
+			t.Errorf("parseDate(%q) = %q; want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 func TestParseDuration(t *testing.T) {
 	for _, tc := range []struct {
 		in   string

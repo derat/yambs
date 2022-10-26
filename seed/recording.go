@@ -46,6 +46,8 @@ type Recording struct {
 	// I couldn't find one. Is it possible to do this through a separate edit?
 }
 
+func (rec *Recording) Type() Type { return RecordingType }
+
 func (rec *Recording) Description() string {
 	var parts []string
 	if rec.MBID != "" {

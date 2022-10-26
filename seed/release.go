@@ -23,6 +23,8 @@ type Release struct {
 	// TODO: Add a zillion other fields.
 }
 
+func (rel *Release) Type() Type { return ReleaseType }
+
 func (rel *Release) Description() string { return rel.Title + " / " + rel.Artist }
 
 func (rel *Release) URL() string { return "https://musicbrainz.org/release/add" }

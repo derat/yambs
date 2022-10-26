@@ -13,8 +13,18 @@ const (
 	mbidPrefixLen = 8
 )
 
+// Type describes a type of MusicBrainz edit.
+type Type string
+
+const (
+	RecordingType Type = "recording"
+	ReleaseType   Type = "release"
+)
+
 // Edit represents a seeded MusicBrainz edit.
 type Edit interface {
+	// Type returns the type of entity being edited.
+	Type() Type
 	// Description returns a human-readable description of the edit.
 	Description() string
 	// URL returns a URL to seed the edit form.
