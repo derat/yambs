@@ -33,7 +33,7 @@ Seeds MusicBrainz edits.
   -set value
     	Set a field for all entities (e.g. "artist=The Beatles")
   -type value
-    	Type of entity to create (recording) (default recording)
+    	Type of entity to edit (recording, release) (default recording)
 ```
 
 To add multiple non-album recordings for a single artist, you can run a command

@@ -15,50 +15,82 @@ import (
 
 const maxArtistCredits = 100
 
-type recordingFunc func(r *seed.Recording, k, v string) error
-
-// recordingFields maps from user-supplied field names to functions that set the appropriate
-// field in a seed.Recording.
-var recordingFields = map[string]recordingFunc{
-	"artist":         func(r *seed.Recording, k, v string) error { return setString(&r.Artist, v) },
-	"disambiguation": func(r *seed.Recording, k, v string) error { return setString(&r.Disambiguation, v) },
-	"edit_note":      func(r *seed.Recording, k, v string) error { return setString(&r.EditNote, v) },
-	"isrcs":          func(r *seed.Recording, k, v string) error { return setStringSlice(&r.ISRCs, v, ",") },
-	"length":         func(r *seed.Recording, k, v string) error { return setDuration(&r.Length, v) },
-	"mbid":           func(r *seed.Recording, k, v string) error { return setString(&r.MBID, v) },
-	"title":          func(r *seed.Recording, k, v string) error { return setString(&r.Title, v) },
-	"video":          func(r *seed.Recording, k, v string) error { return setBool(&r.Video, v) },
-
-	"artist*_mbid": func(r *seed.Recording, k, v string) error {
-		ac, err := getArtistCredit(r, k)
-		if err != nil {
-			return err
-		}
-		// The /recording/create form only seems to accept database IDs, not MBIDs.
-		// TODO: Pass a context in, maybe.
-		ac.ID, err = db.GetArtistID(context.Background(), v)
-		return err
+// recordingFields defines fields that can be set in a seed.Recording.
+var recordingFields = map[string]fieldInfo{
+	"artist": {
+		"MBID of artist receiving primary credit for recording",
+		func(r *seed.Recording, k, v string) error { return setString(&r.Artist, v) },
 	},
-	"artist*_name": func(r *seed.Recording, k, v string) error {
-		ac, err := getArtistCredit(r, k)
-		if err != nil {
-			return err
-		}
-		return setString(&ac.Name, v)
+	"disambiguation": {
+		"Comment disambiguating this recording from others with similar names",
+		func(r *seed.Recording, k, v string) error { return setString(&r.Disambiguation, v) },
 	},
-	"artist*_credited": func(r *seed.Recording, k, v string) error {
-		ac, err := getArtistCredit(r, k)
-		if err != nil {
-			return err
-		}
-		return setString(&ac.NameAsCredited, v)
+	"edit_note": {
+		"Note attached to edit",
+		func(r *seed.Recording, k, v string) error { return setString(&r.EditNote, v) },
 	},
-	"artist*_join_phrase": func(r *seed.Recording, k, v string) error {
-		ac, err := getArtistCredit(r, k)
-		if err != nil {
+	"isrcs": {
+		"Comma-separated ISRCs identifying recording",
+		func(r *seed.Recording, k, v string) error { return setStringSlice(&r.ISRCs, v, ",") },
+	},
+	"length": {
+		`Recording's duration as e.g. "3:45.01" or total milliseconds`,
+		func(r *seed.Recording, k, v string) error { return setDuration(&r.Length, v) },
+	},
+	"mbid": {
+		"MBID of existing recording to edit (if empty, create a recording)",
+		func(r *seed.Recording, k, v string) error { return setString(&r.MBID, v) },
+	},
+	"title": {
+		"Recording's name",
+		func(r *seed.Recording, k, v string) error { return setString(&r.Title, v) },
+	},
+	"video": {
+		`Whether this is a video recording ("1" or "true" if true)`,
+		func(r *seed.Recording, k, v string) error { return setBool(&r.Video, v) },
+	},
+	"artist*_mbid": {
+		"MBID of 0-indexed artist",
+		func(r *seed.Recording, k, v string) error {
+			ac, err := getArtistCredit(r, k)
+			if err != nil {
+				return err
+			}
+			// The /recording/create form only seems to accept database IDs, not MBIDs.
+			// TODO: Pass a context in, maybe.
+			ac.ID, err = db.GetArtistID(context.Background(), v)
 			return err
-		}
-		return setString(&ac.JoinPhrase, v)
+		},
+	},
+	"artist*_name": {
+		"MusicBrainz name of 0-indexed artist",
+		func(r *seed.Recording, k, v string) error {
+			ac, err := getArtistCredit(r, k)
+			if err != nil {
+				return err
+			}
+			return setString(&ac.Name, v)
+		},
+	},
+	"artist*_credited": {
+		"As-credited name of 0-indexed artist",
+		func(r *seed.Recording, k, v string) error {
+			ac, err := getArtistCredit(r, k)
+			if err != nil {
+				return err
+			}
+			return setString(&ac.NameAsCredited, v)
+		},
+	},
+	"artist*_join_phrase": {
+		`Join phrase used to separate 0-indexed artist and next artist (e.g. " & ")`,
+		func(r *seed.Recording, k, v string) error {
+			ac, err := getArtistCredit(r, k)
+			if err != nil {
+				return err
+			}
+			return setString(&ac.JoinPhrase, v)
+		},
 	},
 }
 

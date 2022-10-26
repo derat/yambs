@@ -79,20 +79,30 @@ func ReadEdits(r io.Reader, format Format, typ seed.Type,
 	return edits, nil
 }
 
-// ListFields returns the names of fields that can be passed to ReadEdits for typ.
-func ListFields(typ seed.Type) []string {
-	m, ok := fieldFuncs[typ]
+// FieldDescriptions returns a map from the names of fields that can be passed
+// to ReadEdits for typ to human-readable descriptions.
+func ListFields(typ seed.Type) map[string]string {
+	m, ok := typeFields[typ]
 	if !ok {
 		return nil
 	}
-	var fields []string
-	for _, kv := range reflect.ValueOf(m).MapKeys() {
-		fields = append(fields, kv.String())
+	fields := make(map[string]string)
+	iter := reflect.ValueOf(m).MapRange()
+	for iter.Next() {
+		fields[iter.Key().String()] = iter.Value().FieldByName("Desc").String()
 	}
 	return fields
 }
 
-var fieldFuncs = map[seed.Type]interface{}{
+// fieldInfo contains information about a field that can be set by the user.
+// If struct fields are renamed, the code that accesses them via reflection
+// must also be updated.
+type fieldInfo struct {
+	Desc string
+	Fn   interface{}
+}
+
+var typeFields = map[seed.Type]map[string]fieldInfo{
 	seed.RecordingType: recordingFields,
 	seed.ReleaseType:   releaseFields,
 }
@@ -156,24 +166,25 @@ func readInput(r io.Reader, format Format, rawFields string) (rows [][]string, f
 // setField sets the named field in edit.
 func setField(edit seed.Edit, field, val string) error {
 	// TODO: Maybe try to rewrite all of this code to use generics at some point.
+	// The function casts below will panic if a function has the wrong signature.
 	fn, err := findFieldFunc(edit.Type(), field)
 	if err != nil {
 		return err
 	}
 	switch tedit := edit.(type) {
 	case *seed.Recording:
-		return fn.(recordingFunc)(tedit, field, val)
+		return fn.(func(*seed.Recording, string, string) error)(tedit, field, val)
 	case *seed.Release:
-		return fn.(releaseFunc)(tedit, field, val)
+		return fn.(func(*seed.Release, string, string) error)(tedit, field, val)
 	default:
 		return fmt.Errorf("unknown edit type %q", edit.Type())
 	}
 }
 
-// findFieldFunc looks for a function in fieldFuncs corresponding to the supplied field name.
+// findFieldFunc looks for a function in typeFields corresponding to the supplied field name.
 // It returns an error if the field name is invalid or ambiguous.
 func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
-	m, ok := fieldFuncs[typ]
+	m, ok := typeFields[typ]
 	if !ok {
 		return nil, fmt.Errorf("unknown edit type %q", typ)
 	}
@@ -182,7 +193,7 @@ func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 	}
 	mv := reflect.ValueOf(m)
 	if v := mv.MapIndex(reflect.ValueOf(field)); v.IsValid() {
-		return v.Interface(), nil
+		return v.FieldByName("Fn").Interface(), nil
 	}
 	var fn interface{}
 	for _, kv := range mv.MapKeys() {
@@ -190,7 +201,7 @@ func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 			if fn != nil {
 				return nil, &fieldNameError{fmt.Sprintf("multiple fields matched by %q", field)}
 			}
-			fn = mv.MapIndex(kv).Interface()
+			fn = mv.MapIndex(kv).FieldByName("Fn").Interface()
 		}
 	}
 	if fn == nil {

@@ -10,6 +10,8 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
+	"strconv"
 
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
@@ -56,8 +58,17 @@ func main() {
 		ctx := context.Background()
 
 		if *listFields {
-			for _, n := range text.ListFields(seed.Type(editType.val)) {
-				fmt.Println(n)
+			var list [][2]string // name, desc
+			var max int
+			for name, desc := range text.ListFields(seed.Type(editType.val)) {
+				list = append(list, [2]string{name, desc})
+				if len(name) > max {
+					max = len(name)
+				}
+			}
+			sort.Slice(list, func(i, j int) bool { return list[i][0] < list[j][0] })
+			for _, f := range list {
+				fmt.Printf("%-"+strconv.Itoa(max)+"s  %s\n", f[0], f[1])
 			}
 			return 0
 		}
