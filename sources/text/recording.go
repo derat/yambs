@@ -47,44 +47,37 @@ var recordingFields = map[string]fieldInfo{
 	"artist*_mbid": {
 		"MBID of 0-indexed artist",
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				// The /recording/create form only seems to accept database IDs, not MBIDs.
+				// TODO: Pass a context in, maybe.
+				var err error
+				ac.ID, err = db.GetArtistID(context.Background(), v)
 				return err
-			}
-			// The /recording/create form only seems to accept database IDs, not MBIDs.
-			// TODO: Pass a context in, maybe.
-			ac.ID, err = db.GetArtistID(context.Background(), v)
-			return err
+			})
 		},
 	},
 	"artist*_name": {
 		"MusicBrainz name of 0-indexed artist",
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.Name, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.Name, v)
+			})
 		},
 	},
 	"artist*_credited": {
 		"As-credited name of 0-indexed artist",
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.NameAsCredited, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.NameAsCredited, v)
+			})
 		},
 	},
-	"artist*_join_phrase": {
+	"artist*_join": {
 		`Join phrase used to separate 0-indexed artist and next artist (e.g. " & ")`,
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.JoinPhrase, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.JoinPhrase, v)
+			})
 		},
 	},
 }

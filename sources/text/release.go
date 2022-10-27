@@ -53,128 +53,104 @@ var releaseFields = map[string]fieldInfo{
 	"event*_year": {
 		"Year of 0-indexed release event",
 		func(r *seed.Release, k, v string) error {
-			ev, err := getIndexedField(&r.ReleaseEvents, k, eventIndexRegexp, maxReleaseEvents)
-			if err != nil {
-				return err
-			}
-			return setInt(&ev.Year, v)
+			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+				return setInt(&ev.Year, v)
+			})
 		},
 	},
 	"event*_month": {
-		"Month of 0-indexed release event",
+		"Month of 0-indexed release event (1-12)",
 		func(r *seed.Release, k, v string) error {
-			ev, err := getIndexedField(&r.ReleaseEvents, k, eventIndexRegexp, maxReleaseEvents)
-			if err != nil {
-				return err
-			}
-			return setInt(&ev.Month, v)
+			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+				return setInt(&ev.Month, v)
+			})
 		},
 	},
 	"event*_day": {
-		"Day of 0-indexed release event",
+		"Day of 0-indexed release event (1-31)",
 		func(r *seed.Release, k, v string) error {
-			ev, err := getIndexedField(&r.ReleaseEvents, k, eventIndexRegexp, maxReleaseEvents)
-			if err != nil {
-				return err
-			}
-			return setInt(&ev.Day, v)
+			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+				return setInt(&ev.Day, v)
+			})
 		},
 	},
 	"event*_date": {
 		`Date of 0-indexed release event as "YYYY-MM-DD"`,
 		func(r *seed.Release, k, v string) error {
-			ev, err := getIndexedField(&r.ReleaseEvents, k, eventIndexRegexp, maxReleaseEvents)
-			if err != nil {
-				return err
-			}
-			t, err := parseDate(v)
-			if err != nil {
-				return err
-			}
-			ev.Year = t.Year()
-			ev.Month = int(t.Month())
-			ev.Day = t.Day()
-			return nil
+			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+				t, err := parseDate(v)
+				if err != nil {
+					return err
+				}
+				ev.Year = t.Year()
+				ev.Month = int(t.Month())
+				ev.Day = t.Day()
+				return nil
+			})
 		},
 	},
 	"event*_country": {
 		`Country of 0-indexed release event as ISO code (e.g. "GB", "US", "FR")`,
 		func(r *seed.Release, k, v string) error {
-			ev, err := getIndexedField(&r.ReleaseEvents, k, eventIndexRegexp, maxReleaseEvents)
-			if err != nil {
-				return err
-			}
-			return setString(&ev.Country, v)
+			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+				return setString(&ev.Country, v)
+			})
 		},
 	},
 	"label*_mbid": {
 		"MBID of 0-indexed label",
 		func(r *seed.Release, k, v string) error {
-			rl, err := getIndexedField(&r.ReleaseLabels, k, labelIndexRegexp, maxReleaseLabels)
-			if err != nil {
-				return err
-			}
-			return setString(&rl.MBID, v)
+			return indexedField(&r.ReleaseLabels, k, "label", func(la *seed.ReleaseLabel) error {
+				return setString(&la.MBID, v)
+			})
 		},
 	},
 	"label*_catalog": {
 		"Catalog number for 0-indexed label",
 		func(r *seed.Release, k, v string) error {
-			rl, err := getIndexedField(&r.ReleaseLabels, k, labelIndexRegexp, maxReleaseLabels)
-			if err != nil {
-				return err
-			}
-			return setString(&rl.CatalogNumber, v)
+			return indexedField(&r.ReleaseLabels, k, "label", func(la *seed.ReleaseLabel) error {
+				return setString(&la.CatalogNumber, v)
+			})
 		},
 	},
 	"label*_name": {
 		"Name for 0-indexed label (to prefill search if MBID is unknown)",
 		func(r *seed.Release, k, v string) error {
-			rl, err := getIndexedField(&r.ReleaseLabels, k, labelIndexRegexp, maxReleaseLabels)
-			if err != nil {
-				return err
-			}
-			return setString(&rl.Name, v)
+			return indexedField(&r.ReleaseLabels, k, "label", func(la *seed.ReleaseLabel) error {
+				return setString(&la.Name, v)
+			})
 		},
 	},
 	"artist*_mbid": {
 		"MBID of 0-indexed artist",
 		func(r *seed.Release, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.MBID, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.MBID, v)
+			})
 		},
 	},
 	"artist*_name": {
 		"MusicBrainz name of 0-indexed artist",
 		func(r *seed.Release, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.Name, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.Name, v)
+			})
 		},
 	},
 	"artist*_credited": {
 		"As-credited name of 0-indexed artist",
 		func(r *seed.Release, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.NameAsCredited, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.NameAsCredited, v)
+			})
 		},
 	},
 	"artist*_join_phrase": {
 		`Join phrase used to separate 0-indexed artist and next artist (e.g. " & ")`,
 		func(r *seed.Release, k, v string) error {
-			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
-			if err != nil {
-				return err
-			}
-			return setString(&ac.JoinPhrase, v)
+			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+				return setString(&ac.JoinPhrase, v)
+			})
 		},
 	},
 	"edit_note": {

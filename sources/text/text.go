@@ -33,11 +33,7 @@ const (
 	// TSV corresponds to lines of tab-separated values. No escaping is supported.
 	TSV Format = "tsv"
 
-	// TODO: Tune these limits. They just exist to prevent the user from trivially
-	// allocating tons of memory by specifying a field like "artist99999999_name".
-	maxArtistCredits = 100
-	maxReleaseEvents = 100
-	maxReleaseLabels = 100
+	maxFieldIndex = 999
 )
 
 var (
@@ -322,31 +318,26 @@ func parseDuration(s string) (time.Duration, error) {
 	return time.Duration(sec * float64(time.Second)), nil
 }
 
+var indexRegexp = regexp.MustCompile(`^(\d+)`)
+
 // getFieldIndex extracts an integer index from field via re's first match group
-// and returns the corresponding item from items, reallocating if necessary.
+// and calls fn with the corresponding item from items, reallocating if necessary.
 // If the match group is empty, index 0 is used.
 // If more than max items would be used, an error is returned.
-func getIndexedField[T any](items *[]T, field string, re *regexp.Regexp, max int) (*T, error) {
-	matches := re.FindStringSubmatch(field)
-	if matches == nil {
-		return nil, &fieldNameError{fmt.Sprintf(`field not matched by %q`, re)}
-	} else if len(matches) != 2 {
-		return nil, fmt.Errorf("got %d match(es); want 2", len(matches))
+func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) error {
+	if !strings.HasPrefix(field, prefix) {
+		return &fieldNameError{fmt.Sprintf("field doesn't start with %q", prefix)}
 	}
 	var idx int
-	if matches[1] != "" {
-		var err error
-		if idx, err = strconv.Atoi(matches[1]); err != nil {
-			return nil, err
-		} else if idx >= max {
-			return nil, &fieldNameError{fmt.Sprintf("invalid index %d", idx)}
+	if ms := indexRegexp.FindStringSubmatch(field); ms != nil {
+		if idx, _ = strconv.Atoi(ms[1]); idx > maxFieldIndex {
+			return &fieldNameError{fmt.Sprintf("invalid index %d", idx)}
 		}
 	}
-
 	if idx >= len(*items) {
 		old := *items
 		*items = make([]T, idx+1)
 		copy(*items, old)
 	}
-	return &(*items)[idx], nil
+	return fn(&(*items)[idx])
 }
