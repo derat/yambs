@@ -5,15 +5,10 @@ package text
 
 import (
 	"context"
-	"fmt"
-	"regexp"
-	"strconv"
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 )
-
-const maxArtistCredits = 100
 
 // recordingFields defines fields that can be set in a seed.Recording.
 var recordingFields = map[string]fieldInfo{
@@ -38,7 +33,7 @@ var recordingFields = map[string]fieldInfo{
 		func(r *seed.Recording, k, v string) error { return setDuration(&r.Length, v) },
 	},
 	"mbid": {
-		"MBID of existing recording to edit (if empty, create a recording)",
+		"MBID of existing recording to edit (if empty, create recording)",
 		func(r *seed.Recording, k, v string) error { return setString(&r.MBID, v) },
 	},
 	"title": {
@@ -52,7 +47,7 @@ var recordingFields = map[string]fieldInfo{
 	"artist*_mbid": {
 		"MBID of 0-indexed artist",
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getArtistCredit(r, k)
+			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
 			if err != nil {
 				return err
 			}
@@ -65,7 +60,7 @@ var recordingFields = map[string]fieldInfo{
 	"artist*_name": {
 		"MusicBrainz name of 0-indexed artist",
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getArtistCredit(r, k)
+			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
 			if err != nil {
 				return err
 			}
@@ -75,7 +70,7 @@ var recordingFields = map[string]fieldInfo{
 	"artist*_credited": {
 		"As-credited name of 0-indexed artist",
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getArtistCredit(r, k)
+			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
 			if err != nil {
 				return err
 			}
@@ -85,39 +80,11 @@ var recordingFields = map[string]fieldInfo{
 	"artist*_join_phrase": {
 		`Join phrase used to separate 0-indexed artist and next artist (e.g. " & ")`,
 		func(r *seed.Recording, k, v string) error {
-			ac, err := getArtistCredit(r, k)
+			ac, err := getIndexedField(&r.ArtistCredits, k, artistIndexRegexp, maxArtistCredits)
 			if err != nil {
 				return err
 			}
 			return setString(&ac.JoinPhrase, v)
 		},
 	},
-}
-
-var artistFieldRegexp = regexp.MustCompile(`^artist(\d*)_.*`)
-
-// getArtistCredit extracts a zero-based index from field (e.g. "artist3_name") and returns
-// a pointer to the corresponding item from rec.ArtistCredits, creating empty items if needed.
-// The index 0 is inferred for e.g. "artist_name".
-func getArtistCredit(rec *seed.Recording, field string) (*seed.ArtistCredit, error) {
-	matches := artistFieldRegexp.FindStringSubmatch(field)
-	if matches == nil {
-		return nil, &fieldNameError{`field doesn't start with "artist_" or "artist<num>_"`}
-	}
-	var idx int
-	if matches[1] != "" {
-		var err error
-		if idx, err = strconv.Atoi(matches[1]); err != nil {
-			return nil, err
-		} else if idx >= maxArtistCredits {
-			// Keep the user from shooting themselves in the foot.
-			return nil, &fieldNameError{fmt.Sprintf("invalid artist index %d", idx)}
-		}
-	}
-	if idx >= len(rec.ArtistCredits) {
-		old := rec.ArtistCredits
-		rec.ArtistCredits = make([]seed.ArtistCredit, idx+1)
-		copy(rec.ArtistCredits, old)
-	}
-	return &rec.ArtistCredits[idx], nil
 }

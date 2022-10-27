@@ -31,6 +31,7 @@ func main() {
 		allowed: []string{actionOpen, actionPrint, actionServe, actionWrite},
 	}
 	editType := enumFlag{
+		// TODO: Get rid of the default value?
 		val:     string(seed.RecordingType),
 		allowed: []string{string(seed.RecordingType), string(seed.ReleaseType)},
 	}
@@ -122,7 +123,8 @@ func main() {
 		case actionPrint:
 			for _, ed := range edits {
 				if !ed.CanGet() {
-					fmt.Fprintln(os.Stderr, "Can't print bare URL; edit requires POST request")
+					fmt.Fprintf(os.Stderr, "Can't print bare URL; %s edit requires POST request\n",
+						ed.Type())
 					return 1
 				}
 				fmt.Println(ed.URL())

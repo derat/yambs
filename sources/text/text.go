@@ -32,6 +32,18 @@ const (
 	KeyVal Format = "keyval"
 	// TSV corresponds to lines of tab-separated values. No escaping is supported.
 	TSV Format = "tsv"
+
+	// TODO: Tune these limits. They just exist to prevent the user from trivially
+	// allocating tons of memory by specifying a field like "artist99999999_name".
+	maxArtistCredits = 100
+	maxReleaseEvents = 100
+	maxReleaseLabels = 100
+)
+
+var (
+	artistIndexRegexp = regexp.MustCompile(`^artist(\d*)_.*`)
+	eventIndexRegexp  = regexp.MustCompile(`^event(\d*)_.*`)
+	labelIndexRegexp  = regexp.MustCompile(`^label(\d*)_.*`)
 )
 
 // ReadEdits reads one or more edits of the specified type from r in the specified format.
@@ -229,6 +241,12 @@ func setString(dst *string, val string) error {
 	return nil
 }
 
+func setInt(dst *int, val string) error {
+	var err error
+	*dst, err = strconv.Atoi(val)
+	return err
+}
+
 func setStringSlice(dst *[]string, val, sep string) error {
 	*dst = strings.Split(val, sep)
 	return nil
@@ -244,12 +262,6 @@ func setBool(dst *bool, val string) error {
 		return errors.New("invalid value")
 	}
 	return nil
-}
-
-func setDate(dst *time.Time, val string) error {
-	var err error
-	*dst, err = parseDate(val)
-	return err
 }
 
 func setDuration(dst *time.Duration, val string) error {
@@ -308,4 +320,33 @@ func parseDuration(s string) (time.Duration, error) {
 		sec += float64(hours) * 3600
 	}
 	return time.Duration(sec * float64(time.Second)), nil
+}
+
+// getFieldIndex extracts an integer index from field via re's first match group
+// and returns the corresponding item from items, reallocating if necessary.
+// If the match group is empty, index 0 is used.
+// If more than max items would be used, an error is returned.
+func getIndexedField[T any](items *[]T, field string, re *regexp.Regexp, max int) (*T, error) {
+	matches := re.FindStringSubmatch(field)
+	if matches == nil {
+		return nil, &fieldNameError{fmt.Sprintf(`field not matched by %q`, re)}
+	} else if len(matches) != 2 {
+		return nil, fmt.Errorf("got %d match(es); want 2", len(matches))
+	}
+	var idx int
+	if matches[1] != "" {
+		var err error
+		if idx, err = strconv.Atoi(matches[1]); err != nil {
+			return nil, err
+		} else if idx >= max {
+			return nil, &fieldNameError{fmt.Sprintf("invalid index %d", idx)}
+		}
+	}
+
+	if idx >= len(*items) {
+		old := *items
+		*items = make([]T, idx+1)
+		copy(*items, old)
+	}
+	return &(*items)[idx], nil
 }

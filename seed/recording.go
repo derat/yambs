@@ -41,6 +41,7 @@ type Recording struct {
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
+	// TODO: Can the annotation be seeded?
 	// TODO: Figure out if there's any way to seed relationships or external links
 	// for this form. Per https://community.metabrainz.org/t/seeding-recordings/188972/12?u=derat,
 	// I couldn't find one. Is it possible to do this through a separate edit?
@@ -56,23 +57,8 @@ func (rec *Recording) Description() string {
 	if rec.Title != "" {
 		parts = append(parts, truncate(rec.Title, maxDescLen, true))
 	}
-	if len(rec.ArtistCredits) > 0 {
-		var s string
-		for _, ac := range rec.ArtistCredits {
-			if ac.NameAsCredited != "" {
-				s += ac.NameAsCredited
-			} else if ac.Name != "" {
-				s += ac.Name
-			} else if ac.MBID != "" {
-				s += truncate(ac.MBID, mbidPrefixLen, false)
-			} else {
-				continue
-			}
-			s += ac.JoinPhrase
-		}
-		if s != "" {
-			parts = append(parts, s)
-		}
+	if s := artistCreditsDesc(rec.ArtistCredits); s != "" {
+		parts = append(parts, s)
 	}
 	if len(parts) == 0 {
 		return "[unknown]"

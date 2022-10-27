@@ -45,3 +45,21 @@ func (ac *ArtistCredit) setParams(vals url.Values, prefix string) {
 		}
 	}
 }
+
+// artistCreditsDesc summarizes acs for Edit.Description implementations.
+func artistCreditsDesc(acs []ArtistCredit) string {
+	var s string
+	for _, ac := range acs {
+		if ac.NameAsCredited != "" {
+			s += ac.NameAsCredited
+		} else if ac.Name != "" {
+			s += ac.Name
+		} else if ac.MBID != "" {
+			s += truncate(ac.MBID, mbidPrefixLen, false)
+		} else {
+			continue
+		}
+		s += ac.JoinPhrase
+	}
+	return s
+}
