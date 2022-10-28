@@ -45,9 +45,9 @@ var recordingFields = map[string]fieldInfo{
 		func(r *seed.Recording, k, v string) error { return setBool(&r.Video, v) },
 	},
 	"artist*_mbid": {
-		"MBID of 0-indexed artist",
+		"Artist's MBID",
 		func(r *seed.Recording, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+			return recordingArtist(r, k, func(ac *seed.ArtistCredit) error {
 				// The /recording/create form only seems to accept database IDs, not MBIDs.
 				// TODO: Pass a context in, maybe.
 				var err error
@@ -57,27 +57,31 @@ var recordingFields = map[string]fieldInfo{
 		},
 	},
 	"artist*_name": {
-		"MusicBrainz name of 0-indexed artist",
+		"Artist's name for database search",
 		func(r *seed.Recording, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+			return recordingArtist(r, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.Name, v)
 			})
 		},
 	},
 	"artist*_credited": {
-		"As-credited name of 0-indexed artist",
+		"Artist's name as credited",
 		func(r *seed.Recording, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+			return recordingArtist(r, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.NameAsCredited, v)
 			})
 		},
 	},
 	"artist*_join": {
-		`Join phrase used to separate 0-indexed artist and next artist (e.g. " & ")`,
+		`Join phrase used to separate artist and next artist (e.g. " & ")`,
 		func(r *seed.Recording, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+			return recordingArtist(r, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.JoinPhrase, v)
 			})
 		},
 	},
+}
+
+func recordingArtist(r *seed.Recording, k string, fn func(*seed.ArtistCredit) error) error {
+	return indexedField(&r.Artists, k, "artist", fn)
 }

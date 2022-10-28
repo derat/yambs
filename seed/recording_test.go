@@ -15,7 +15,7 @@ func TestRecording_Params(t *testing.T) {
 	rec := Recording{
 		Title:  "Creating Cyclical Headaches",
 		Artist: "Prefuse 73",
-		ArtistCredits: []ArtistCredit{
+		Artists: []ArtistCredit{
 			{
 				ID:             56535,
 				NameAsCredited: "Prefuse Seventy Three",
@@ -31,11 +31,11 @@ func TestRecording_Params(t *testing.T) {
 
 	want := strings.Join([]string{
 		"artist=" + url.QueryEscape(rec.Artist),
-		"edit-recording.artist_credit.names.0.artist.id=" + fmt.Sprint(rec.ArtistCredits[0].ID),
-		"edit-recording.artist_credit.names.0.join_phrase=" + url.QueryEscape(rec.ArtistCredits[0].JoinPhrase),
-		"edit-recording.artist_credit.names.0.name=" + url.QueryEscape(rec.ArtistCredits[0].NameAsCredited),
-		"edit-recording.artist_credit.names.1.artist.name=" + url.QueryEscape(rec.ArtistCredits[1].Name),
-		"edit-recording.artist_credit.names.1.name=" + url.QueryEscape(rec.ArtistCredits[1].NameAsCredited),
+		"edit-recording.artist_credit.names.0.artist.id=" + fmt.Sprint(rec.Artists[0].ID),
+		"edit-recording.artist_credit.names.0.join_phrase=" + url.QueryEscape(rec.Artists[0].JoinPhrase),
+		"edit-recording.artist_credit.names.0.name=" + url.QueryEscape(rec.Artists[0].NameAsCredited),
+		"edit-recording.artist_credit.names.1.artist.name=" + url.QueryEscape(rec.Artists[1].Name),
+		"edit-recording.artist_credit.names.1.name=" + url.QueryEscape(rec.Artists[1].NameAsCredited),
 		"edit-recording.length=" + fmt.Sprintf("%d", rec.Length/time.Millisecond),
 		"edit-recording.name=" + url.QueryEscape(rec.Title),
 	}, "&")

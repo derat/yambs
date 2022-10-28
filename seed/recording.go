@@ -21,10 +21,10 @@ type Recording struct {
 	// Title contains the recording's title.
 	Title string
 	// Artist contains the MBID of the artist primarily credited with the recording.
-	// TODO: Drop this in favor of only using ArtistCredits?
+	// TODO: Drop this in favor of only using Artists?
 	Artist string
-	// ArtistCredits contains detailed information about artists credited with the recording.
-	ArtistCredits []ArtistCredit
+	// Artists contains detailed information about artists credited with the recording.
+	Artists []ArtistCredit
 	// Length contains the recording's duration.
 	Length time.Duration
 	// Video is true if this is a video recording.
@@ -57,7 +57,7 @@ func (rec *Recording) Description() string {
 	if rec.Title != "" {
 		parts = append(parts, truncate(rec.Title, maxDescLen, true))
 	}
-	if s := artistCreditsDesc(rec.ArtistCredits); s != "" {
+	if s := artistCreditsDesc(rec.Artists); s != "" {
 		parts = append(parts, s)
 	}
 	if len(parts) == 0 {
@@ -81,7 +81,7 @@ func (rec *Recording) Params() url.Values {
 	if rec.Artist != "" {
 		vals.Set("artist", rec.Artist)
 	}
-	for i, ac := range rec.ArtistCredits {
+	for i, ac := range rec.Artists {
 		ac.setParams(vals, fmt.Sprintf("edit-recording.artist_credit.names.%d.", i))
 	}
 	if rec.Length != 0 {

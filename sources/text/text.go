@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -34,12 +33,6 @@ const (
 	TSV Format = "tsv"
 
 	maxFieldIndex = 999
-)
-
-var (
-	artistIndexRegexp = regexp.MustCompile(`^artist(\d*)_.*`)
-	eventIndexRegexp  = regexp.MustCompile(`^event(\d*)_.*`)
-	labelIndexRegexp  = regexp.MustCompile(`^label(\d*)_.*`)
 )
 
 // ReadEdits reads one or more edits of the specified type from r in the specified format.
@@ -205,7 +198,7 @@ func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 	}
 	var fn interface{}
 	for _, kv := range mv.MapKeys() {
-		if sv := kv.String(); strings.HasPrefix(sv, field) || globMatches(sv, field) {
+		if sv := kv.String(); patternMatches(sv, field) {
 			if fn != nil {
 				return nil, &fieldNameError{fmt.Sprintf("multiple fields matched by %q", field)}
 			}
@@ -218,13 +211,15 @@ func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 	return fn, nil
 }
 
-// globMatches returns true if glob contains '*' and matches name per filepath.Match.
-func globMatches(glob, name string) bool {
-	if !strings.ContainsRune(glob, '*') {
-		return false
+// patternMatches returns true if s is a prefix of pattern or if
+// pattern contains asterisks and matches s when asterisks are
+// treated as zero or more digits.
+func patternMatches(pattern, s string) bool {
+	if !strings.ContainsRune(pattern, '*') {
+		return strings.HasPrefix(pattern, s)
 	}
-	matched, err := filepath.Match(glob, name)
-	return err == nil && matched
+	re := regexp.MustCompile("^" + strings.ReplaceAll(pattern, "*", `\d*`) + "$")
+	return re.MatchString(s)
 }
 
 // fieldNameError describes a problem with a field name.
@@ -320,14 +315,28 @@ func parseDuration(s string) (time.Duration, error) {
 
 var indexRegexp = regexp.MustCompile(`^(\d+)`)
 
-// getFieldIndex extracts an integer index from field via re's first match group
-// and calls fn with the corresponding item from items, reallocating if necessary.
-// If the match group is empty, index 0 is used.
+// getFieldIndex extracts an integer index from field[prefix:] and calls fn
+// with the corresponding item from items, reallocating if necessary.
+// If prefix starts with "^", it is interpreted as a regular expression.
+// If the integer is missing, index 0 is used.
 // If more than max items would be used, an error is returned.
 func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) error {
-	if !strings.HasPrefix(field, prefix) {
-		return &fieldNameError{fmt.Sprintf("field doesn't start with %q", prefix)}
+	// Strip off the part before the index.
+	if strings.HasPrefix(prefix, "^") {
+		if re, err := regexp.Compile(prefix); err != nil {
+			return err
+		} else if match := re.FindString(field); match == "" {
+			return &fieldNameError{fmt.Sprintf("field not matched by %q", prefix)}
+		} else {
+			field = field[len(match):]
+		}
+	} else {
+		if !strings.HasPrefix(field, prefix) {
+			return &fieldNameError{fmt.Sprintf("field doesn't start with %q", prefix)}
+		}
+		field = field[len(prefix):]
 	}
+
 	var idx int
 	if ms := indexRegexp.FindStringSubmatch(field); ms != nil {
 		if idx, _ = strconv.Atoi(ms[1]); idx > maxFieldIndex {

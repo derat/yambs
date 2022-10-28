@@ -76,7 +76,7 @@ yambs \
   -fields ... \
   -set artist0_mbid=1a054dd8-c5fa-40b6-9397-61c26b0185d4 \
   -set artist0_credited=virt \
-  -set 'artist0_join_phrase= & ' \
+  -set 'artist0_join= & ' \
   -set artist1_name=Rush \
   ...
 ```

@@ -27,11 +27,11 @@ func FetchRelease(ctx context.Context, url string) (*seed.Release, error) {
 		return nil, err
 	}
 	rel := seed.Release{
-		Title:         data.Current.Title,
-		ArtistCredits: []seed.ArtistCredit{{Name: data.Artist}},
+		Title:   data.Current.Title,
+		Artists: []seed.ArtistCredit{{Name: data.Artist}},
 	}
 	if t := time.Time(data.Current.ReleaseDate); !t.IsZero() {
-		rel.ReleaseEvents = []seed.ReleaseEvent{{
+		rel.Events = []seed.ReleaseEvent{{
 			Year:  t.Year(),
 			Month: int(t.Month()),
 			Day:   t.Day(),

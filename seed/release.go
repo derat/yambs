@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // Release holds data used to seed the "Add Release" form at http://musicbrainz.org/release/add.
@@ -42,14 +43,16 @@ type Release struct {
 	// Packaging contains the release's packaging a an English string.
 	// See https://wiki.musicbrainz.org/Release/Packaging.
 	Packaging string
-	// ReleaseEvents contains events corresponding to this release.
-	ReleaseEvents []ReleaseEvent
-	// ReleaseLabels contains label-related information corresponding to this release.
-	ReleaseLabels []ReleaseLabel
+	// Events contains events corresponding to this release.
+	Events []ReleaseEvent
+	// Labels contains label-related information corresponding to this release.
+	Labels []ReleaseLabel
 	// ArtistCredits contains artists credited with the release.
-	ArtistCredits []ArtistCredit
+	Artists []ArtistCredit
+	// Mediums contains the release's media (which themselves contain tracklists).
+	Mediums []Medium
 
-	// TODO: Add tracklists and URLs.
+	// TODO: Add URLs.
 
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
@@ -63,7 +66,7 @@ func (rel *Release) Description() string {
 	if rel.Title != "" {
 		parts = append(parts, rel.Title)
 	}
-	if s := artistCreditsDesc(rel.ArtistCredits); s != "" {
+	if s := artistCreditsDesc(rel.Artists); s != "" {
 		parts = append(parts, s)
 	}
 	if len(parts) == 0 {
@@ -93,14 +96,17 @@ func (rel *Release) Params() url.Values {
 	set("script", rel.Script)
 	set("status", rel.Status)
 	set("packaging", rel.Packaging)
-	for i, ev := range rel.ReleaseEvents {
+	for i, ev := range rel.Events {
 		ev.setParams(vals, fmt.Sprintf("events.%d.", i))
 	}
-	for i, rl := range rel.ReleaseLabels {
+	for i, rl := range rel.Labels {
 		rl.setParams(vals, fmt.Sprintf("labels.%d.", i))
 	}
-	for i, ac := range rel.ArtistCredits {
+	for i, ac := range rel.Artists {
 		ac.setParams(vals, fmt.Sprintf("artist_credit.names.%d.", i))
+	}
+	for i, m := range rel.Mediums {
+		m.setParams(vals, fmt.Sprintf("mediums.%d.", i))
 	}
 	set("edit_note", rel.EditNote)
 	return vals
@@ -151,13 +157,68 @@ type ReleaseLabel struct {
 // setParams sets query parameters in vals corresponding to non-empty fields in rl.
 // The supplied prefix (e.g. "labels.0.") is prepended before each parameter name.
 func (rl *ReleaseLabel) setParams(vals url.Values, prefix string) {
-	for k, v := range map[string]string{
+	setParams(vals, map[string]string{
 		"mbid":           rl.MBID,
 		"catalog_number": rl.CatalogNumber,
 		"name":           rl.Name,
-	} {
-		if v != "" {
-			vals.Set(prefix+k, v)
-		}
+	}, prefix)
+}
+
+// Medium describes a medium that is part of a release.
+// See https://musicbrainz.org/doc/Medium.
+type Medium struct {
+	// Format contains the medium's format name.
+	// See https://wiki.musicbrainz.org/Release/Format.
+	Format string
+	// Name contains the medium's name (e.g. "Live & Unreleased").
+	Name string
+	// Tracks contains the medium's tracklist.
+	Tracks []Track
+	// TODO: Include position? It's inferred based on order, so maybe not.
+}
+
+// setParams sets query parameters in vals corresponding to non-empty fields in m.
+// The supplied prefix (e.g. "mediums.0.") is prepended before each parameter name.
+func (m *Medium) setParams(vals url.Values, prefix string) {
+	setParams(vals, map[string]string{
+		"format": m.Format,
+		"name":   m.Name,
+	}, prefix)
+
+	for i, t := range m.Tracks {
+		t.setParams(vals, prefix+fmt.Sprintf("track.%d.", i))
+	}
+}
+
+// Track describes the way that a recording is represented on a medium.
+// See https://musicbrainz.org/doc/Track.
+type Track struct {
+	// Name contains the track's name.
+	// TODO: Be more consistent about Name vs. Title.
+	Name string
+	// Name contains a free-form track number.
+	Number string
+	// Recording contains the MBID of the recording corresponding to the track.
+	Recording string
+	// Length contains the track's duration.
+	Length time.Duration
+	// Artists contains the artists credited with the track.
+	Artists []ArtistCredit
+}
+
+// setParams sets query parameters in vals corresponding to non-empty fields in tr.
+// The supplied prefix (e.g. "mediums.0.tracks.5.") is prepended before each parameter name.
+func (tr *Track) setParams(vals url.Values, prefix string) {
+	setParams(vals, map[string]string{
+		"name":      tr.Name,
+		"number":    tr.Number,
+		"recording": tr.Recording,
+	}, prefix)
+
+	if tr.Length != 0 {
+		vals.Set(prefix+"length", fmt.Sprintf("%d", tr.Length.Milliseconds()))
+	}
+	for i, ac := range tr.Artists {
+		ac.setParams(vals, prefix+fmt.Sprintf("artist_credit.%d.", i))
 	}
 }

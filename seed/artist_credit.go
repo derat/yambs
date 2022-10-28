@@ -33,17 +33,13 @@ func (ac *ArtistCredit) setParams(vals url.Values, prefix string) {
 	if ac.ID > 0 {
 		id = fmt.Sprint(ac.ID)
 	}
-	for k, v := range map[string]string{
+	setParams(vals, map[string]string{
 		"artist.id":   id,
 		"mbid":        ac.MBID,
 		"artist.name": ac.Name,
 		"name":        ac.NameAsCredited,
 		"join_phrase": ac.JoinPhrase,
-	} {
-		if v != "" {
-			vals.Set(prefix+k, v)
-		}
-	}
+	}, prefix)
 }
 
 // artistCreditsDesc summarizes acs for Edit.Description implementations.

@@ -45,3 +45,11 @@ func truncate(orig string, max int, ellide bool) string {
 	}
 	return orig[:max]
 }
+
+func setParams(vals url.Values, m map[string]string, prefix string) {
+	for k, v := range m {
+		if v != "" {
+			vals.Set(prefix+k, v)
+		}
+	}
+}

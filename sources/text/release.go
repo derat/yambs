@@ -46,38 +46,37 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setString(&r.Status, v) },
 	},
 	"packaging": {
-		// TODO: Document possible values.
-		`Release's packaging`,
+		`Release's packaging`, // TODO: document possible values
 		func(r *seed.Release, k, v string) error { return setString(&r.Packaging, v) },
 	},
 	"event*_year": {
-		"Year of 0-indexed release event",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+		"Year of release event",
+		func(rel *seed.Release, k, v string) error {
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				return setInt(&ev.Year, v)
 			})
 		},
 	},
 	"event*_month": {
-		"Month of 0-indexed release event (1-12)",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+		"Month of release event (1-12)",
+		func(rel *seed.Release, k, v string) error {
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				return setInt(&ev.Month, v)
 			})
 		},
 	},
 	"event*_day": {
-		"Day of 0-indexed release event (1-31)",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+		"Day of release event (1-31)",
+		func(rel *seed.Release, k, v string) error {
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				return setInt(&ev.Day, v)
 			})
 		},
 	},
 	"event*_date": {
-		`Date of 0-indexed release event as "YYYY-MM-DD"`,
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+		`Date of release event as "YYYY-MM-DD"`,
+		func(rel *seed.Release, k, v string) error {
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				t, err := parseDate(v)
 				if err != nil {
 					return err
@@ -90,65 +89,145 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"event*_country": {
-		`Country of 0-indexed release event as ISO code (e.g. "GB", "US", "FR")`,
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseEvents, k, "event", func(ev *seed.ReleaseEvent) error {
+		`Country of release event as ISO code (e.g. "GB", "US", "FR")`,
+		func(rel *seed.Release, k, v string) error {
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				return setString(&ev.Country, v)
 			})
 		},
 	},
 	"label*_mbid": {
-		"MBID of 0-indexed label",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseLabels, k, "label", func(la *seed.ReleaseLabel) error {
-				return setString(&la.MBID, v)
+		"MBID of label",
+		func(rel *seed.Release, k, v string) error {
+			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
+				return setString(&lab.MBID, v)
 			})
 		},
 	},
 	"label*_catalog": {
-		"Catalog number for 0-indexed label",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseLabels, k, "label", func(la *seed.ReleaseLabel) error {
-				return setString(&la.CatalogNumber, v)
+		"Catalog number for label",
+		func(rel *seed.Release, k, v string) error {
+			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
+				return setString(&lab.CatalogNumber, v)
 			})
 		},
 	},
 	"label*_name": {
-		"Name for 0-indexed label (to prefill search if MBID is unknown)",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ReleaseLabels, k, "label", func(la *seed.ReleaseLabel) error {
-				return setString(&la.Name, v)
+		"Name for label (to prefill search if MBID is unknown)",
+		func(rel *seed.Release, k, v string) error {
+			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
+				return setString(&lab.Name, v)
 			})
 		},
 	},
 	"artist*_mbid": {
-		"MBID of 0-indexed artist",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+		"Release artist's MBID",
+		func(rel *seed.Release, k, v string) error {
+			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.MBID, v)
 			})
 		},
 	},
 	"artist*_name": {
-		"MusicBrainz name of 0-indexed artist",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+		"Release artist's name for DB search",
+		func(rel *seed.Release, k, v string) error {
+			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.Name, v)
 			})
 		},
 	},
 	"artist*_credited": {
-		"As-credited name of 0-indexed artist",
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+		"Release artist's name as credited",
+		func(rel *seed.Release, k, v string) error {
+			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.NameAsCredited, v)
 			})
 		},
 	},
-	"artist*_join_phrase": {
-		`Join phrase used to separate 0-indexed artist and next artist (e.g. " & ")`,
-		func(r *seed.Release, k, v string) error {
-			return indexedField(&r.ArtistCredits, k, "artist", func(ac *seed.ArtistCredit) error {
+	"artist*_join": {
+		`Join phrase separating release artist and next artist (e.g. " & ")`,
+		func(rel *seed.Release, k, v string) error {
+			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
+				return setString(&ac.JoinPhrase, v)
+			})
+		},
+	},
+	"medium*_format": {
+		"Medium format", // TODO: add examples
+		func(rel *seed.Release, k, v string) error {
+			return releaseMedium(rel, k, func(med *seed.Medium) error {
+				return setString(&med.Format, v)
+			})
+		},
+	},
+	"medium*_name": {
+		"Medium name", // TODO: add examples
+		func(rel *seed.Release, k, v string) error {
+			return releaseMedium(rel, k, func(med *seed.Medium) error {
+				return setString(&med.Name, v)
+			})
+		},
+	},
+	"medium*_track*_name": {
+		"Track name",
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
+				return setString(&tr.Name, v)
+			})
+		},
+	},
+	"medium*_track*_number": {
+		"Track number",
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
+				return setString(&tr.Number, v)
+			})
+		},
+	},
+	"medium*_track*_recording": {
+		"Track recording MBID",
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
+				return setString(&tr.Recording, v)
+			})
+		},
+	},
+	"medium*_track*_length": {
+		`Track length as e.g. "3:45.01" or total milliseconds`,
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
+				return setDuration(&tr.Length, v)
+			})
+		},
+	},
+	"medium*_track*_artist*_mbid": {
+		"Track artist's MBID",
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
+				return setString(&ac.MBID, v)
+			})
+		},
+	},
+	"medium*_track*_artist*_name": {
+		"Track artist's name for database search",
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
+				return setString(&ac.Name, v)
+			})
+		},
+	},
+	"medium*_track*_artist*_credited": {
+		"Track artist's name as credited",
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
+				return setString(&ac.NameAsCredited, v)
+			})
+		},
+	},
+	"medium*_track*_artist*_join": {
+		`Join phrase separating track artist and next artist (e.g. " & ")`,
+		func(rel *seed.Release, k, v string) error {
+			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
 				return setString(&ac.JoinPhrase, v)
 			})
 		},
@@ -157,4 +236,28 @@ var releaseFields = map[string]fieldInfo{
 		"Note attached to edit",
 		func(r *seed.Release, k, v string) error { return setString(&r.EditNote, v) },
 	},
+}
+
+// Helper functions to make code for setting indexed fields slightly less horrendous.
+func releaseEvent(r *seed.Release, k string, fn func(*seed.ReleaseEvent) error) error {
+	return indexedField(&r.Events, k, "event", fn)
+}
+func releaseLabel(r *seed.Release, k string, fn func(*seed.ReleaseLabel) error) error {
+	return indexedField(&r.Labels, k, "label", fn)
+}
+func releaseArtist(r *seed.Release, k string, fn func(*seed.ArtistCredit) error) error {
+	return indexedField(&r.Artists, k, "artist", fn)
+}
+func releaseMedium(r *seed.Release, k string, fn func(*seed.Medium) error) error {
+	return indexedField(&r.Mediums, k, "medium", fn)
+}
+func releaseMediumTrack(r *seed.Release, k string, fn func(*seed.Track) error) error {
+	return releaseMedium(r, k, func(m *seed.Medium) error {
+		return indexedField(&m.Tracks, k, `^medium\d*_track`, fn)
+	})
+}
+func releaseMediumTrackArtist(r *seed.Release, k string, fn func(*seed.ArtistCredit) error) error {
+	return releaseMediumTrack(r, k, func(t *seed.Track) error {
+		return indexedField(&t.Artists, k, `^medium\d*_track\d*_artist`, fn)
+	})
 }
