@@ -222,6 +222,7 @@ func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 // treated as zero or more digits.
 func patternMatches(pattern, s string) bool {
 	if !strings.ContainsRune(pattern, '*') {
+		// TODO: Get rid of prefix matching? It's weird that it works here but not for wildcard patterns.
 		return strings.HasPrefix(pattern, s)
 	}
 	re := regexp.MustCompile("^" + strings.ReplaceAll(pattern, "*", `\d*`) + "$")
