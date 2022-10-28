@@ -13,7 +13,7 @@ import (
 
 func TestRecording_Params(t *testing.T) {
 	rec := Recording{
-		Title:  "Creating Cyclical Headaches",
+		Name:   "Creating Cyclical Headaches",
 		Artist: "Prefuse 73",
 		Artists: []ArtistCredit{
 			{
@@ -37,7 +37,7 @@ func TestRecording_Params(t *testing.T) {
 		"edit-recording.artist_credit.names.1.artist.name=" + url.QueryEscape(rec.Artists[1].Name),
 		"edit-recording.artist_credit.names.1.name=" + url.QueryEscape(rec.Artists[1].NameAsCredited),
 		"edit-recording.length=" + fmt.Sprintf("%d", rec.Length/time.Millisecond),
-		"edit-recording.name=" + url.QueryEscape(rec.Title),
+		"edit-recording.name=" + url.QueryEscape(rec.Name),
 	}, "&")
 	if got := rec.Params().Encode(); got != want {
 		t.Errorf("Incorrect query params for recording:\ngot  %q\nwant %q", got, want)

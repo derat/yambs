@@ -10,7 +10,7 @@ import (
 // releaseFields defines fields that can be set in a seed.Release.
 var releaseFields = map[string]fieldInfo{
 	"title": {
-		"Release's name",
+		"Release title",
 		func(r *seed.Release, k, v string) error { return setString(&r.Title, v) },
 	},
 	"release_group": {
@@ -30,23 +30,23 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setString(&r.Annotation, v) },
 	},
 	"barcode": {
-		`Release's barcode (or "none" if release has no barcode)`,
+		`Release barcode (or "none" if release has no barcode)`,
 		func(r *seed.Release, k, v string) error { return setString(&r.Barcode, v) },
 	},
 	"language": {
-		`Release's language as ISO 693-3 code (e.g. "eng", "deu", "jpn")`,
+		`Release language as ISO 693-3 code (e.g. "eng", "deu", "jpn")`,
 		func(r *seed.Release, k, v string) error { return setString(&r.Language, v) },
 	},
 	"script": {
-		`Release's script as ISO 15924 code (e.g. "Latn", "Cyrl")`,
+		`Release script as ISO 15924 code (e.g. "Latn", "Cyrl")`,
 		func(r *seed.Release, k, v string) error { return setString(&r.Script, v) },
 	},
 	"status": {
-		`Release's status (e.g. "official", "promotion", "bootleg", "pseudo-release")`,
+		`Release status (e.g. "official", "promotion", "bootleg", "pseudo-release")`,
 		func(r *seed.Release, k, v string) error { return setString(&r.Status, v) },
 	},
 	"packaging": {
-		`Release's packaging`, // TODO: document possible values
+		`Release packaging`, // TODO: document possible values
 		func(r *seed.Release, k, v string) error { return setString(&r.Packaging, v) },
 	},
 	"event*_year": {
@@ -168,11 +168,11 @@ var releaseFields = map[string]fieldInfo{
 			})
 		},
 	},
-	"medium*_track*_name": {
-		"Track name",
+	"medium*_track*_title": {
+		"Track title",
 		func(rel *seed.Release, k, v string) error {
 			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
-				return setString(&tr.Name, v)
+				return setString(&tr.Title, v)
 			})
 		},
 	},

@@ -193,10 +193,9 @@ func (m *Medium) setParams(vals url.Values, prefix string) {
 // Track describes the way that a recording is represented on a medium.
 // See https://musicbrainz.org/doc/Track.
 type Track struct {
-	// Name contains the track's name.
-	// TODO: Be more consistent about Name vs. Title.
-	Name string
-	// Name contains a free-form track number.
+	// Title contains the track's name.
+	Title string
+	// Number contains a free-form track number.
 	Number string
 	// Recording contains the MBID of the recording corresponding to the track.
 	Recording string
@@ -210,7 +209,7 @@ type Track struct {
 // The supplied prefix (e.g. "mediums.0.tracks.5.") is prepended before each parameter name.
 func (tr *Track) setParams(vals url.Values, prefix string) {
 	setParams(vals, map[string]string{
-		"name":      tr.Name,
+		"name":      tr.Title,
 		"number":    tr.Number,
 		"recording": tr.Recording,
 	}, prefix)
