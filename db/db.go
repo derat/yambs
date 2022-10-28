@@ -16,9 +16,20 @@ import (
 // artistIDs maps from string MBID to int32 database ID.
 var artistIDs sync.Map
 
+var artistIDForTest int32
+
+// SetArtistIDForTest hardcodes an ID for GetArtistID to return.
+func SetArtistIDForTest(id int32) {
+	artistIDForTest = id
+}
+
 // GetArtistID queries MusicBrainz over HTTP and returns the database ID (artist.id)
 // corresponding to the artist entity with the specified MBID (artist.gid).
 func GetArtistID(ctx context.Context, mbid string) (int32, error) {
+	if artistIDForTest != 0 {
+		return artistIDForTest, nil
+	}
+
 	id, ok := artistIDs.Load(mbid)
 	if ok {
 		return id.(int32), nil

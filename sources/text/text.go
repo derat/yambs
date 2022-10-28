@@ -6,6 +6,7 @@ package text
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"errors"
 	"fmt"
@@ -38,7 +39,7 @@ const (
 // ReadEdits reads one or more edits of the specified type from r in the specified format.
 // rawFields is a comma-separated list specifying the field associated with each column.
 // rawSets contains "field=value" directives describing values to set for all edits.
-func ReadEdits(r io.Reader, format Format, typ seed.Type,
+func ReadEdits(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 	rawFields string, rawSetCmds []string) ([]seed.Edit, error) {
 	setPairs, err := readSetCommands(rawSetCmds)
 	if err != nil {
@@ -75,6 +76,11 @@ func ReadEdits(r io.Reader, format Format, typ seed.Type,
 				return nil, fmt.Errorf("bad %v %q: %v", field, val, err)
 			}
 		}
+
+		if err := edit.Finish(ctx); err != nil {
+			return nil, err
+		}
+
 		edits = append(edits, edit)
 	}
 	return edits, nil

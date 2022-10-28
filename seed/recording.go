@@ -4,10 +4,13 @@
 package seed
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/derat/yambs/db"
 )
 
 // Recording holds data used to seed the "Add Standalone Recording" form at
@@ -41,7 +44,6 @@ type Recording struct {
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
-	// TODO: Can the annotation be seeded?
 	// TODO: Figure out if there's any way to seed relationships or external links
 	// for this form. Per https://community.metabrainz.org/t/seeding-recordings/188972/12?u=derat,
 	// I couldn't find one. Is it possible to do this through a separate edit?
@@ -103,3 +105,16 @@ func (rec *Recording) Params() url.Values {
 }
 
 func (rec *Recording) CanGet() bool { return true }
+
+func (rec *Recording) Finish(ctx context.Context) error {
+	for _, ac := range rec.Artists {
+		if ac.MBID != "" {
+			var err error
+			if ac.ID, err = db.GetArtistID(ctx, ac.MBID); err != nil {
+				return err
+			}
+			ac.MBID = ""
+		}
+	}
+	return nil
+}

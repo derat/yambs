@@ -107,7 +107,7 @@ func main() {
 			edits = append(edits, rel)
 		} else {
 			var err error
-			if edits, err = text.ReadEdits(r, text.Format(format.val), seed.Type(editType.val),
+			if edits, err = text.ReadEdits(ctx, r, text.Format(format.val), seed.Type(editType.val),
 				*fields, setCmds); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed reading edits:", err)
 				return 1

@@ -4,6 +4,7 @@
 package seed
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -221,3 +222,5 @@ func (tr *Track) setParams(vals url.Values, prefix string) {
 		ac.setParams(vals, prefix+fmt.Sprintf("artist_credit.%d.", i))
 	}
 }
+
+func (rel *Release) Finish(ctx context.Context) error { return nil }

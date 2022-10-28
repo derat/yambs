@@ -5,6 +5,7 @@
 package seed
 
 import (
+	"context"
 	"net/url"
 )
 
@@ -34,6 +35,11 @@ type Edit interface {
 	// CanGet() returns true if the request for URL can use the GET method rather than POST.
 	// GET is preferable since it avoids an anti-CSRF interstitial page.
 	CanGet() bool
+	// Finish fixes up fields in the edit.
+	// This should be called once after filling the edit's fields.
+	// This only exists because recordings are dumb and require
+	// artists' database IDs rather than their MBIDs.
+	Finish(ctx context.Context) error
 }
 
 func truncate(orig string, max int, ellide bool) string {
