@@ -232,6 +232,18 @@ var releaseFields = map[string]fieldInfo{
 			})
 		},
 	},
+	"url*_url": {
+		"URL related to release",
+		func(rel *seed.Release, k, v string) error {
+			return releaseURL(rel, k, func(u *seed.URL) error { return setString(&u.URL, v) })
+		},
+	},
+	"url*_type": {
+		"Integer link type describing how URL is related to release",
+		func(rel *seed.Release, k, v string) error {
+			return releaseURL(rel, k, func(u *seed.URL) error { return setInt((*int)(&u.LinkType), v) })
+		},
+	},
 	"edit_note": {
 		"Note attached to edit",
 		func(r *seed.Release, k, v string) error { return setString(&r.EditNote, v) },
@@ -260,4 +272,7 @@ func releaseMediumTrackArtist(r *seed.Release, k string, fn func(*seed.ArtistCre
 	return releaseMediumTrack(r, k, func(t *seed.Track) error {
 		return indexedField(&t.Artists, k, `^medium\d*_track\d*_artist`, fn)
 	})
+}
+func releaseURL(r *seed.Release, k string, fn func(*seed.URL) error) error {
+	return indexedField(&r.URLs, k, "url", fn)
 }

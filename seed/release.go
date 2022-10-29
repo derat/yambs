@@ -52,9 +52,20 @@ type Release struct {
 	Artists []ArtistCredit
 	// Mediums contains the release's media (which themselves contain tracklists).
 	Mediums []Medium
-
-	// TODO: Add URLs.
-
+	// URLs contains relationships between this release and one or more URLs.
+	// See https://musicbrainz.org/doc/Style/Relationships/URLs.
+	//
+	// As of 20221028, https://musicbrainz.org/release/add lists the following types:
+	//  PurchaseForDownload_Release_URL_Link ("purchase for download")
+	//  DownloadForFree_Release_URL_Link ("download for free")
+	//  PurchaseForMailOrder_Release_URL_Link ("purchase for mail-order")
+	//  StreamingMusic_Release_URL_Link ("stream for free")
+	//  DiscographyEntry_Release_URL_Link ("discography entry")
+	//  License_Release_URL_Link ("license")
+	//  ShowNotes_Release_URL_Link ("show notes")
+	//  Crowdfunding_Release_URL_Link ("crowdfunding page")
+	//  StreamingPaid_Release_URL_Link ("streaming page")
+	URLs []URL
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
@@ -108,6 +119,9 @@ func (rel *Release) Params() url.Values {
 	}
 	for i, m := range rel.Mediums {
 		m.setParams(vals, fmt.Sprintf("mediums.%d.", i))
+	}
+	for i, u := range rel.URLs {
+		u.setParams(vals, fmt.Sprintf("urls.%d.", i))
 	}
 	set("edit_note", rel.EditNote)
 	return vals

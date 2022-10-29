@@ -49,6 +49,9 @@ medium0_track0_artist0_join= &
 medium0_track0_artist1_name=Artist B
 medium0_track1_title=Second Track
 medium0_track1_length=45001
+url0_url=https://www.example.org/a
+url0_type=75
+url1_url=https://www.example.org/b
 edit_note=https://www.example.org/
 `
 	got, err := ReadEdits(context.Background(),
@@ -98,6 +101,10 @@ edit_note=https://www.example.org/
 					{Title: "Second Track", Length: 45001 * time.Millisecond},
 				},
 			}},
+			URLs: []seed.URL{
+				{URL: "https://www.example.org/a", LinkType: seed.DownloadForFree_Release_URL_Link},
+				{URL: "https://www.example.org/b"},
+			},
 			EditNote: "https://www.example.org/",
 		},
 	}
