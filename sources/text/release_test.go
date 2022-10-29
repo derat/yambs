@@ -17,14 +17,14 @@ func TestReadEdits_Release_All(t *testing.T) {
 	const input = `
 title=Release Title
 release_group=4b52bddc-0587-4bcf-9e05-5c9fca260a21
-types=single,soundtrack
+types=Single,Soundtrack
 disambiguation=Not the same
 annotation=This was actually released accidentally.
 barcode=1234567890
 language=eng
 script=Latn
-status=official
-packaging=digipak
+status=Official
+packaging=Digipak
 event0_date=2021-04-05
 event0_country=xw
 event1_year=2020
@@ -62,16 +62,19 @@ edit_note=https://www.example.org/
 	}
 	want := []seed.Edit{
 		&seed.Release{
-			Title:          "Release Title",
-			ReleaseGroup:   "4b52bddc-0587-4bcf-9e05-5c9fca260a21",
-			Types:          []string{"single", "soundtrack"},
+			Title:        "Release Title",
+			ReleaseGroup: "4b52bddc-0587-4bcf-9e05-5c9fca260a21",
+			Types: []seed.ReleaseGroupType{
+				seed.ReleaseGroupType_Single,
+				seed.ReleaseGroupType_Soundtrack,
+			},
 			Disambiguation: "Not the same",
 			Annotation:     "This was actually released accidentally.",
 			Barcode:        "1234567890",
 			Language:       "eng",
 			Script:         "Latn",
-			Status:         "official",
-			Packaging:      "digipak",
+			Status:         seed.ReleaseStatus_Official,
+			Packaging:      seed.ReleasePackaging_Digipak,
 			Events: []seed.ReleaseEvent{
 				{Year: 2021, Month: 4, Day: 5, Country: "xw"},
 				{Year: 2020, Month: 1, Day: 2},
@@ -102,7 +105,7 @@ edit_note=https://www.example.org/
 				},
 			}},
 			URLs: []seed.URL{
-				{URL: "https://www.example.org/a", LinkType: seed.DownloadForFree_Release_URL_Link},
+				{URL: "https://www.example.org/a", LinkType: seed.LinkType_DownloadForFree_Release_URL},
 				{URL: "https://www.example.org/b"},
 			},
 			EditNote: "https://www.example.org/",

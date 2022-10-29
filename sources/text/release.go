@@ -18,8 +18,15 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setString(&r.ReleaseGroup, v) },
 	},
 	"types": {
-		`Comma-separated types for new release group (e.g. "single,soundtrack")`,
-		func(r *seed.Release, k, v string) error { return setStringSlice(&r.Types, v, ",") },
+		`Comma-separated types for new release group (e.g. "Single,Soundtrack")`,
+		func(r *seed.Release, k, v string) error {
+			var vals []string
+			setStringSlice(&vals, v, ",")
+			for _, v := range vals {
+				r.Types = append(r.Types, seed.ReleaseGroupType(v))
+			}
+			return nil
+		},
 	},
 	"disambiguation": {
 		"Comment disambiguating this release from others with similar names",
@@ -43,11 +50,11 @@ var releaseFields = map[string]fieldInfo{
 	},
 	"status": {
 		`Release status (e.g. "official", "promotion", "bootleg", "pseudo-release")`,
-		func(r *seed.Release, k, v string) error { return setString(&r.Status, v) },
+		func(r *seed.Release, k, v string) error { return setString((*string)(&r.Status), v) },
 	},
 	"packaging": {
-		`Release packaging`, // TODO: document possible values
-		func(r *seed.Release, k, v string) error { return setString(&r.Packaging, v) },
+		`Release packaging (e.g. "Jewel Case", "None"`,
+		func(r *seed.Release, k, v string) error { return setString((*string)(&r.Packaging), v) },
 	},
 	"event*_year": {
 		"Year of release event",

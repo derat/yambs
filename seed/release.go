@@ -24,7 +24,7 @@ type Release struct {
 	ReleaseGroup string
 	// Types contains types for a new release group (if ReleaseGroup is empty).
 	// See https://wiki.musicbrainz.org/Release_Group/Type.
-	Types []string
+	Types []ReleaseGroupType
 	// Disambiguation differentiates this release from other releases with similar names.
 	// See https://musicbrainz.org/doc/Disambiguation_Comment.
 	Disambiguation string
@@ -39,11 +39,11 @@ type Release struct {
 	// Script contains the script of the text on the release as an ISO 15924 code (e.g. "Latn", "Cyrl").
 	// See https://en.wikipedia.org/wiki/ISO_15924.
 	Script string
-	// Status contains the release's status (e.g. "official", "promotion", "bootleg", "pseudo-release").
-	Status string
-	// Packaging contains the release's packaging a an English string.
+	// Status contains the release's status.
+	Status ReleaseStatus
+	// Packaging contains the release's packaging as an English string.
 	// See https://wiki.musicbrainz.org/Release/Packaging.
-	Packaging string
+	Packaging ReleasePackaging
 	// Events contains events corresponding to this release.
 	Events []ReleaseEvent
 	// Labels contains label-related information corresponding to this release.
@@ -56,15 +56,15 @@ type Release struct {
 	// See https://musicbrainz.org/doc/Style/Relationships/URLs.
 	//
 	// As of 20221028, https://musicbrainz.org/release/add lists the following types:
-	//  PurchaseForDownload_Release_URL_Link ("purchase for download")
-	//  DownloadForFree_Release_URL_Link ("download for free")
-	//  PurchaseForMailOrder_Release_URL_Link ("purchase for mail-order")
-	//  StreamingMusic_Release_URL_Link ("stream for free")
-	//  DiscographyEntry_Release_URL_Link ("discography entry")
-	//  License_Release_URL_Link ("license")
-	//  ShowNotes_Release_URL_Link ("show notes")
-	//  Crowdfunding_Release_URL_Link ("crowdfunding page")
-	//  StreamingPaid_Release_URL_Link ("streaming page")
+	//  LinkType_PurchaseForDownload_Release_URL ("purchase for download")
+	//  LinkType_DownloadForFree_Release_URL ("download for free")
+	//  LinkType_PurchaseForMailOrder_Release_URL ("purchase for mail-order")
+	//  LinkType_StreamingMusic_Release_URL ("stream for free")
+	//  LinkType_DiscographyEntry_Release_URL ("discography entry")
+	//  LinkType_License_Release_URL ("license")
+	//  LinkType_ShowNotes_Release_URL ("show notes")
+	//  LinkType_Crowdfunding_Release_URL ("crowdfunding page")
+	//  LinkType_StreamingPaid_Release_URL ("streaming page")
 	URLs []URL
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
@@ -99,15 +99,15 @@ func (rel *Release) Params() url.Values {
 	set("name", rel.Title)
 	set("release_group", rel.ReleaseGroup)
 	for _, t := range rel.Types {
-		vals.Add("type", t)
+		vals.Add("type", string(t))
 	}
 	set("comment", rel.Disambiguation)
 	set("annotation", rel.Annotation)
 	set("barcode", rel.Barcode)
 	set("language", rel.Language)
 	set("script", rel.Script)
-	set("status", rel.Status)
-	set("packaging", rel.Packaging)
+	set("status", string(rel.Status))
+	set("packaging", string(rel.Packaging))
 	for i, ev := range rel.Events {
 		ev.setParams(vals, fmt.Sprintf("events.%d.", i))
 	}

@@ -9,12 +9,14 @@ import (
 	"net/url"
 )
 
+//go:generate go run gen/gen_enums.go
+
 const (
 	maxDescLen    = 40 // max length for description components
 	mbidPrefixLen = 8
 )
 
-// Type describes a type of MusicBrainz edit.
+// Type describes a type of MusicBrainz entity being edited.
 type Type string
 
 const (
