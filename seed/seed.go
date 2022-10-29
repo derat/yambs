@@ -31,6 +31,7 @@ type Edit interface {
 	// URL returns a URL to seed the edit form.
 	URL() string
 	// Params returns form values that should be sent to seed the edit form.
+	// Note that some parameters contain multiple values (i.e. don't call Get()).
 	Params() url.Values
 	// CanGet() returns true if the request for URL can use the GET method rather than POST.
 	// GET is preferable since it avoids an anti-CSRF interstitial page.

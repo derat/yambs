@@ -88,7 +88,7 @@ func (rel *Release) Params() url.Values {
 	set("name", rel.Title)
 	set("release_group", rel.ReleaseGroup)
 	for _, t := range rel.Types {
-		vals.Add("type", t) // FIXME: Update other code to handle multiple values.
+		vals.Add("type", t)
 	}
 	set("comment", rel.Disambiguation)
 	set("annotation", rel.Annotation)

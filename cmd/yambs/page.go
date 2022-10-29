@@ -97,11 +97,12 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 	if err != nil {
 		return err
 	}
+	type param struct{ Name, Value string }
 	type editInfo struct {
 		Desc   string
 		URL    template.URL
 		Method string
-		Params map[string]string
+		Params []param
 	}
 	infos := make([]editInfo, len(edits))
 	for i, ed := range edits {
@@ -113,10 +114,10 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 		if ed.CanGet() {
 			info.Method = "get"
 		}
-		params := ed.Params()
-		info.Params = make(map[string]string, len(params))
-		for k := range params {
-			info.Params[k] = params.Get(k)
+		for name, vals := range ed.Params() {
+			for _, val := range vals {
+				info.Params = append(info.Params, param{name, val})
+			}
 		}
 		infos[i] = info
 	}
@@ -206,8 +207,8 @@ const pageTmpl = `
           <td><input type="checkbox" /></td>
           <td>
             <form action="{{.URL}}" method="{{.Method}}" target="_blank">
-              {{- range $k, $v := .Params}}
-              <input type="hidden" name="{{$k}}" value="{{$v}}" />
+              {{- range .Params}}
+              <input type="hidden" name="{{.Name}}" value="{{.Value}}" />
               {{- end}}
             </form>
             <a>{{.Desc}}</a>
