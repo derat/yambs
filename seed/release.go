@@ -138,7 +138,7 @@ type ReleaseEvent struct {
 	// Day contains the event's day, or 0 if unknown.
 	Day int
 	// Country contains the event's country as an ISO code (e.g. "GB", "US", "FR").
-	// TODO: How is "[Worldwide]" represented?
+	// "XW" corresponds to "[Worldwide]".
 	Country string
 }
 
@@ -184,7 +184,7 @@ func (rl *ReleaseLabel) setParams(vals url.Values, prefix string) {
 type Medium struct {
 	// Format contains the medium's format name.
 	// See https://wiki.musicbrainz.org/Release/Format.
-	Format string
+	Format MediumFormat
 	// Name contains the medium's name (e.g. "Live & Unreleased").
 	Name string
 	// Tracks contains the medium's tracklist.
@@ -196,7 +196,7 @@ type Medium struct {
 // The supplied prefix (e.g. "mediums.0.") is prepended before each parameter name.
 func (m *Medium) setParams(vals url.Values, prefix string) {
 	setParams(vals, map[string]string{
-		"format": m.Format,
+		"format": string(m.Format),
 		"name":   m.Name,
 	}, prefix)
 

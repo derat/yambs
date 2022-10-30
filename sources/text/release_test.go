@@ -88,7 +88,7 @@ edit_note=https://www.example.org/
 				{Name: "Second Artist"},
 			},
 			Mediums: []seed.Medium{{
-				Format: "CD",
+				Format: seed.MediumFormat_CD,
 				Name:   "First Disc",
 				Tracks: []seed.Track{
 					{

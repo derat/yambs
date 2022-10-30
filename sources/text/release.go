@@ -96,7 +96,7 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"event*_country": {
-		`Country of release event as ISO code (e.g. "GB", "US", "FR")`,
+		`Country of release event as ISO code (e.g. "GB", "US", "FR", "XW")`,
 		func(rel *seed.Release, k, v string) error {
 			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				return setString(&ev.Country, v)
@@ -160,15 +160,15 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"medium*_format": {
-		"Medium format", // TODO: add examples
+		`Medium format (e.g. "CD", "Digital Media")`,
 		func(rel *seed.Release, k, v string) error {
 			return releaseMedium(rel, k, func(med *seed.Medium) error {
-				return setString(&med.Format, v)
+				return setString((*string)(&med.Format), v)
 			})
 		},
 	},
 	"medium*_name": {
-		"Medium name", // TODO: add examples
+		"Medium name",
 		func(rel *seed.Release, k, v string) error {
 			return releaseMedium(rel, k, func(med *seed.Medium) error {
 				return setString(&med.Name, v)

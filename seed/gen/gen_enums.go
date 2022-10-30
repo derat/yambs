@@ -5,6 +5,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -16,9 +17,13 @@ import (
 	"strings"
 	"text/template"
 	"time"
+	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -75,6 +80,11 @@ func main() {
 		},
 		sort: true,
 	}
+	mediumFormats := enumType{
+		Name:    "MediumFormat",
+		Type:    "string",
+		Comment: []string{`MediumFormat describes a medium's format (e.g. CD, cassette, digital media).`},
+	}
 	releaseGroupTypes := enumType{
 		Name: "ReleaseGroupType",
 		Type: "string",
@@ -98,6 +108,7 @@ func main() {
 		&releaseGroupTypes,
 		&releaseStatuses,
 		&releasePackagings,
+		&mediumFormats,
 		&linkTypes, // last because it's super-long
 	}
 
@@ -148,6 +159,13 @@ func main() {
 				Value:   id,
 				Comment: wrap(desc, commentLen),
 			})
+		} else if ms := mediumFormatsRegexp.FindStringSubmatch(ln); ms != nil {
+			name, desc := ms[1], ms[2]
+			mediumFormats.add(enumValue{
+				Name:    clean(name),
+				Value:   fmt.Sprintf("%q", name),
+				Comment: wrap(desc, commentLen),
+			})
 		} else if ms := releaseGroupTypeRegexp.FindStringSubmatch(ln); ms != nil {
 			typ, name := ms[1], ms[2]
 			eol := "secondary"
@@ -156,21 +174,21 @@ func main() {
 			}
 			releaseGroupTypes.add(enumValue{
 				Name:  clean(name),
-				Value: fmt.Sprintf(`"%s"`, name),
+				Value: fmt.Sprintf("%q", name),
 				EOL:   eol,
 			})
 		} else if ms := releaseStatusRegexp.FindStringSubmatch(ln); ms != nil {
 			name, desc := ms[1], ms[2]
 			releaseStatuses.add(enumValue{
 				Name:    clean(name),
-				Value:   fmt.Sprintf(`"%s"`, name),
+				Value:   fmt.Sprintf("%q", name),
 				Comment: wrap(desc, commentLen),
 			})
 		} else if ms := releasePackagingRegexp.FindStringSubmatch(ln); ms != nil {
 			name, desc := ms[1], ms[2]
 			releasePackagings.add(enumValue{
 				Name:    clean(name),
-				Value:   fmt.Sprintf(`"%s"`, name),
+				Value:   fmt.Sprintf("%q", name),
 				Comment: wrap(desc, commentLen),
 			})
 		}
@@ -248,30 +266,71 @@ const (
 {{end}}
 `
 
-var nonAlnumRegexp = regexp.MustCompile("[^a-z0-9]+")
-var splitRegexp = regexp.MustCompile("[- /]+")
-
 // wordMap contains words with specialized capitalization.
 var wordMap = map[string]string{
+	"8cm":          "8cm",
 	"allmusic":     "AllMusic",
 	"asin":         "ASIN",
 	"bookbrainz":   "BookBrainz",
+	"cd":           "CD",
+	"cdv":          "CDV",
+	"ced":          "CED",
+	"dat":          "DAT",
+	"dcc":          "DCC",
 	"dj":           "DJ",
+	"dts":          "DTS",
+	"dualdisc":     "DualDisc",
+	"dvdaudio":     "DVDAudio",
+	"dvd":          "DVD",
+	"dvdplus":      "DVDplus",
+	"dvdvideo":     "DVDVideo",
 	"ep":           "EP",
+	"hdcd":         "HDCD",
+	"hd":           "HD",
+	"hqcd":         "HQCD",
 	"imdb":         "IMDB",
 	"imslp":        "IMSLP",
+	"laserdisc":    "LaserDisc",
+	"minidisc":     "MiniDisc",
 	"releasegroup": "ReleaseGroup",
+	"sacd":         "SACD",
+	"shm":          "SHM",
+	"slotmusic":    "slotMusic",
+	"svcd":         "SVCD",
+	"umd":          "UMD",
 	"url":          "URL",
+	"usb":          "USB",
+	"vcd":          "VCD",
 	"vgmdb":        "VGMdb",
+	"vhd":          "VHD",
+	"vhs":          "VHS",
 	"viaf":         "VIAF",
+	"vinyldisc":    "VinylDisc",
 	"youtube":      "YouTube",
 }
+
+var nonAlnumRegexp = regexp.MustCompile("[^a-z0-9]+")
+var splitRegexp = regexp.MustCompile("[-+ /]+")
+
+// https://go.dev/blog/normalization#performing-magic
+var normalizer = transform.Chain(norm.NFKD, runes.Remove(runes.In(unicode.Mn)))
 
 // clean attempts to transform orig into a string that can be used in an identifier.
 // Each word is capitalized.
 func clean(orig string) string {
 	var s string
 	for _, w := range splitRegexp.Split(orig, -1) {
+		// Normalize characters using NFKD form. Unicode characters are decomposed (runes are broken
+		// into their components) and replaced for compatibility equivalence (characters that
+		// represent the same characters but have different visual representations, e.g. '9' and
+		// '⁹', are equal). Characters are also de-accented.
+		b := make([]byte, len(w))
+		if _, _, err := normalizer.Transform(b, []byte(w), true); err == nil {
+			b = bytes.TrimRight(b, "\x00")
+			w = string(b)
+		}
+		w = strings.ToLower(w)
+
 		w = nonAlnumRegexp.ReplaceAllString(strings.ToLower(w), "")
 		if dst, ok := wordMap[w]; ok {
 			w = dst
@@ -311,6 +370,9 @@ func wrap(orig string, max int) []string {
 // The below schema definitions come from
 // https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/admin/sql/CreateTables.sql.
 
+// TODO: These regular expressions are terrible.
+// I guess I should write a little query parser.
+
 //  CREATE TABLE link_type ( -- replicate
 //  	id                  SERIAL,
 //  	parent              INTEGER, -- references link_type.id
@@ -340,6 +402,27 @@ var linkTypeRegexp = regexp.MustCompile(
 		`\s*'([^']*)'\s*,` + // 'entity_type1' (group 3)
 		`\s*'([^']*)'\s*,` + // 'name' (group 4)
 		`\s*'([^']*)'\s*,` + // 'description' (group 5)
+		`.*`)
+
+//  CREATE TABLE medium_format ( -- replicate
+//  	id                  SERIAL,
+//  	name                VARCHAR(100) NOT NULL,
+//  	parent              INTEGER, -- references medium_format.id
+//  	child_order         INTEGER NOT NULL DEFAULT 0,
+//  	year                SMALLINT,
+//  	has_discids         BOOLEAN NOT NULL DEFAULT FALSE,
+//  	description         TEXT,
+//  	gid                 uuid NOT NULL
+//  );
+var mediumFormatsRegexp = regexp.MustCompile(
+	`(?i)^\s*INSERT\s+INTO\s+medium_format\s+VALUES\s*\(` +
+		`\s*\d+\s*,*` + // 'id'
+		`\s*'([^']+)'\s*,` + // 'name' (group 1)
+		`[^,]+,` + // 'parent'
+		`[^,]+,` + // 'child_order'
+		`[^,]+,` + // 'year'
+		`[^,]+,` + // 'has_discids'
+		`(?:\s*'([^']+)'\s*,)?` + // 'description' (group 2)
 		`.*`)
 
 //  CREATE TABLE release_group_primary_type ( -- replicate
