@@ -29,9 +29,11 @@ func FetchRelease(ctx context.Context, url string) (rel *seed.Release, img *seed
 	return parseAlbumPage(page, url)
 }
 
-var editNote = "(seeded using https://github.com/derat/yambs)"
+// editNote is appended to automatically-generated edit notes.
+var editNote = "\n\n(seeded using https://github.com/derat/yambs)"
 
-// Bandcamp launch date: https://blog.bandcamp.com/2008/09/16/hello-cleveland/
+// bandcampLaunch contains the Bandcamp launch date:
+// https://blog.bandcamp.com/2008/09/16/hello-cleveland/
 var bandcampLaunch = time.Date(2008, 9, 16, 0, 0, 0, 0, time.UTC)
 
 // metaDescRegexp extracts the track count from a <meta property="og:description"> tag's content.
@@ -75,7 +77,7 @@ func parseAlbumPage(page *web.Page, url string) (rel *seed.Release, img *seed.In
 		Language: "eng",
 		Script:   "Latn",
 		Mediums:  []seed.Medium{seed.Medium{Format: seed.MediumFormat_DigitalMedia}},
-		EditNote: url + "\n\n" + editNote,
+		EditNote: url + editNote,
 	}
 
 	// I'm guessing that the publish date is when the album was created in Bandcamp,
