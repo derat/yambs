@@ -1,5 +1,7 @@
 # yambs (Yet Another MusicBrainz Seeder)
 
+[![Build Status](https://storage.googleapis.com/derat-build-badges/666a3806-8543-471a-bd6c-d4b154f96082.svg)](https://storage.googleapis.com/derat-build-badges/666a3806-8543-471a-bd6c-d4b154f96082.html)
+
 `yambs` is a command-line program for seeding edits to the [MusicBrainz] music
 database.
 
