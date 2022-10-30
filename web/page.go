@@ -76,8 +76,16 @@ func (res QueryResult) Attr(attr string) (string, error) {
 	return "", errors.New("attribute not found")
 }
 
+// Text recursively concatenates the contens of all child text nodes.
+// TODO: Add more control over formatting, e.g. trimming.
+func (res QueryResult) Text(addSpaces bool) (string, error) {
+	if res.Err != nil {
+		return "", res.Err
+	}
+	return getText(res.Node, addSpaces), nil
+}
+
 // getText concatenates all text content in and under n.
-// TODO: Support trimming.
 func getText(n *html.Node, addSpaces bool) string {
 	if n == nil {
 		return ""
