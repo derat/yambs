@@ -199,6 +199,24 @@ const pageTmpl = `
         gap: var(--margin);
         margin-top: var(--margin);
       }
+
+      #opening-overlay {
+        align-items: center;
+        backdrop-filter: blur(1px);
+        background-color: #0002;
+        display: none;
+        font-size: 20px;
+        height: 100vh;
+        justify-content: center;
+        left: 0;
+        position: fixed;
+        top: 0;
+        width: 100vw;
+        z-index: 1;
+      }
+      #opening-overlay.visible {
+        display: flex;
+      }
     </style>
   </head>
   <body>
@@ -235,6 +253,7 @@ const pageTmpl = `
       <button id="open-all-button">Open all</button>
       <button id="open-selected-button">Open selected</button>
     </div>
+    <div id="opening-overlay">Opening edit...</div>
   </body>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -361,6 +380,7 @@ const pageTmpl = `
         if (forms[0]) forms[0].target = '_self';
         links[0].target = '_self';
         links[0].click();
+        $('opening-overlay').classList.add('visible');
       }
     })();
   </script>
