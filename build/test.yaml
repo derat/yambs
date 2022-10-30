@@ -1,0 +1,8 @@
+steps:
+  - name: golang
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        go test -v ./...
+        go install ./cmd/yambs
