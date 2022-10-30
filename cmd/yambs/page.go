@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -100,25 +101,34 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 	type param struct{ Name, Value string }
 	type editInfo struct {
 		Desc   string
-		URL    template.URL
-		Method string
-		Params []param
+		URL    template.URL // includes params iff GET
+		Params []param      // includes params iff POST
 	}
 	infos := make([]editInfo, len(edits))
 	for i, ed := range edits {
-		info := editInfo{
-			Desc:   ed.Description(),
-			URL:    template.URL(ed.URL()),
-			Method: "post",
-		}
+		info := editInfo{Desc: ed.Description()}
+
+		// Use a different approach depending on whether the edit requires a POST or not.
 		if ed.CanGet() {
-			info.Method = "get"
-		}
-		for name, vals := range ed.Params() {
-			for _, val := range vals {
-				info.Params = append(info.Params, param{name, val})
+			// If we can use GET, construct a URL including any parameters since <form method="GET">
+			// adds an annoying question mark even if there aren't any parameters.
+			u, err := url.Parse(ed.URL())
+			if err != nil {
+				return err
+			}
+			u.RawQuery = ed.Params().Encode()
+			info.URL = template.URL(u.String())
+		} else {
+			// If we need to use POST, keep the parameters separate since <form> annoyingly
+			// clears the URL's query string.
+			info.URL = template.URL(ed.URL())
+			for name, vals := range ed.Params() {
+				for _, val := range vals {
+					info.Params = append(info.Params, param{name, val})
+				}
 			}
 		}
+
 		infos[i] = info
 	}
 	return tmpl.Execute(w, struct{ Edits []editInfo }{infos})
@@ -206,12 +216,16 @@ const pageTmpl = `
         <tr>
           <td><input type="checkbox" /></td>
           <td>
-            <form action="{{.URL}}" method="{{.Method}}" target="_blank">
+            {{if .Params -}}
+            <form action="{{.URL}}" method="post" target="_blank">
               {{- range .Params}}
               <input type="hidden" name="{{.Name}}" value="{{.Value}}" />
               {{- end}}
             </form>
-            <a>{{.Desc}}</a>
+            {{end -}}
+            <a {{if not .Params}}href="{{.URL}}" {{end}}target="_blank">
+              {{.Desc}}
+            </a>
           </td>
         </tr>
         {{- end}}
@@ -232,7 +246,8 @@ const pageTmpl = `
     const checkboxes = rows.map((r) =>
       r.querySelector('input[type="checkbox"]')
     );
-    const forms = rows.map((r) => r.querySelector('form'));
+    const forms = rows.map((r) => r.querySelector('form')); // null for GETs
+    const links = rows.map((r) => r.querySelector('a'));
     const defaultSelectionSize = 5;
 
     let lastClickIndex = -1;
@@ -290,12 +305,6 @@ const pageTmpl = `
 
     // Initialize the page.
     (() => {
-      // If there's a single edit, just open it.
-      if (forms.length === 1) {
-        forms[0].target = '_self';
-        forms[0].submit();
-      }
-
       for (
         let i = 0;
         i < Math.min(defaultSelectionSize, checkboxes.length);
@@ -319,13 +328,17 @@ const pageTmpl = `
         })
       );
 
-      rows
-        .map((r) => r.querySelector('a'))
-        .forEach((a, idx) => {
-          a.addEventListener('click', () => {
-            forms[idx].submit();
-          });
+      links.forEach((a, idx) => {
+        a.addEventListener('click', (ev) => {
+          // If there's a form (because this edit requires a POST), submit it.
+          // Otherwise, just let the link perform its default action.
+          const f = forms[idx];
+          if (f) {
+            f.submit();
+            ev.preventDefault();
+          }
         });
+      });
 
       headerCheckbox.addEventListener('click', () => {
         lastClickIndex = -1;
@@ -335,15 +348,20 @@ const pageTmpl = `
       });
 
       openSelectedButton.addEventListener('click', () => {
-        forms
-          .filter((_, i) => checkboxes[i].checked)
-          .forEach((f) => f.submit());
+        links.filter((_, i) => checkboxes[i].checked).forEach((a) => a.click());
         advanceSelection();
       });
 
       openAllButton.addEventListener('click', () => {
-        for (const f of forms) f.submit();
+        for (const a of links) a.click();
       });
+
+      // If there's a single edit, just open it in the current window.
+      if (rows.length === 1) {
+        if (forms[0]) forms[0].target = '_self';
+        links[0].target = '_self';
+        links[0].click();
+      }
     })();
   </script>
 </html>
