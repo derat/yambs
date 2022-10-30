@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"regexp"
 	"sort"
@@ -75,13 +76,13 @@ func main() {
 		}
 
 		var r io.Reader
-		var url string
+		var srcURL string
 		switch flag.NArg() {
 		case 0:
 			r = os.Stdin
 		case 1:
 			if arg := flag.Arg(0); urlRegexp.MatchString(arg) {
-				url = arg
+				srcURL = arg
 			} else {
 				f, err := os.Open(arg)
 				if err != nil {
@@ -97,14 +98,17 @@ func main() {
 		}
 
 		var edits []seed.Edit
-		if url != "" {
+		if srcURL != "" {
 			// TODO: Look at editType here?
-			rel, err := bandcamp.FetchRelease(ctx, url)
+			rel, img, err := bandcamp.FetchRelease(ctx, srcURL)
 			if err != nil {
 				fmt.Fprintln(os.Stderr, "Failed fetching release:", err)
 				return 1
 			}
 			edits = append(edits, rel)
+			if img != nil {
+				edits = append(edits, img)
+			}
 		} else {
 			var err error
 			if edits, err = text.ReadEdits(ctx, r, text.Format(format.val), seed.Type(editType.val),
@@ -127,7 +131,13 @@ func main() {
 						ed.Type())
 					return 1
 				}
-				fmt.Println(ed.URL())
+				u, err := url.Parse(ed.URL())
+				if err != nil {
+					fmt.Fprintln(os.Stderr, "Failed parsing URL:", err)
+					return 1
+				}
+				u.RawQuery = ed.Params().Encode()
+				fmt.Println(u.String())
 			}
 		case actionServe:
 			if err := servePage(ctx, *addr, edits); err != nil {

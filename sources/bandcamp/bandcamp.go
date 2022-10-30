@@ -21,10 +21,10 @@ import (
 // FetchRelease fetches release information from the Bandcamp album page at url.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-func FetchRelease(ctx context.Context, url string) (*seed.Release, error) {
+func FetchRelease(ctx context.Context, url string) (rel *seed.Release, img *seed.Info, err error) {
 	page, err := web.FetchPage(ctx, url)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	return parseAlbumPage(page, url)
 }
@@ -39,7 +39,7 @@ var metaDescRegexp = regexp.MustCompile(`^(\d+) track album$`)
 
 // parseAlbumPage extracts release information from the supplied page.
 // It's separate from FetchRelease to make testing easier.
-func parseAlbumPage(page *web.Page, url string) (*seed.Release, error) {
+func parseAlbumPage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(url, "http://") {
 		url = "https" + url[4:]
@@ -47,20 +47,20 @@ func parseAlbumPage(page *web.Page, url string) (*seed.Release, error) {
 
 	val, err := page.Query("script[data-tralbum]").Attr("data-tralbum")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var data albumData
 	if err := json.Unmarshal([]byte(val), &data); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	// TODO: Support more types. The userscript maps "track" to a single release type,
 	// unless "album_embed_data" is set, in which case it treats it as an individual
 	// track on a parent album.
 	if data.Current.Type != "album" {
-		return nil, fmt.Errorf("non-album type %q", data.Current.Type)
+		return nil, nil, fmt.Errorf("non-album type %q", data.Current.Type)
 	}
 
-	rel := seed.Release{
+	rel = &seed.Release{
 		Title: data.Current.Title,
 		// TODO: Add logic for detecting "various artists", maybe.
 		// The userscript checks if all tracks have titles like "artist - tracktitle" with
@@ -165,9 +165,20 @@ func parseAlbumPage(page *web.Page, url string) (*seed.Release, error) {
 		rel.Barcode = data.Current.UPC
 	}
 
-	// TODO: Add images? Might require a separate edit.
+	// Add an informational edit containing the full-resolution cover art to make it easy
+	// for the user to add it in a followup edit.
+	// TODO: Is there any way to seed the image in the original edit?
+	if iurl, err := page.Query("div#tralbumArt a").Attr("href"); err == nil {
+		if strings.HasSuffix(iurl, "_10.jpg") {
+			iurl = iurl[:len(iurl)-7] + "_0.jpg"
+			var err error
+			if img, err = seed.NewInfo("[cover image]", iurl); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 
-	return &rel, nil
+	return rel, img, nil
 }
 
 // albumData corresponds to the data-tralbum JSON object embedded in Bandcamp album pages.

@@ -22,6 +22,7 @@ type Type string
 const (
 	RecordingType Type = "recording"
 	ReleaseType   Type = "release"
+	InfoType      Type = "info"
 )
 
 // Edit represents a seeded MusicBrainz edit.
