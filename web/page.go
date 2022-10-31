@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -22,19 +23,25 @@ type Page struct {
 
 // FetchPage fetches and parses the HTML page at the supplied URL.
 func FetchPage(ctx context.Context, url string) (*Page, error) {
+	log.Print("Fetching ", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("got status %v: %v", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("status %v: %v", resp.StatusCode, resp.Status)
 	}
+
+	size := "unknown"
+	if resp.ContentLength >= 0 {
+		size = fmt.Sprint(resp.ContentLength)
+	}
+	log.Printf("Parsing %s-byte response from %v", size, url)
 	root, err := html.Parse(resp.Body)
 	if err != nil {
 		return nil, err

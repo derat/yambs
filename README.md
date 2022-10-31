@@ -50,6 +50,8 @@ Seeds MusicBrainz edits.
     	Set a field for all entities (e.g. "artist=The Beatles")
   -type value
     	Type of entity to edit (recording, release) (default recording)
+  -verbose
+    	Enable verbose logging
   -version
     	Print the version and exit
 ```

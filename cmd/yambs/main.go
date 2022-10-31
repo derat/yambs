@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"net/url"
 	"os"
 	"regexp"
@@ -57,6 +58,7 @@ func main() {
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
 	flag.Var(&editType, "type", fmt.Sprintf("Type of entity to edit (%v)", editType.allowedList()))
+	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	printVersion := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
 
@@ -82,6 +84,10 @@ func main() {
 				fmt.Printf("%-"+strconv.Itoa(max)+"s  %s\n", f[0], f[1])
 			}
 			return 0
+		}
+
+		if !*verbose {
+			log.SetOutput(io.Discard)
 		}
 
 		var r io.Reader

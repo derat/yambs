@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sync"
 
@@ -53,6 +54,7 @@ func Version(v string) Option { return func(db *DB) { db.version = v } }
 // GetDatabaseID returns the database ID (e.g. artist.id) corresponding to
 // the entity with the specified MBID (e.g. artist.gid).
 func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
+	// TODO: Validate MBID format?
 	if id, ok := db.databaseIDs.Load(mbid); ok {
 		return id.(int32), nil
 	}
@@ -65,6 +67,7 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 	var data struct {
 		ID int32 `json:"id"`
 	}
+	log.Printf("Requesting database ID for %q", mbid)
 	if err := db.doQuery(ctx, "https://musicbrainz.org/ws/js/entity/"+mbid, &data); err != nil {
 		return 0, err
 	}
@@ -84,6 +87,7 @@ func (db *DB) doQuery(ctx context.Context, url string, dst any) error {
 		return err
 	}
 
+	log.Printf("Sending GET request for %v", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err

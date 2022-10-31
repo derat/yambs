@@ -29,6 +29,7 @@ func openPage(edits []seed.Edit) error {
 	if err != nil {
 		return err
 	}
+	log.Print("Writing page to ", tf.Name())
 	if err := writePage(tf, edits); err != nil {
 		return err
 	}
@@ -55,7 +56,7 @@ func servePage(ctx context.Context, addr string, edits []seed.Edit) error {
 
 	// Get the real address in case the port wasn't specified and launch the browser.
 	url := fmt.Sprintf("http://%s/", ls.Addr().String())
-	log.Printf("Listening at %v", url)
+	log.Print("Listening at ", url)
 	if err := browser.OpenURL(url); err != nil {
 		return err
 	}
