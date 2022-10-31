@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"sync"
 
 	"golang.org/x/time/rate"
@@ -54,7 +55,10 @@ func Version(v string) Option { return func(db *DB) { db.version = v } }
 // GetDatabaseID returns the database ID (e.g. artist.id) corresponding to
 // the entity with the specified MBID (e.g. artist.gid).
 func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
-	// TODO: Validate MBID format?
+	if !mbidRegexp.MatchString(mbid) {
+		return 0, errors.New("malformed MBID")
+	}
+
 	if id, ok := db.databaseIDs.Load(mbid); ok {
 		return id.(int32), nil
 	}
@@ -67,13 +71,14 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 	var data struct {
 		ID int32 `json:"id"`
 	}
-	log.Printf("Requesting database ID for %q", mbid)
+	log.Print("Requesting database ID for ", mbid)
 	if err := db.doQuery(ctx, "https://musicbrainz.org/ws/js/entity/"+mbid, &data); err != nil {
 		return 0, err
 	}
 	if data.ID == 0 {
 		return 0, errors.New("server didn't return ID")
 	}
+	log.Print("Got database ID ", data.ID)
 	db.databaseIDs.Store(mbid, data.ID)
 	return data.ID, nil
 }
@@ -87,7 +92,7 @@ func (db *DB) doQuery(ctx context.Context, url string, dst any) error {
 		return err
 	}
 
-	log.Printf("Sending GET request for %v", url)
+	log.Print("Sending GET request for ", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return err
@@ -105,6 +110,10 @@ func (db *DB) doQuery(ctx context.Context, url string, dst any) error {
 	}
 	return json.NewDecoder(resp.Body).Decode(dst)
 }
+
+// mbidRegexp matches a MusicBrainz ID (i.e. a UUID).
+var mbidRegexp = regexp.MustCompile(
+	`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 // SetDatabaseIDForTest hardcodes an ID for GetDatabaseID to return.
 func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {
