@@ -177,7 +177,7 @@ func TestParseAlbumPage(t *testing.T) {
 				t.Fatal("Failed parsing page:", err)
 			}
 
-			if diff := cmp.Diff(rel, tc.rel); diff != "" {
+			if diff := cmp.Diff(tc.rel, rel); diff != "" {
 				t.Error("Bad release data:\n" + diff)
 			}
 
@@ -185,7 +185,7 @@ func TestParseAlbumPage(t *testing.T) {
 			if img != nil {
 				imgURL = img.URL()
 			}
-			if diff := cmp.Diff(imgURL, tc.img); diff != "" {
+			if diff := cmp.Diff(tc.img, imgURL); diff != "" {
 				t.Error("Bad cover image URL:\n" + diff)
 			}
 		})

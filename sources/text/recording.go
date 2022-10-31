@@ -4,9 +4,6 @@
 package text
 
 import (
-	"context"
-
-	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 )
 
@@ -20,11 +17,7 @@ var recordingFields = map[string]fieldInfo{
 		"Artist's MBID",
 		func(r *seed.Recording, k, v string) error {
 			return recordingArtist(r, k, func(ac *seed.ArtistCredit) error {
-				// The /recording/create form only seems to accept database IDs, not MBIDs.
-				// TODO: Pass a context in, maybe.
-				var err error
-				ac.ID, err = db.GetArtistID(context.Background(), v)
-				return err
+				return setString(&ac.MBID, v) // converted to database ID by Finish
 			})
 		},
 	},

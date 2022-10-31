@@ -10,4 +10,7 @@ require (
 	golang.org/x/text v0.3.7
 )
 
-require golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+require (
+	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/time v0.1.0 // indirect
+)

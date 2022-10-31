@@ -7,6 +7,8 @@ package seed
 import (
 	"context"
 	"net/url"
+
+	"github.com/derat/yambs/db"
 )
 
 //go:generate go run gen/gen_enums.go
@@ -43,7 +45,7 @@ type Edit interface {
 	// This should be called once after filling the edit's fields.
 	// This only exists because recordings are dumb and require
 	// artists' database IDs rather than their MBIDs.
-	Finish(ctx context.Context) error
+	Finish(ctx context.Context, db *db.DB) error
 }
 
 func truncate(orig string, max int, ellide bool) string {

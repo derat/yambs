@@ -14,10 +14,13 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
 )
+
+var version = "[non-release]"
 
 const (
 	actionOpen  = "open"  // open the page
@@ -54,10 +57,16 @@ func main() {
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
 	flag.Var(&editType, "type", fmt.Sprintf("Type of entity to edit (%v)", editType.allowedList()))
+	printVersion := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
 
 	os.Exit(func() int {
 		ctx := context.Background()
+
+		if *printVersion {
+			fmt.Println("yambs " + version)
+			return 0
+		}
 
 		if *listFields {
 			var list [][2]string // name, desc
@@ -97,6 +106,7 @@ func main() {
 			return 2
 		}
 
+		db := db.NewDB(db.Version(version))
 		var edits []seed.Edit
 		if srcURL != "" {
 			// TODO: Look at editType here?
@@ -112,7 +122,7 @@ func main() {
 		} else {
 			var err error
 			if edits, err = text.ReadEdits(ctx, r, text.Format(format.val), seed.Type(editType.val),
-				*fields, setCmds); err != nil {
+				*fields, setCmds, db); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed reading edits:", err)
 				return 1
 			}

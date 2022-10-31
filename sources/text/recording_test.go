@@ -30,7 +30,7 @@ Third Song	0:45
 		TSV, seed.RecordingType, "name,length", []string{
 			"artist=" + uuid,
 			"edit_note=" + note,
-		})
+		}, db.NewDB(db.DisallowQueries))
 	if err != nil {
 		t.Fatal("ReadEdits failed:", err)
 	}
@@ -55,7 +55,7 @@ Third Song	0:45
 			EditNote: note,
 		},
 	}
-	if diff := cmp.Diff(got, want); diff != "" {
+	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error("ReadEdits returned wrong edits:\n" + diff)
 	}
 }
@@ -75,8 +75,8 @@ func TestReadEdits_Recording_All(t *testing.T) {
 		recName    = "Recording Name"
 	)
 
-	db.SetArtistIDForTest(artistID)
-	defer db.SetArtistIDForTest(0)
+	db := db.NewDB(db.DisallowQueries)
+	db.SetDatabaseIDForTest(artistMBID, artistID)
 
 	var input bytes.Buffer
 	if err := csv.NewWriter(&input).WriteAll([][]string{{
@@ -106,7 +106,7 @@ func TestReadEdits_Recording_All(t *testing.T) {
 		"mbid",
 		"name",
 		"video",
-	}, ","), nil)
+	}, ","), nil, db)
 	if err != nil {
 		t.Fatal("ReadEdits failed:", err)
 	}
@@ -126,7 +126,7 @@ func TestReadEdits_Recording_All(t *testing.T) {
 			Video:          true,
 		},
 	}
-	if diff := cmp.Diff(got, want); diff != "" {
+	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error("ReadEdits returned wrong edits:\n" + diff)
 	}
 }

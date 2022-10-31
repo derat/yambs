@@ -106,11 +106,12 @@ func (rec *Recording) Params() url.Values {
 
 func (rec *Recording) CanGet() bool { return true }
 
-func (rec *Recording) Finish(ctx context.Context) error {
-	for _, ac := range rec.Artists {
+func (rec *Recording) Finish(ctx context.Context, db *db.DB) error {
+	for i := range rec.Artists {
+		ac := &rec.Artists[i]
 		if ac.MBID != "" {
 			var err error
-			if ac.ID, err = db.GetArtistID(ctx, ac.MBID); err != nil {
+			if ac.ID, err = db.GetDatabaseID(ctx, ac.MBID); err != nil {
 				return err
 			}
 			ac.MBID = ""

@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 )
 
@@ -40,7 +41,7 @@ const (
 // rawFields is a comma-separated list specifying the field associated with each column.
 // rawSets contains "field=value" directives describing values to set for all edits.
 func ReadEdits(ctx context.Context, r io.Reader, format Format, typ seed.Type,
-	rawFields string, rawSetCmds []string) ([]seed.Edit, error) {
+	rawFields string, rawSetCmds []string, db *db.DB) ([]seed.Edit, error) {
 	setPairs, err := readSetCommands(rawSetCmds)
 	if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func ReadEdits(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 			}
 		}
 
-		if err := edit.Finish(ctx); err != nil {
+		if err := edit.Finish(ctx, db); err != nil {
 			return nil, err
 		}
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/google/go-cmp/cmp"
 )
@@ -56,7 +57,7 @@ edit_note=https://www.example.org/
 `
 	got, err := ReadEdits(context.Background(),
 		strings.NewReader(strings.TrimLeft(input, "\n")),
-		KeyVal, seed.ReleaseType, "", nil)
+		KeyVal, seed.ReleaseType, "", nil, db.NewDB(db.DisallowQueries))
 	if err != nil {
 		t.Fatal("ReadEdits failed:", err)
 	}
@@ -111,7 +112,7 @@ edit_note=https://www.example.org/
 			EditNote: "https://www.example.org/",
 		},
 	}
-	if diff := cmp.Diff(got, want); diff != "" {
+	if diff := cmp.Diff(want, got); diff != "" {
 		t.Error("ReadEdits returned wrong edits:\n" + diff)
 	}
 }

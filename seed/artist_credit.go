@@ -12,7 +12,7 @@ import (
 type ArtistCredit struct {
 	// MBID contains the artist entity's MBID, if known.
 	// This annoyingly doesn't seem to work for the /recording/create form,
-	// so set ID instead in that case (see db.GetArtistID).
+	// so ID should be set instead in that case (see the db package).
 	MBID string
 	// ID contains the artist's database ID (i.e. the 'id' column from the 'artist' table).
 	// This is only needed for the /recording/create form, I think.

@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/derat/yambs/db"
 )
 
 // Release holds data used to seed the "Add Release" form at http://musicbrainz.org/release/add.
@@ -237,4 +239,4 @@ func (tr *Track) setParams(vals url.Values, prefix string) {
 	}
 }
 
-func (rel *Release) Finish(ctx context.Context) error { return nil }
+func (rel *Release) Finish(ctx context.Context, db *db.DB) error { return nil }
