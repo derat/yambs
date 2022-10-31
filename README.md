@@ -154,6 +154,12 @@ yambs -type recording -list-fields
 yambs -type release   -list-fields
 ```
 
+Acceptable values for various fields are listed in
+[seed/enums.go](./seed/enums.go), which is automatically generated from
+[t/sql/initial.sql](https://github.com/metabrainz/musicbrainz-server/blob/master/t/sql/initial.sql)
+in the [musicbrainz-server](https://github.com/metabrainz/musicbrainz-server/)
+repository.
+
 [MBID]: https://musicbrainz.org/doc/MusicBrainz_Identifier
 
 ## Why?
