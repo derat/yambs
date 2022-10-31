@@ -73,7 +73,7 @@ var recordingFields = map[string]fieldInfo{
 		func(r *seed.Recording, k, v string) error { return setString(&r.MBID, v) },
 	},
 	"name": {
-		"Recording's title",
+		"Recording's name",
 		func(r *seed.Recording, k, v string) error { return setString(&r.Name, v) },
 	},
 	"video": {

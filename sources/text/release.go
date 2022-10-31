@@ -49,11 +49,11 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setString(&r.Script, v) },
 	},
 	"status": {
-		`Release status (e.g. "official", "promotion", "bootleg", "pseudo-release")`,
+		`Release status (e.g. "Official", "Promotion", "Bootleg", "Pseudo-Release")`,
 		func(r *seed.Release, k, v string) error { return setString((*string)(&r.Status), v) },
 	},
 	"packaging": {
-		`Release packaging (e.g. "Jewel Case", "None"`,
+		`Release packaging (e.g. "Jewel Case", "None")`,
 		func(r *seed.Release, k, v string) error { return setString((*string)(&r.Packaging), v) },
 	},
 	"event*_year": {
