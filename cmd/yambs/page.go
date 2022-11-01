@@ -102,8 +102,8 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 	type param struct{ Name, Value string }
 	type editInfo struct {
 		Desc   string
-		URL    template.URL // includes params iff GET
-		Params []param      // includes params iff POST
+		URL    string  // includes params iff GET
+		Params []param // includes params iff POST
 	}
 	infos := make([]editInfo, len(edits))
 	for i, ed := range edits {
@@ -118,11 +118,11 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 				return err
 			}
 			u.RawQuery = ed.Params().Encode()
-			info.URL = template.URL(u.String())
+			info.URL = u.String()
 		} else {
 			// If we need to use POST, keep the parameters separate since <form> annoyingly
 			// clears the URL's query string.
-			info.URL = template.URL(ed.URL())
+			info.URL = ed.URL()
 			for name, vals := range ed.Params() {
 				for _, val := range vals {
 					info.Params = append(info.Params, param{name, val})
