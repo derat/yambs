@@ -23,18 +23,54 @@
         font-size: 16px;
         margin-bottom: var(--margin);
       }
+      select {
+        padding: 2px;
+        margin-right: var(--margin);
+      }
+      input[type='text'] {
+        padding: 2px 4px;
+      }
+      label:first-child {
+        display: inline-block;
+        min-width: 50px;
+      }
 
-      .button-container {
+      .section {
+        display: none;
+      }
+      .section.visible {
+        display: block;
+      }
+
+      .form-row {
+        margin-bottom: var(--margin);
+      }
+      .button-row {
         display: flex;
         gap: var(--margin);
         margin-top: var(--margin);
       }
 
-      #edit-section {
-        display: none;
+      #form-bandcamp-url-input {
+        max-width: 100%;
+        width: 400px;
       }
-      #edit-section.visible {
+      #form-text-fields-input {
         display: block;
+        max-width: 100%;
+        width: 400px;
+      }
+      #form-text-set-textarea {
+        display: block;
+        max-width: 100%;
+        height: 50px;
+        width: 400px;
+      }
+      #form-text-input-textarea {
+        display: block;
+        max-width: 100%;
+        height: 300px;
+        width: 800px;
       }
 
       #edit-table {
@@ -87,9 +123,71 @@
     </style>
   </head>
   <body>
-    <h1>yambs</h1>
+    <h1>yambs (Yet Another MusicBrainz Seeder)</h1>
 
-    <div id="edit-section">
+    <div id="form-section" class="section">
+      <p>
+        This is a tool for seeding
+        <a href="https://musicbrainz.org/" target="_blank">MusicBrainz</a>
+        edits. For more information, see the
+        <a href="https://github.com/derat/yambs" target="_blank">repository</a>.
+      </p>
+
+      <div class="form-row">
+        <label for="form-source-select">Source:</label>
+        <select id="form-source-select">
+          <option value="text">Text</option>
+          <option value="bandcamp">Bandcamp</option>
+        </select>
+      </div>
+
+      <div id="form-bandcamp-section" class="section">
+        <div class="form-row">
+          <label for="form-bandcamp-url-input">URL:</label>
+          <input
+            id="form-bandcamp-url-input"
+            type="text"
+            placeholder="https://example.bandcamp.com/album/some-album"
+          />
+        </div>
+      </div>
+
+      <div id="form-text-section" class="section">
+        <div class="form-row">
+          <label for="form-text-format-select">Format:</label>
+          <select id="form-text-format-select">
+            <option value="csv">CSV</option>
+            <option value="tsv">TSV</option>
+            <option value="keyval">key=value</option>
+          </select>
+          <label for="form-text-type-select">Type:</label>
+          <select id="form-text-type-select">
+            <option value="recording">Recording</option>
+            <option value="release">Release</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="form-text-set-textarea">
+            Values to set on all entities (as "field=value" lines):
+          </label>
+          <textarea id="form-text-set-textarea"></textarea>
+        </div>
+        <div class="form-row">
+          <label for="form-text-fields-input">Input fields (comma-separated):</label>
+          <input id="form-text-fields-input" type="text" />
+        </div>
+        <div class="form-row">
+          <label for="form-text-input-textarea">Input in selected format:</label>
+          <textarea id="form-text-input-textarea"></textarea>
+        </div>
+      </div>
+
+      <div class="button-row">
+        <button id="form-generate-button">Generate edits</button>
+      </div>
+    </div>
+
+    <div id="edit-section" class="section">
       <h2>Seeded MusicBrainz edits</h2>
       <table id="edit-table">
         <thead>
@@ -100,7 +198,7 @@
         </thead>
         <tbody></tbody>
       </table>
-      <div class="button-container">
+      <div class="button-row">
         <button id="edit-open-all-button">Open all</button>
         <button id="edit-open-selected-button">Open selected</button>
       </div>
@@ -134,6 +232,44 @@
       if (className) element.className = className;
       if (text || text === '') element.appendChild(document.createTextNode(text));
       return element;
+    }
+
+    // Throws if |res| failed due to the server returning an error status.
+    function handleFetchError(res) {
+      if (!res.ok) {
+        return res.text().then((text) => {
+          throw new Error(`${res.status}: ${text}`);
+        });
+      }
+      return res;
+    }
+
+    const formSection = $('form-section');
+    const formSourceSelect = $('form-source-select');
+    const formTextFormatSelect = $('form-text-format-select');
+    const formTextTypeSelect = $('form-text-type-select');
+    const formGenButton = $('form-generate-button');
+
+    // Updates the state of form-related elements.
+    function updateFormState() {
+      const sel = formSourceSelect.value;
+      for (const source of ['bandcamp', 'text']) {
+        const section = $(`form-${source}-section`);
+        if (source === sel) section.classList.add('visible');
+        else section.classList.remove('visible');
+      }
+      // TODO: Update placeholder text.
+    }
+
+    // Sends form data to the server and returns a promise for an array of objects that can be
+    // passed to displayEdits().
+    function generateEdits() {
+      const body = new FormData();
+      // TODO: Set parameters.
+
+      return fetch('edits', { method: 'post', body })
+        .then((res) => handleFetchError(res))
+        .then((res) => res.json());
     }
 
     const editPreselect = 5; // number of checkboxes to automatically select
@@ -201,8 +337,12 @@
     //   params: [['k', 'v1'], ['k', 'v2'], ...], // if non-empty, POST is needed
     // }
     function displayEdits(edits) {
-      if (edits.length) editSection.classList.add('visible');
-      else editSection.classList.remove('visible');
+      if (edits.length) {
+        editSection.classList.add('visible');
+        window.setTimeout(() => editSection.scrollIntoView(false /* alignToTop */));
+      } else {
+        editSection.classList.remove('visible');
+      }
 
       const tbody = editTable.querySelector('tbody');
       while (tbody.firstChild) tbody.removeChild(tbody.lastChild);
@@ -270,7 +410,36 @@
 
     // Initialize the page.
     (() => {
-      // Initialize edit-related stuff.
+      // Initialize form-related elements.
+      if (!initialEdits.length) {
+        formSection.classList.add('visible');
+        formSourceSelect.addEventListener('change', updateFormState);
+        formTextFormatSelect.addEventListener('change', updateFormState);
+        formTextTypeSelect.addEventListener('change', updateFormState);
+        updateFormState();
+
+        formGenButton.addEventListener('click', () => {
+          const origText = formGenButton.innerText;
+          formGenButton.disabled = true;
+          formGenButton.innerText = 'Generating…';
+
+          generateEdits()
+            .then((edits) => {
+              console.log(`Got ${edits.length} edit(s)`);
+              displayEdits(edits);
+            })
+            .catch((e) => {
+              // TODO: Display the error in the UI.
+              console.error(e);
+            })
+            .finally(() => {
+              formGenButton.disabled = false;
+              formGenButton.innerText = origText;
+            });
+        });
+      }
+
+      // Initialize edit-related elements.
       editHeaderCheckbox.addEventListener('click', () => {
         editLastClickIndex = -1;
         const empty = getNumSelectedEdits() === 0;
@@ -285,7 +454,7 @@
         for (const a of editLinks) a.click();
       });
 
-      if (initialEdits.length) displayEdits(initialEdits);
+      displayEdits(initialEdits);
       updateEditState();
 
       // If there's a single edit, just open it in the current window.

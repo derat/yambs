@@ -46,6 +46,8 @@ Seeds MusicBrainz edits.
     	Format for text input (csv, keyval, tsv) (default tsv)
   -list-fields
     	Print available fields for -type and exit
+  -server
+    	Run a web server at -addr with a form for generating seed URLs
   -set value
     	Set a field for all entities (e.g. "artist=The Beatles")
   -type value
