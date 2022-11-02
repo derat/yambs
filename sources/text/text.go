@@ -327,7 +327,6 @@ var indexRegexp = regexp.MustCompile(`^(\d+)`)
 // with the corresponding item from items, reallocating if necessary.
 // If prefix starts with "^", it is interpreted as a regular expression.
 // If the integer is missing, index 0 is used.
-// If more than max items would be used, an error is returned.
 func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) error {
 	// Strip off the part before the index.
 	if strings.HasPrefix(prefix, "^") {
@@ -346,15 +345,21 @@ func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) er
 	}
 
 	var idx int
+	var err error
 	if ms := indexRegexp.FindStringSubmatch(field); ms != nil {
-		if idx, _ = strconv.Atoi(ms[1]); idx > maxFieldIndex {
-			return &fieldNameError{fmt.Sprintf("invalid index %d", idx)}
+		if idx, err = strconv.Atoi(ms[1]); err != nil {
+			return err
 		}
 	}
-	if idx >= len(*items) {
-		old := *items
-		*items = make([]T, idx+1)
-		copy(*items, old)
+	// Forcing indexed fields to be used in order is maybe a bit restrictive, but
+	// it seems like an easy way to avoid blowing up memory if the user provides
+	// e.g. "artist999999999_name".
+	if idx > len(*items) {
+		return &fieldNameError{fmt.Sprintf("field has index %d but %d wasn't previously used", idx, idx-1)}
+	}
+	if idx == len(*items) {
+		var item T
+		*items = append(*items, item)
 	}
 	return fn(&(*items)[idx])
 }

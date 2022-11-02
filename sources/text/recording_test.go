@@ -130,3 +130,21 @@ func TestReadEdits_Recording_All(t *testing.T) {
 		t.Error("ReadEdits returned wrong edits:\n" + diff)
 	}
 }
+
+func TestReadEdits_Recording_BadIndex(t *testing.T) {
+	db := db.NewDB(db.DisallowQueries)
+
+	// ReadEdits should reject an "artist1" field if "artist0" wasn't previously supplied.
+	if _, err := ReadEdits(context.Background(),
+		strings.NewReader("name=Name\nartist1_credited=Artist\n"),
+		KeyVal, seed.RecordingType, "", nil, db); err == nil {
+		t.Fatal("ReadEdits unexpectedly accepted input with large index")
+	}
+
+	// Check that things work if indexed fields are given in-order.
+	if _, err := ReadEdits(context.Background(),
+		strings.NewReader("name=Name\nartist0_credited=Artist\nartist1_credited=Artist\n"),
+		KeyVal, seed.RecordingType, "", nil, db); err != nil {
+		t.Fatal("ReadEdits failed:", err)
+	}
+}
