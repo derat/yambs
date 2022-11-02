@@ -132,19 +132,59 @@ func TestReadEdits_Recording_All(t *testing.T) {
 }
 
 func TestReadEdits_Recording_BadIndex(t *testing.T) {
-	db := db.NewDB(db.DisallowQueries)
-
 	// ReadEdits should reject an "artist1" field if "artist0" wasn't previously supplied.
-	if _, err := ReadEdits(context.Background(),
+	ctx := context.Background()
+	db := db.NewDB(db.DisallowQueries)
+	if _, err := ReadEdits(ctx,
 		strings.NewReader("name=Name\nartist1_credited=Artist\n"),
 		KeyVal, seed.RecordingType, "", nil, db); err == nil {
 		t.Fatal("ReadEdits unexpectedly accepted input with large index")
 	}
 
 	// Check that things work if indexed fields are given in-order.
-	if _, err := ReadEdits(context.Background(),
+	if _, err := ReadEdits(ctx,
 		strings.NewReader("name=Name\nartist0_credited=Artist\nartist1_credited=Artist\n"),
 		KeyVal, seed.RecordingType, "", nil, db); err != nil {
 		t.Fatal("ReadEdits failed:", err)
+	}
+}
+
+func TestReadEdits_Recording_MaxEdits(t *testing.T) {
+	// ReadEdits should accept input matching the maximum number of edits.
+	ctx := context.Background()
+	db := db.NewDB(db.DisallowQueries)
+	opt := MaxEdits(2)
+	if _, err := ReadEdits(ctx, strings.NewReader("Name 1\nName 2\n"),
+		TSV, seed.RecordingType, "name", nil, db, opt); err != nil {
+		t.Fatal("ReadEdits failed:", err)
+	}
+
+	// It should return an error if too many edits are supplied.
+	if _, err := ReadEdits(ctx, strings.NewReader("Name 1\nName 2\nName 3\n"),
+		TSV, seed.RecordingType, "name", nil, db, opt); err == nil {
+		t.Fatal("ReadEdits unexpectedly accepted input with too many edits")
+	}
+}
+
+func TestReadEdits_Recording_MaxFields(t *testing.T) {
+	// ReadEdits should accept input matching the maximum number of fields.
+	ctx := context.Background()
+	db := db.NewDB(db.DisallowQueries)
+	opt := MaxFields(2)
+	if _, err := ReadEdits(ctx, strings.NewReader("Name\t3:45"),
+		TSV, seed.RecordingType, "name,length", nil, db, opt); err != nil {
+		t.Fatal("ReadEdits failed:", err)
+	}
+
+	// It should return an error if too many fields are supplied.
+	if _, err := ReadEdits(ctx, strings.NewReader("Name\nArtist\n3:45"),
+		TSV, seed.RecordingType, "name,artist0_name,length", nil, db, opt); err == nil {
+		t.Fatal("ReadEdits unexpectedly accepted input with too many fields")
+	}
+
+	// Set commands should count toward the limit too.
+	if _, err := ReadEdits(ctx, strings.NewReader("Name\n3:45"),
+		TSV, seed.RecordingType, "name,length", []string{"artist0_name=Artist"}, db, opt); err == nil {
+		t.Fatal("ReadEdits unexpectedly accepted input with too many fields (including set commands)")
 	}
 }
