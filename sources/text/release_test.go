@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestReadEdits_Release_All(t *testing.T) {
+func TestRead_Release_All(t *testing.T) {
 	const input = `
 title=Release Title
 release_group=4b52bddc-0587-4bcf-9e05-5c9fca260a21
@@ -55,11 +55,11 @@ url0_type=75
 url1_url=https://www.example.org/b
 edit_note=https://www.example.org/
 `
-	got, err := ReadEdits(context.Background(),
+	got, err := Read(context.Background(),
 		strings.NewReader(strings.TrimLeft(input, "\n")),
 		KeyVal, seed.ReleaseType, "", nil, db.NewDB(db.DisallowQueries))
 	if err != nil {
-		t.Fatal("ReadEdits failed:", err)
+		t.Fatal("Read failed:", err)
 	}
 	want := []seed.Edit{
 		&seed.Release{
@@ -113,6 +113,6 @@ edit_note=https://www.example.org/
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Error("ReadEdits returned wrong edits:\n" + diff)
+		t.Error("Read returned wrong edits:\n" + diff)
 	}
 }

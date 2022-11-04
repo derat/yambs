@@ -16,7 +16,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func TestParseAlbumPage(t *testing.T) {
+func TestParsePage(t *testing.T) {
 	for _, tc := range []struct {
 		url string
 		rel *seed.Release
@@ -172,7 +172,7 @@ func TestParseAlbumPage(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := parseAlbumPage(page, tc.url)
+			rel, img, err := parsePage(page, tc.url)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}

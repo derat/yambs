@@ -16,7 +16,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestReadEdits_Recording_Multiple(t *testing.T) {
+func TestRead_Recording_Multiple(t *testing.T) {
 	const (
 		uuid  = "b92d909c-243d-4146-bfd5-2703c9dd1c99"
 		note  = "From https://www.example.org"
@@ -26,13 +26,13 @@ Second Song	2:12
 Third Song	0:45
 `
 	)
-	got, err := ReadEdits(context.Background(), strings.NewReader(strings.TrimLeft(input, "\n")),
+	got, err := Read(context.Background(), strings.NewReader(strings.TrimLeft(input, "\n")),
 		TSV, seed.RecordingType, "name,length", []string{
 			"artist=" + uuid,
 			"edit_note=" + note,
 		}, db.NewDB(db.DisallowQueries))
 	if err != nil {
-		t.Fatal("ReadEdits failed:", err)
+		t.Fatal("Read failed:", err)
 	}
 
 	want := []seed.Edit{
@@ -56,11 +56,11 @@ Third Song	0:45
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Error("ReadEdits returned wrong edits:\n" + diff)
+		t.Error("Read returned wrong edits:\n" + diff)
 	}
 }
 
-func TestReadEdits_Recording_All(t *testing.T) {
+func TestRead_Recording_All(t *testing.T) {
 	const (
 		artistMBID = "b92d909c-243d-4146-bfd5-2703c9dd1c99"
 		artistID   = 1234
@@ -94,7 +94,7 @@ func TestReadEdits_Recording_All(t *testing.T) {
 	}}); err != nil {
 		t.Fatal("Failed writing input:", err)
 	}
-	got, err := ReadEdits(context.Background(), &input, CSV, seed.RecordingType, strings.Join([]string{
+	got, err := Read(context.Background(), &input, CSV, seed.RecordingType, strings.Join([]string{
 		"artist0_mbid",
 		"artist0_credited",
 		"artist0_join",
@@ -108,7 +108,7 @@ func TestReadEdits_Recording_All(t *testing.T) {
 		"video",
 	}, ","), nil, db)
 	if err != nil {
-		t.Fatal("ReadEdits failed:", err)
+		t.Fatal("Read failed:", err)
 	}
 
 	want := []seed.Edit{
@@ -127,64 +127,64 @@ func TestReadEdits_Recording_All(t *testing.T) {
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Error("ReadEdits returned wrong edits:\n" + diff)
+		t.Error("Read returned wrong edits:\n" + diff)
 	}
 }
 
-func TestReadEdits_Recording_BadIndex(t *testing.T) {
-	// ReadEdits should reject an "artist1" field if "artist0" wasn't previously supplied.
+func TestRead_Recording_BadIndex(t *testing.T) {
+	// Read should reject an "artist1" field if "artist0" wasn't previously supplied.
 	ctx := context.Background()
 	db := db.NewDB(db.DisallowQueries)
-	if _, err := ReadEdits(ctx,
+	if _, err := Read(ctx,
 		strings.NewReader("name=Name\nartist1_credited=Artist\n"),
 		KeyVal, seed.RecordingType, "", nil, db); err == nil {
-		t.Fatal("ReadEdits unexpectedly accepted input with large index")
+		t.Fatal("Read unexpectedly accepted input with large index")
 	}
 
 	// Check that things work if indexed fields are given in-order.
-	if _, err := ReadEdits(ctx,
+	if _, err := Read(ctx,
 		strings.NewReader("name=Name\nartist0_credited=Artist\nartist1_credited=Artist\n"),
 		KeyVal, seed.RecordingType, "", nil, db); err != nil {
-		t.Fatal("ReadEdits failed:", err)
+		t.Fatal("Read failed:", err)
 	}
 }
 
-func TestReadEdits_Recording_MaxEdits(t *testing.T) {
-	// ReadEdits should accept input matching the maximum number of edits.
+func TestRead_Recording_MaxEdits(t *testing.T) {
+	// Read should accept input matching the maximum number of edits.
 	ctx := context.Background()
 	db := db.NewDB(db.DisallowQueries)
 	opt := MaxEdits(2)
-	if _, err := ReadEdits(ctx, strings.NewReader("Name 1\nName 2\n"),
+	if _, err := Read(ctx, strings.NewReader("Name 1\nName 2\n"),
 		TSV, seed.RecordingType, "name", nil, db, opt); err != nil {
-		t.Fatal("ReadEdits failed:", err)
+		t.Fatal("Read failed:", err)
 	}
 
 	// It should return an error if too many edits are supplied.
-	if _, err := ReadEdits(ctx, strings.NewReader("Name 1\nName 2\nName 3\n"),
+	if _, err := Read(ctx, strings.NewReader("Name 1\nName 2\nName 3\n"),
 		TSV, seed.RecordingType, "name", nil, db, opt); err == nil {
-		t.Fatal("ReadEdits unexpectedly accepted input with too many edits")
+		t.Fatal("Read unexpectedly accepted input with too many edits")
 	}
 }
 
-func TestReadEdits_Recording_MaxFields(t *testing.T) {
-	// ReadEdits should accept input matching the maximum number of fields.
+func TestRead_Recording_MaxFields(t *testing.T) {
+	// Read should accept input matching the maximum number of fields.
 	ctx := context.Background()
 	db := db.NewDB(db.DisallowQueries)
 	opt := MaxFields(2)
-	if _, err := ReadEdits(ctx, strings.NewReader("Name\t3:45"),
+	if _, err := Read(ctx, strings.NewReader("Name\t3:45"),
 		TSV, seed.RecordingType, "name,length", nil, db, opt); err != nil {
-		t.Fatal("ReadEdits failed:", err)
+		t.Fatal("Read failed:", err)
 	}
 
 	// It should return an error if too many fields are supplied.
-	if _, err := ReadEdits(ctx, strings.NewReader("Name\nArtist\n3:45"),
+	if _, err := Read(ctx, strings.NewReader("Name\nArtist\n3:45"),
 		TSV, seed.RecordingType, "name,artist0_name,length", nil, db, opt); err == nil {
-		t.Fatal("ReadEdits unexpectedly accepted input with too many fields")
+		t.Fatal("Read unexpectedly accepted input with too many fields")
 	}
 
 	// Set commands should count toward the limit too.
-	if _, err := ReadEdits(ctx, strings.NewReader("Name\n3:45"),
+	if _, err := Read(ctx, strings.NewReader("Name\n3:45"),
 		TSV, seed.RecordingType, "name,length", []string{"artist0_name=Artist"}, db, opt); err == nil {
-		t.Fatal("ReadEdits unexpectedly accepted input with too many fields (including set commands)")
+		t.Fatal("Read unexpectedly accepted input with too many fields (including set commands)")
 	}
 }

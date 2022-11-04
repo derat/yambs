@@ -113,17 +113,13 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	case "bandcamp":
 		u := req.FormValue("bandcampUrl")
 		// TODO: Check URL against regexp.
-		rel, img, err := bandcamp.FetchRelease(ctx, u)
-		if err != nil {
+		var err error
+		if edits, err = bandcamp.Fetch(ctx, u); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  "Failed getting edits: " + err.Error(),
 				err:  err,
 			}
-		}
-		edits = append(edits, rel)
-		if img != nil {
-			edits = append(edits, img)
 		}
 	case "text":
 		// TODO: Implement this.

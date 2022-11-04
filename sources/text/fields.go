@@ -16,7 +16,7 @@ import (
 )
 
 // FieldDescriptions returns a map from the names of fields that can be passed
-// to ReadEdits for typ to human-readable descriptions.
+// to Read for typ to human-readable descriptions.
 func ListFields(typ seed.Type) map[string]string {
 	m, ok := typeFields[typ]
 	if !ok {

@@ -58,7 +58,7 @@ func main() {
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	server := flag.Bool("server", false, "Run a web server at -addr with a form for generating seed URLs")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
-	flag.Var(&editType, "type", fmt.Sprintf("Type of entity to edit (%v)", editType.allowedList()))
+	flag.Var(&editType, "type", fmt.Sprintf("Entity type of text input (%v)", editType.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	printVersion := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
@@ -124,19 +124,14 @@ func main() {
 		db := db.NewDB(db.Version(version))
 		var edits []seed.Edit
 		if srcURL != "" {
-			// TODO: Look at editType here?
-			rel, img, err := bandcamp.FetchRelease(ctx, srcURL)
-			if err != nil {
-				fmt.Fprintln(os.Stderr, "Failed fetching release:", err)
+			var err error
+			if edits, err = bandcamp.Fetch(ctx, srcURL); err != nil {
+				fmt.Fprintln(os.Stderr, "Failed fetching page:", err)
 				return 1
-			}
-			edits = append(edits, rel)
-			if img != nil {
-				edits = append(edits, img)
 			}
 		} else {
 			var err error
-			if edits, err = text.ReadEdits(ctx, r, text.Format(format.val), seed.Type(editType.val),
+			if edits, err = text.Read(ctx, r, text.Format(format.val), seed.Type(editType.val),
 				*fields, setCmds, db); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed reading edits:", err)
 				return 1

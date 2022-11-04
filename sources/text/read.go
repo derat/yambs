@@ -37,10 +37,10 @@ type config struct {
 	maxFields int
 }
 
-// ReadEdits reads one or more edits of the specified type from r in the specified format.
+// Read reads one or more edits of the specified type from r in the specified format.
 // rawFields is a comma-separated list specifying the field associated with each column.
 // rawSets contains "field=value" directives describing values to set for all edits.
-func ReadEdits(ctx context.Context, r io.Reader, format Format, typ seed.Type,
+func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 	rawFields string, rawSetCmds []string, db *db.DB, opts ...Option) ([]seed.Edit, error) {
 	var cfg config
 	for _, o := range opts {
@@ -106,7 +106,7 @@ func ReadEdits(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 	return edits, nil
 }
 
-// Option can be passed to ReadEdits to configure its behavior.
+// Option can be passed to Read to configure its behavior.
 type Option func(*config)
 
 // MaxEdits returns an Option that limits the maximum number of edits to be read.
@@ -130,7 +130,7 @@ func readSetCommands(cmds []string) ([][2]string, error) {
 	return pairs, nil
 }
 
-// rowReader is used by ReadEdits to read entity data row-by-row.
+// rowReader is used by Read to read entity data row-by-row.
 type rowReader interface {
 	Read() ([]string, error)
 }

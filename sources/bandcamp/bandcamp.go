@@ -18,16 +18,23 @@ import (
 	"golang.org/x/net/html"
 )
 
-// FetchRelease fetches release information from the Bandcamp album page at url.
+// Fetch generates seeded edits from the Bandcamp page at url.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-// TODO: Make this return []seed.Edit.
-func FetchRelease(ctx context.Context, url string) (rel *seed.Release, img *seed.Info, err error) {
+func Fetch(ctx context.Context, url string) ([]seed.Edit, error) {
 	page, err := web.FetchPage(ctx, url)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return parseAlbumPage(page, url)
+	rel, img, err := parsePage(page, url)
+	if err != nil {
+		return nil, err
+	}
+	edits := []seed.Edit{rel}
+	if img != nil {
+		edits = append(edits, img)
+	}
+	return edits, nil
 }
 
 // editNote is appended to automatically-generated edit notes.
@@ -40,9 +47,9 @@ var bandcampLaunch = time.Date(2008, 9, 16, 0, 0, 0, 0, time.UTC)
 // metaDescRegexp extracts the track count from a <meta property="og:description"> tag's content.
 var metaDescRegexp = regexp.MustCompile(`^(\d+) track album$`)
 
-// parseAlbumPage extracts release information from the supplied page.
-// It's separate from FetchRelease to make testing easier.
-func parseAlbumPage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, err error) {
+// parsePage extracts release information from the supplied page.
+// It's separate from Fetch to make testing easier.
+func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(url, "http://") {
 		url = "https" + url[4:]
