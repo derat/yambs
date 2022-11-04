@@ -28,21 +28,21 @@ func FetchPage(ctx context.Context, url string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("status %v: %v", resp.StatusCode, resp.Status)
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("status %v: %v", res.StatusCode, res.Status)
 	}
 
-	size := "unknown"
-	if resp.ContentLength >= 0 {
-		size = fmt.Sprint(resp.ContentLength)
+	var size string
+	if res.ContentLength >= 0 {
+		size = fmt.Sprintf(" %d-byte", res.ContentLength)
 	}
-	log.Printf("Parsing %s-byte response from %v", size, url)
-	root, err := html.Parse(resp.Body)
+	log.Printf("Parsing%s response from %v", size, url)
+	root, err := html.Parse(res.Body)
 	if err != nil {
 		return nil, err
 	}

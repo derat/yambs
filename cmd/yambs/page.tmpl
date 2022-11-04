@@ -3,10 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
     <title>yambs</title>
     <style>
       :root {
         --border-color: #ccc;
+        --error-bg-color: #fcc;
+        --error-border-color: #f99;
         --header-color: #eee;
         --link-color: #444;
         --margin: 8px;
@@ -34,6 +37,9 @@
         display: inline-block;
         min-width: 50px;
       }
+      textarea {
+        box-sizing: border-box; /* include padding and border */
+      }
 
       .section {
         display: none;
@@ -48,7 +54,7 @@
       .button-row {
         display: flex;
         gap: var(--margin);
-        margin-top: var(--margin);
+        margin-bottom: var(--margin);
       }
 
       #form-bandcamp-url-input {
@@ -72,10 +78,22 @@
         height: 300px;
         width: 800px;
       }
+      #form-error-div {
+        background-color: var(--error-bg-color);
+        border: solid 1px var(--error-border-color);
+        border-radius: 6px;
+        display: none;
+        margin-bottom: var(--margin);
+        padding: 2px 4px;
+      }
+      #form-error-div.visible {
+        display: inline-block;
+      }
 
       #edit-table {
         border: solid 1px var(--border-color);
         border-collapse: collapse;
+        margin-bottom: var(--margin);
       }
       #edit-table th {
         background-color: var(--header-color);
@@ -185,6 +203,7 @@
       <div class="button-row">
         <button id="form-generate-button">Generate edits</button>
       </div>
+      <div id="form-error-div"></div>
     </div>
 
     <div id="edit-section" class="section">
@@ -216,7 +235,7 @@
         url: {{.URL}},
         params: [
           {{- range .Params}}
-          [{{.Name}}, {{.Value}}],
+          {name: {{.Name}}, value: {{.Value}}},
           {{- end}}
         ],
       },
@@ -235,10 +254,11 @@
     }
 
     // Throws if |res| failed due to the server returning an error status.
+    // The error message is the response body.
     function handleFetchError(res) {
       if (!res.ok) {
         return res.text().then((text) => {
-          throw new Error(`${res.status}: ${text}`);
+          throw new Error(text);
         });
       }
       return res;
@@ -246,9 +266,14 @@
 
     const formSection = $('form-section');
     const formSourceSelect = $('form-source-select');
+    const formBandcampUrlInput = $('form-bandcamp-url-input');
     const formTextFormatSelect = $('form-text-format-select');
     const formTextTypeSelect = $('form-text-type-select');
+    const formTextFieldsInput = $('form-text-fields-input');
+    const formTextSetTextarea = $('form-text-set-textarea');
+    const formTextInputTextarea = $('form-text-input-textarea');
     const formGenButton = $('form-generate-button');
+    const formErrorDiv = $('form-error-div');
 
     // Updates the state of form-related elements.
     function updateFormState() {
@@ -261,11 +286,41 @@
       // TODO: Update placeholder text.
     }
 
+    // Displays or hides an error message.
+    function showFormError(msg) {
+      formErrorDiv.innerText = msg;
+      formErrorDiv.classList.add('visible');
+    }
+    function hideFormError() {
+      formErrorDiv.classList.remove('visible');
+    }
+
     // Sends form data to the server and returns a promise for an array of objects that can be
-    // passed to displayEdits().
+    // passed to showEdits().
     function generateEdits() {
       const body = new FormData();
-      // TODO: Set parameters.
+      switch (formSourceSelect.value) {
+        case 'text':
+          body.set('source', 'text');
+          body.set('textType', formTextTypeSelect.value);
+          body.set('textFormat', formTextFormatSelect.value);
+          body.set('textInput', formTextInputTextarea.value.trim());
+
+          const setVal = formTextSetTextarea.value.trim();
+          if (setVal !== '') body.set('textSetCmds', setVal.split('\n'));
+
+          // The field list isn't used for the 'keyval' format.
+          const fmt = formTextFormatSelect.value;
+          if (fmt === 'csv' || fmt == 'tsv') {
+            body.set('textFields', formTextFieldsInput.value.trim());
+          }
+          break;
+
+        case 'bandcamp':
+          body.set('source', 'bandcamp');
+          body.set('bandcampUrl', formBandcampUrlInput.value.trim());
+          break;
+      }
 
       return fetch('edits', { method: 'post', body })
         .then((res) => handleFetchError(res))
@@ -334,9 +389,9 @@
     // {
     //   desc: 'Human-readable description',
     //   url: 'https://www.example.org',          // includes params if GET is okay
-    //   params: [['k', 'v1'], ['k', 'v2'], ...], // if non-empty, POST is needed
+    //   params: [{name: 'k', value: 'v1'}, ...], // if non-empty, POST is needed
     // }
-    function displayEdits(edits) {
+    function showEdits(edits) {
       if (edits.length) {
         editSection.classList.add('visible');
         window.setTimeout(() => editSection.scrollIntoView(false /* alignToTop */));
@@ -385,8 +440,8 @@
           for (const p of edit.params) {
             const input = createElement('input', form);
             input.type = 'hidden';
-            input.name = p[0];
-            input.value = p[1];
+            input.name = p.name;
+            input.value = p.value;
           }
         } else {
           editForms.push(null);
@@ -406,6 +461,8 @@
           }
         });
       }
+
+      updateEditState();
     }
 
     // Initialize the page.
@@ -422,15 +479,15 @@
           const origText = formGenButton.innerText;
           formGenButton.disabled = true;
           formGenButton.innerText = 'Generating…';
+          hideFormError();
 
           generateEdits()
             .then((edits) => {
               console.log(`Got ${edits.length} edit(s)`);
-              displayEdits(edits);
+              showEdits(edits);
             })
-            .catch((e) => {
-              // TODO: Display the error in the UI.
-              console.error(e);
+            .catch((err) => {
+              showFormError(err.message);
             })
             .finally(() => {
               formGenButton.disabled = false;
@@ -454,7 +511,7 @@
         for (const a of editLinks) a.click();
       });
 
-      displayEdits(initialEdits);
+      showEdits(initialEdits);
       updateEditState();
 
       // If there's a single edit, just open it in the current window.

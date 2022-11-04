@@ -99,41 +99,66 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 	if err != nil {
 		return err
 	}
-	type param struct{ Name, Value string }
-	type editInfo struct {
-		Desc   string
-		URL    string  // includes params iff GET
-		Params []param // includes params iff POST
+	infos, err := newEditInfos(edits)
+	if err != nil {
+		return err
 	}
-	infos := make([]editInfo, len(edits))
-	for i, ed := range edits {
-		info := editInfo{Desc: ed.Description()}
-
-		// Use a different approach depending on whether the edit requires a POST or not.
-		if ed.CanGet() {
-			// If we can use GET, construct a URL including any parameters since <form method="GET">
-			// adds an annoying question mark even if there aren't any parameters.
-			u, err := url.Parse(ed.URL())
-			if err != nil {
-				return err
-			}
-			u.RawQuery = ed.Params().Encode()
-			info.URL = u.String()
-		} else {
-			// If we need to use POST, keep the parameters separate since <form> annoyingly
-			// clears the URL's query string.
-			info.URL = ed.URL()
-			for name, vals := range ed.Params() {
-				for _, val := range vals {
-					info.Params = append(info.Params, param{name, val})
-				}
-			}
-		}
-
-		infos[i] = info
-	}
-	return tmpl.Execute(w, struct{ Edits []editInfo }{infos})
+	return tmpl.Execute(w, struct{ Edits []*editInfo }{infos})
 }
 
 //go:embed page.tmpl
 var pageTmpl string
+
+// editInfo is a version of seed.Edit used by browsers.
+// It's used both for baking edits into pages generated on the command line
+// and for returning edits via XHRs when running in server mode.
+type editInfo struct {
+	Desc   string      `json:"desc"`
+	URL    string      `json:"url"`    // includes params iff GET
+	Params []paramInfo `json:"params"` // includes params iff POST
+}
+
+// paramInfo describes a POST query parameter.
+type paramInfo struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// newEditInfo converts a seed.Edit into an editInfo struct.
+func newEditInfo(edit seed.Edit) (*editInfo, error) {
+	info := editInfo{Desc: edit.Description()}
+
+	// Use a different approach depending on whether the edit requires a POST or not.
+	if edit.CanGet() {
+		// If we can use GET, construct a URL including any parameters since <form method="GET">
+		// adds an annoying question mark even if there aren't any parameters.
+		u, err := url.Parse(edit.URL())
+		if err != nil {
+			return nil, err
+		}
+		u.RawQuery = edit.Params().Encode()
+		info.URL = u.String()
+	} else {
+		// If we need to use POST, keep the parameters separate since <form> annoyingly
+		// clears the URL's query string.
+		info.URL = edit.URL()
+		for name, vals := range edit.Params() {
+			for _, val := range vals {
+				info.Params = append(info.Params, paramInfo{Name: name, Value: val})
+			}
+		}
+	}
+
+	return &info, nil
+}
+
+func newEditInfos(edits []seed.Edit) ([]*editInfo, error) {
+	infos := make([]*editInfo, len(edits))
+	for i, edit := range edits {
+		var err error
+		if infos[i], err = newEditInfo(edit); err != nil {
+			return nil, err
+		}
+	}
+	return infos, nil
+}

@@ -21,6 +21,7 @@ import (
 // FetchRelease fetches release information from the Bandcamp album page at url.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
+// TODO: Make this return []seed.Edit.
 func FetchRelease(ctx context.Context, url string) (rel *seed.Release, img *seed.Info, err error) {
 	page, err := web.FetchPage(ctx, url)
 	if err != nil {

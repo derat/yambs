@@ -88,7 +88,7 @@ func main() {
 		}
 
 		if *server {
-			if err := runServer(*addr); err != nil {
+			if err := runServer(ctx, *addr); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed serving:", err)
 				return 1
 			}
