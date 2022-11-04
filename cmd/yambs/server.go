@@ -84,6 +84,8 @@ func runServer(ctx context.Context, addr string) error {
 	return srv.ListenAndServe()
 }
 
+// httpError implements the error interface but also wraps an HTTP status code
+// and message that should be rutrned to the user.
 type httpError struct {
 	code int    // HTTP status code
 	msg  string // message to display to user; if empty, generated from code
@@ -92,11 +94,11 @@ type httpError struct {
 
 func (e *httpError) Error() string { return e.err.Error() }
 
+// getEditsForRequest generates editInfo objects in response to a /edits request to the server.
 func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request) ([]*editInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, &httpError{
 			code: http.StatusMethodNotAllowed,
-			msg:  "",
 			err:  fmt.Errorf("bad method %q", req.Method),
 		}
 	}
@@ -111,13 +113,16 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	var edits []seed.Edit
 	switch req.FormValue("source") {
 	case "bandcamp":
-		u := req.FormValue("bandcampUrl")
-		// TODO: Check URL against regexp.
-		var err error
-		if edits, err = bandcamp.Fetch(ctx, u); err != nil {
+		if u, err := bandcamp.CleanURL(req.FormValue("bandcampUrl")); err != nil {
+			return nil, &httpError{
+				code: http.StatusBadRequest,
+				msg:  fmt.Sprint("Server only accepts bandcamp.com album URLs: ", err),
+				err:  fmt.Errorf("%q: %v", req.FormValue("bandcampUrl"), err),
+			}
+		} else if edits, err = bandcamp.Fetch(ctx, u); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
-				msg:  "Failed getting edits: " + err.Error(),
+				msg:  fmt.Sprint("Failed getting edits: ", err),
 				err:  err,
 			}
 		}

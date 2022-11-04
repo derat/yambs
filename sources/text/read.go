@@ -31,7 +31,7 @@ const (
 	TSV Format = "tsv"
 )
 
-// config is passed to Options to configure ReadEdit's behavior.
+// config is passed to Options to configure Read's behavior.
 type config struct {
 	maxEdits  int
 	maxFields int

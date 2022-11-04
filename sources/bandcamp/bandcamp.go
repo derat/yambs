@@ -7,7 +7,9 @@ package bandcamp
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -17,6 +19,9 @@ import (
 	"github.com/derat/yambs/web"
 	"golang.org/x/net/html"
 )
+
+// editNote is appended to automatically-generated edit notes.
+const editNote = "\n\n(seeded using https://github.com/derat/yambs)"
 
 // Fetch generates seeded edits from the Bandcamp page at url.
 // This is heavily based on the bandcamp_importer.user.js userscript:
@@ -36,16 +41,6 @@ func Fetch(ctx context.Context, url string) ([]seed.Edit, error) {
 	}
 	return edits, nil
 }
-
-// editNote is appended to automatically-generated edit notes.
-var editNote = "\n\n(seeded using https://github.com/derat/yambs)"
-
-// bandcampLaunch contains the Bandcamp launch date:
-// https://blog.bandcamp.com/2008/09/16/hello-cleveland/
-var bandcampLaunch = time.Date(2008, 9, 16, 0, 0, 0, 0, time.UTC)
-
-// metaDescRegexp extracts the track count from a <meta property="og:description"> tag's content.
-var metaDescRegexp = regexp.MustCompile(`^(\d+) track album$`)
 
 // parsePage extracts release information from the supplied page.
 // It's separate from Fetch to make testing easier.
@@ -191,6 +186,14 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 	return rel, img, nil
 }
 
+var (
+	// bandcampLaunch contains the Bandcamp launch date:
+	// https://blog.bandcamp.com/2008/09/16/hello-cleveland/
+	bandcampLaunch = time.Date(2008, 9, 16, 0, 0, 0, 0, time.UTC)
+	// metaDescRegexp extracts the track count from a <meta property="og:description"> tag's content.
+	metaDescRegexp = regexp.MustCompile(`^(\d+) track album$`)
+)
+
 // albumData corresponds to the data-tralbum JSON object embedded in Bandcamp album pages.
 // I admire Bandcamp's impartiality in the camelCase vs. snake_case conflict.
 type albumData struct {
@@ -228,3 +231,30 @@ func (d *jsonDate) UnmarshalJSON(b []byte) error {
 }
 
 func (d jsonDate) String() string { return time.Time(d).String() }
+
+var (
+	// TODO: I'm just guessing here based on what I've seen.
+	hostRegexp      = regexp.MustCompile(`^[-a-z0-9]+\.bandcamp\.com$`)
+	albumPathRegexp = regexp.MustCompile(`^/album/[-a-z0-9]+$`)
+)
+
+// CleanURL returns a cleaned version of a Bandcamp URL like
+// "https://artist-name.bandcamp.com/album/album-name".
+// An error is returned if the URL doesn't match this format.
+func CleanURL(orig string) (string, error) {
+	u, err := url.Parse(strings.ToLower(orig))
+	if err != nil {
+		return "", err
+	}
+	if !hostRegexp.MatchString(u.Host) {
+		return "", errors.New(`host not "<name>.bandcamp.com"`)
+	}
+	if !albumPathRegexp.MatchString(u.Path) {
+		return "", errors.New(`path not "/album/<name>"`)
+	}
+	u.Scheme = "https"
+	u.User = nil
+	u.RawQuery = ""
+	u.Fragment = ""
+	return u.String(), nil
+}

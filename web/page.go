@@ -39,9 +39,9 @@ func FetchPage(ctx context.Context, url string) (*Page, error) {
 
 	var size string
 	if res.ContentLength >= 0 {
-		size = fmt.Sprintf(" %d-byte", res.ContentLength)
+		size = fmt.Sprintf(" (%d bytes)", res.ContentLength)
 	}
-	log.Printf("Parsing%s response from %v", size, url)
+	log.Print("Parsing ", url, size)
 	root, err := html.Parse(res.Body)
 	if err != nil {
 		return nil, err
