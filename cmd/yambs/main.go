@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
@@ -132,7 +133,7 @@ func main() {
 		} else {
 			var err error
 			if edits, err = text.Read(ctx, r, text.Format(format.val), seed.Type(editType.val),
-				*fields, setCmds, db); err != nil {
+				strings.Split(*fields, ","), setCmds, db); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed reading edits:", err)
 				return 1
 			}

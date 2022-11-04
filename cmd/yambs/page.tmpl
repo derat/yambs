@@ -39,6 +39,7 @@
       }
       textarea {
         box-sizing: border-box; /* include padding and border */
+        padding: 4px;
       }
 
       .section {
@@ -302,23 +303,40 @@
       switch (formSourceSelect.value) {
         case 'text':
           body.set('source', 'text');
-          body.set('textType', formTextTypeSelect.value);
-          body.set('textFormat', formTextFormatSelect.value);
-          body.set('textInput', formTextInputTextarea.value.trim());
+          body.set('type', formTextTypeSelect.value);
 
-          const setVal = formTextSetTextarea.value.trim();
-          if (setVal !== '') body.set('textSetCmds', setVal.split('\n'));
+          const format = formTextFormatSelect.value;
+          body.set('format', format);
 
-          // The field list isn't used for the 'keyval' format.
-          const fmt = formTextFormatSelect.value;
-          if (fmt === 'csv' || fmt == 'tsv') {
-            body.set('textFields', formTextFieldsInput.value.trim());
+          // Trim whitespace at the beginning of lines and then drop empty lines.
+          formTextSetTextarea.value
+            .split('\n')
+            .map((v) => v.trimStart())
+            .filter(Boolean)
+            .forEach((v) => body.append('set', v));
+
+          // The field list isn't used for the keyval format.
+          const fieldsVal = formTextFieldsInput.value.trim();
+          if (['csv', 'tsv'].includes(format) && fieldsVal !== '') {
+            fieldsVal.split(',').forEach((v) => body.append('field', v.trim()));
           }
+
+          // Drop input lines that are empty or only contain whitespace,
+          // but preserve whitespace at the beginning or ends of lines.
+          // TODO: Maybe trim whitespace at the beginning of keyval lines?
+          body.set(
+            'input',
+            formTextInputTextarea.value
+              .split('\n')
+              .filter((v) => v.trim() !== '')
+              .join('\n')
+          );
+
           break;
 
         case 'bandcamp':
           body.set('source', 'bandcamp');
-          body.set('bandcampUrl', formBandcampUrlInput.value.trim());
+          body.set('url', formBandcampUrlInput.value.trim());
           break;
       }
 

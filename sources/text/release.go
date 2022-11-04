@@ -15,7 +15,7 @@ var releaseFields = map[string]fieldInfo{
 	},
 	"release_group": {
 		"MBID of existing release group",
-		func(r *seed.Release, k, v string) error { return setString(&r.ReleaseGroup, v) },
+		func(r *seed.Release, k, v string) error { return setMBID(&r.ReleaseGroup, v) },
 	},
 	"types": {
 		`Comma-separated types for new release group (e.g. "Single,Soundtrack")`,
@@ -107,7 +107,7 @@ var releaseFields = map[string]fieldInfo{
 		"MBID of label",
 		func(rel *seed.Release, k, v string) error {
 			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
-				return setString(&lab.MBID, v)
+				return setMBID(&lab.MBID, v)
 			})
 		},
 	},
@@ -131,7 +131,7 @@ var releaseFields = map[string]fieldInfo{
 		"Release artist's MBID",
 		func(rel *seed.Release, k, v string) error {
 			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.MBID, v)
+				return setMBID(&ac.MBID, v)
 			})
 		},
 	},
@@ -195,7 +195,7 @@ var releaseFields = map[string]fieldInfo{
 		"Track recording MBID",
 		func(rel *seed.Release, k, v string) error {
 			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
-				return setString(&tr.Recording, v)
+				return setMBID(&tr.Recording, v)
 			})
 		},
 	},
@@ -211,7 +211,7 @@ var releaseFields = map[string]fieldInfo{
 		"Track artist's MBID",
 		func(rel *seed.Release, k, v string) error {
 			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.MBID, v)
+				return setMBID(&ac.MBID, v)
 			})
 		},
 	},

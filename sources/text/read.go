@@ -38,10 +38,10 @@ type config struct {
 }
 
 // Read reads one or more edits of the specified type from r in the specified format.
-// rawFields is a comma-separated list specifying the field associated with each column.
+// fields specifies the field associated with each column (unused for the KeyVal format).
 // rawSets contains "field=value" directives describing values to set for all edits.
 func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
-	rawFields string, rawSetCmds []string, db *db.DB, opts ...Option) ([]seed.Edit, error) {
+	fields []string, rawSetCmds []string, db *db.DB, opts ...Option) ([]seed.Edit, error) {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)
@@ -51,11 +51,13 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 	if err != nil {
 		return nil, err
 	}
-	rr, fields, err := newRowReader(r, format, rawFields)
+	rr, fields, err := newRowReader(r, format, fields)
 	if err != nil {
 		return nil, err
 	}
-	if cfg.maxFields > 0 && len(setPairs)+len(fields) > cfg.maxFields {
+	if len(fields) == 0 {
+		return nil, errors.New("no fields specified")
+	} else if cfg.maxFields > 0 && len(setPairs)+len(fields) > cfg.maxFields {
 		return nil, errors.New("too many fields")
 	}
 
@@ -102,6 +104,9 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 		}
 
 		edits = append(edits, edit)
+	}
+	if len(edits) == 0 {
+		return nil, errors.New("empty input")
 	}
 	return edits, nil
 }
@@ -168,19 +173,18 @@ func (sr *singleRowReader) Read() ([]string, error) {
 	return sr.row, sr.err
 }
 
-// newRowReader returns a rowReader for reading from r in format and
-// a list of field names corresponding to the columns in each row.
-func newRowReader(r io.Reader, format Format, rawFields string) (
-	rr rowReader, fields []string, err error) {
+// newRowReader returns a rowReader for reading the named fields from r in format.
+// fieldsOut should be used afterward (fields are specified via r for the KeyVal format).
+func newRowReader(r io.Reader, format Format, fields []string) (
+	rr rowReader, fieldsOut []string, err error) {
 	switch format {
 	case CSV:
-		fields = strings.Split(rawFields, ",")
 		cr := csv.NewReader(r)
 		cr.FieldsPerRecord = len(fields)
 		return cr, fields, nil
 	case KeyVal:
 		// Transform the input into a single row and use it to synthesize the field list.
-		// Note that rawFields isn't used in this case, since the field names are provided
+		// Note that fields isn't used in this case, since the field names are provided
 		// in the input.
 		var sr singleRowReader
 		sc := bufio.NewScanner(r)
@@ -190,12 +194,11 @@ func newRowReader(r io.Reader, format Format, rawFields string) (
 				sr.err = fmt.Errorf(`line %d (%q) not "field=value" format`, len(fields)+1, sc.Text())
 				break
 			}
-			fields = append(fields, parts[0])
+			fieldsOut = append(fieldsOut, parts[0])
 			sr.row = append(sr.row, parts[1])
 		}
-		return &sr, fields, sc.Err()
+		return &sr, fieldsOut, sc.Err()
 	case TSV:
-		fields = strings.Split(rawFields, ",")
 		return &tsvReader{bufio.NewScanner(r), len(fields)}, fields, nil
 	default:
 		return nil, nil, fmt.Errorf("unknown format %q", format)

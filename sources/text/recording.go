@@ -11,13 +11,13 @@ import (
 var recordingFields = map[string]fieldInfo{
 	"artist": {
 		"MBID of artist receiving primary credit for recording",
-		func(r *seed.Recording, k, v string) error { return setString(&r.Artist, v) },
+		func(r *seed.Recording, k, v string) error { return setMBID(&r.Artist, v) },
 	},
 	"artist*_mbid": {
 		"Artist's MBID",
 		func(r *seed.Recording, k, v string) error {
 			return recordingArtist(r, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.MBID, v) // converted to database ID by Finish
+				return setMBID(&ac.MBID, v) // converted to database ID by Finish
 			})
 		},
 	},
@@ -63,7 +63,7 @@ var recordingFields = map[string]fieldInfo{
 	},
 	"mbid": {
 		"MBID of existing recording to edit (if empty, create recording)",
-		func(r *seed.Recording, k, v string) error { return setString(&r.MBID, v) },
+		func(r *seed.Recording, k, v string) error { return setMBID(&r.MBID, v) },
 	},
 	"name": {
 		"Recording's name",

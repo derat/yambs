@@ -57,7 +57,7 @@ edit_note=https://www.example.org/
 `
 	got, err := Read(context.Background(),
 		strings.NewReader(strings.TrimLeft(input, "\n")),
-		KeyVal, seed.ReleaseType, "", nil, db.NewDB(db.DisallowQueries))
+		KeyVal, seed.ReleaseType, nil, nil, db.NewDB(db.DisallowQueries))
 	if err != nil {
 		t.Fatal("Read failed:", err)
 	}

@@ -55,7 +55,7 @@ func Version(v string) Option { return func(db *DB) { db.version = v } }
 // GetDatabaseID returns the database ID (e.g. artist.id) corresponding to
 // the entity with the specified MBID (e.g. artist.gid).
 func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
-	if !mbidRegexp.MatchString(mbid) {
+	if !IsMBID(mbid) {
 		return 0, errors.New("malformed MBID")
 	}
 
@@ -114,6 +114,10 @@ func (db *DB) doQuery(ctx context.Context, url string, dst any) error {
 // mbidRegexp matches a MusicBrainz ID (i.e. a UUID).
 var mbidRegexp = regexp.MustCompile(
 	`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
+// IsMBID returns true if mbid looks like a corectly-formatted MBID (i.e. a UUID).
+// Note that this method does not check that the MBID is actually assigned to anything.
+func IsMBID(mbid string) bool { return mbidRegexp.MatchString(mbid) }
 
 // SetDatabaseIDForTest hardcodes an ID for GetDatabaseID to return.
 func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {

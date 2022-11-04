@@ -7,20 +7,24 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
+	"github.com/derat/yambs/sources/text"
 )
 
 const (
 	// TODO: Figure out reasonable values for these.
 	serverMaxReqBytes = 128 * 1024
 	serverReqTimeout  = 10 * time.Second
+	serverMaxEdits    = 200
+	serverMaxFields   = 1000
 )
 
 // runServer starts an HTTP server at addr to serve a page that lets users
@@ -32,6 +36,8 @@ func runServer(ctx context.Context, addr string) error {
 		return err
 	}
 	page := b.Bytes()
+
+	db := db.NewDB()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		var reqSize string
@@ -54,7 +60,7 @@ func runServer(ctx context.Context, addr string) error {
 		case "/edits":
 			ctx, cancel := context.WithTimeout(ctx, serverReqTimeout)
 			defer cancel()
-			infos, err := getEditsForRequest(ctx, w, req)
+			infos, err := getEditsForRequest(ctx, w, req, db)
 			if err != nil {
 				var msg string
 				code := http.StatusInternalServerError
@@ -94,13 +100,18 @@ type httpError struct {
 
 func (e *httpError) Error() string { return e.err.Error() }
 
+// httpErrorf returns an *httpError with the supplied status code and an err
+// field constructed from format and args. The user-visible message will just
+// be generated from code.
+func httpErrorf(code int, format string, args ...any) *httpError {
+	return &httpError{code: code, err: fmt.Errorf(format, args...)}
+}
+
 // getEditsForRequest generates editInfo objects in response to a /edits request to the server.
-func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request) ([]*editInfo, error) {
+func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request, db *db.DB) (
+	[]*editInfo, error) {
 	if req.Method != http.MethodPost {
-		return nil, &httpError{
-			code: http.StatusMethodNotAllowed,
-			err:  fmt.Errorf("bad method %q", req.Method),
-		}
+		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
 	}
 
 	// TODO: Check referrer?
@@ -113,7 +124,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	var edits []seed.Edit
 	switch req.FormValue("source") {
 	case "bandcamp":
-		if u, err := bandcamp.CleanURL(req.FormValue("bandcampUrl")); err != nil {
+		if u, err := bandcamp.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
 				code: http.StatusBadRequest,
 				msg:  fmt.Sprint("Server only accepts bandcamp.com album URLs: ", err),
@@ -126,14 +137,39 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 				err:  err,
 			}
 		}
+
 	case "text":
-		// TODO: Implement this.
-		return nil, errors.New("unimplemented")
-	default:
-		return nil, &httpError{
-			code: http.StatusBadRequest,
-			err:  fmt.Errorf("bad source %q", req.FormValue("source")),
+		typ := seed.Type(req.FormValue("type"))
+		if !checkEnum(typ, seed.RecordingType, seed.ReleaseType) {
+			return nil, httpErrorf(http.StatusBadRequest, "bad type %q", string(typ))
 		}
+		format := text.Format(req.FormValue("format"))
+		if !checkEnum(format, text.CSV, text.KeyVal, text.TSV) {
+			return nil, httpErrorf(http.StatusBadRequest, "bad format %q", string(format))
+		}
+		var err error
+		if edits, err = text.Read(ctx, strings.NewReader(req.FormValue("input")),
+			format, typ, req.Form["field"], req.Form["set"], db,
+			text.MaxEdits(serverMaxEdits), text.MaxFields(serverMaxFields)); err != nil {
+			return nil, &httpError{
+				code: http.StatusInternalServerError,
+				msg:  fmt.Sprint("Failed getting edits: ", err),
+				err:  err,
+			}
+		}
+
+	default:
+		return nil, httpErrorf(http.StatusBadRequest, "bad source %q", req.FormValue("source"))
 	}
 	return newEditInfos(edits)
+}
+
+// checkEnum returns true if input appears in valid.
+func checkEnum[T comparable](input T, valid ...T) bool {
+	for _, v := range valid {
+		if input == v {
+			return true
+		}
+	}
+	return false
 }
