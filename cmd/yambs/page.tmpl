@@ -5,12 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
     <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
     <title>yambs</title>
+
+    <!-- generic CSS -->
     <style>
       :root {
         --border-color: #ccc;
-        --error-bg-color: #fcc;
-        --error-border-color: #f99;
-        --text-fields-table-bg-color: #f5f5f5;
         --header-color: #eee;
         --link-color: #444;
         --margin: 8px;
@@ -27,22 +26,6 @@
         font-size: 16px;
         margin-bottom: var(--margin);
       }
-      select {
-        padding: 2px;
-        margin-right: var(--margin);
-      }
-      input[type='text'] {
-        box-sizing: border-box; /* include padding and border */
-        padding: 2px 4px;
-      }
-      label:first-child {
-        display: inline-block;
-        min-width: 50px;
-      }
-      textarea {
-        box-sizing: border-box; /* include padding and border */
-        padding: 4px;
-      }
 
       .section {
         display: none;
@@ -51,64 +34,10 @@
         display: block;
       }
 
-      .form-row {
-        margin-bottom: var(--margin);
-      }
       .button-row {
         display: flex;
         gap: var(--margin);
         margin-bottom: var(--margin);
-      }
-
-      .form-text-fields-table {
-        background-color: var(--text-fields-table-bg-color);
-        border: solid 1px var(--border-color);
-        border-radius: 6px;
-        display: none;
-        padding: 2px;
-      }
-      .form-text-fields-table td:first-child {
-        font-family: monospace;
-        padding-right: var(--margin);
-        vertical-align: top;
-      }
-      .form-text-fields-table.visible {
-        display: table;
-      }
-
-      #form-bandcamp-url-input {
-        max-width: 100%;
-        width: 600px;
-      }
-      #form-text-fields-input {
-        display: block;
-        font-family: monospace;
-        max-width: 100%;
-        padding-top: 4px;
-        width: 600px;
-      }
-      #form-text-set-textarea {
-        display: block;
-        max-width: 100%;
-        height: 80px;
-        width: 600px;
-      }
-      #form-text-input-textarea {
-        display: block;
-        max-width: 100%;
-        height: 300px;
-        width: 800px;
-      }
-      #form-error-div {
-        background-color: var(--error-bg-color);
-        border: solid 1px var(--error-border-color);
-        border-radius: 6px;
-        display: none;
-        margin-bottom: var(--margin);
-        padding: 2px 4px;
-      }
-      #form-error-div.visible {
-        display: inline-block;
       }
 
       #edit-table {
@@ -160,11 +89,97 @@
         display: flex;
       }
     </style>
+    <!-- end generic CSS -->
+
+    {{- if not .Edits }}
+    <!-- form CSS -->
+    <style>
+      :root {
+        --form-error-bg-color: #fcc;
+        --form-error-border-color: #f99;
+        --form-text-fields-table-bg-color: #f5f5f5;
+      }
+
+      select {
+        padding: 2px;
+        margin-right: var(--margin);
+      }
+      input[type='text'] {
+        box-sizing: border-box; /* include padding and border */
+        padding: 2px 4px;
+      }
+      label:first-child {
+        display: inline-block;
+        min-width: 50px;
+      }
+      textarea {
+        box-sizing: border-box; /* include padding and border */
+        padding: 4px;
+      }
+
+      .form-row {
+        margin-bottom: var(--margin);
+      }
+      .form-text-fields-table {
+        background-color: var(--form-text-fields-table-bg-color);
+        border: solid 1px var(--border-color);
+        border-radius: 6px;
+        display: none;
+        padding: 2px;
+      }
+      .form-text-fields-table td:first-child {
+        font-family: monospace;
+        padding-right: var(--margin);
+        vertical-align: top;
+      }
+      .form-text-fields-table.visible {
+        display: table;
+      }
+
+      #form-bandcamp-url-input {
+        max-width: 100%;
+        width: 600px;
+      }
+      #form-text-fields-input {
+        display: block;
+        font-family: monospace;
+        max-width: 100%;
+        padding-top: 4px;
+        width: 600px;
+      }
+      #form-text-set-textarea {
+        display: block;
+        max-width: 100%;
+        height: 80px;
+        width: 600px;
+      }
+      #form-text-input-textarea {
+        display: block;
+        max-width: 100%;
+        height: 300px;
+        width: 800px;
+      }
+      #form-error-div {
+        background-color: var(--form-error-bg-color);
+        border: solid 1px var(--form-error-border-color);
+        border-radius: 6px;
+        display: none;
+        margin-bottom: var(--margin);
+        padding: 2px 4px;
+      }
+      #form-error-div.visible {
+        display: inline-block;
+      }
+    </style>
+    <!-- end form CSS -->
+    {{- end }}
   </head>
   <body>
     <h1>yambs (Yet Another MusicBrainz Seeder)</h1>
 
-    <div id="form-section" class="section">
+    {{- if not .Edits }}
+    <!-- form HTML -->
+    <div>
       <p>
         This is a tool for seeding
         <a href="https://musicbrainz.org/" target="_blank">MusicBrainz</a>
@@ -208,16 +223,16 @@
         </div>
 
         <div class="form-row">
-          {{- range .TypeInfo}}
-          <table id="form-text-{{.Type}}-fields-table" class="form-text-fields-table">
-            {{- range .Fields}}
+          {{- range .TypeInfo }}
+          <table id="form-text-{{ .Type }}-fields-table" class="form-text-fields-table">
+            {{- range .Fields }}
             <tr>
-              <td>{{.Name}}</td>
-              <td>{{.Desc}}</td>
+              <td>{{ .Name }}</td>
+              <td>{{ .Desc }}</td>
             </tr>
-            {{- end}}
+            {{- end }}
           </table>
-          {{- end}}
+          {{- end }}
         </div>
 
         <!-- These inputs are only used for CSV and TSV input. -->
@@ -246,6 +261,8 @@
       </div>
       <div id="form-error-div"></div>
     </div>
+    <!-- end form HTML -->
+    {{- end }}
 
     <div id="edit-section" class="section">
       <h2>Seeded MusicBrainz edits</h2>
@@ -265,24 +282,25 @@
     </div>
     <div id="edit-opening-overlay">Opening edit…</div>
   </body>
-  <!-- prettier-ignore -->
-  <script>
-    // This confuses Prettier and seemingly can't be ignored with "// prettier-ignore",
-    // so put it in its own script element.
-    const initialEdits = [
-      {{- range .Edits}}
-      {
-        desc: {{.Desc}},
-        url: {{.URL}},
-        params: [
-          {{- range .Params}}
-          {name: {{.Name}}, value: {{.Value}}},
-          {{- end}}
-        ],
-      },
-      {{- end}}
-    ];
 
+  <!-- generic JS -->
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function createElement(type, parentElement = null, className = null, text = null) {
+      const element = document.createElement(type);
+      if (parentElement) parentElement.appendChild(element);
+      if (className) element.className = className;
+      if (text || text === '') element.appendChild(document.createTextNode(text));
+      return element;
+    }
+  </script>
+  <!-- end generic JS -->
+
+  <!-- form JS -->
+  {{- if not .Edits }}
+  <script>
+    // This seems to confuse Prettier unless it's in its own script element.
     const formSetPlaceholders = {
       {{- range .TypeInfo}}
       {{.Type}}: {{.SetPlaceholder}},
@@ -304,28 +322,6 @@
     };
   </script>
   <script>
-    const $ = (id) => document.getElementById(id);
-
-    function createElement(type, parentElement = null, className = null, text = null) {
-      const element = document.createElement(type);
-      if (parentElement) parentElement.appendChild(element);
-      if (className) element.className = className;
-      if (text || text === '') element.appendChild(document.createTextNode(text));
-      return element;
-    }
-
-    // Throws if |res| failed due to the server returning an error status.
-    // The error message is the response body.
-    function handleFetchError(res) {
-      if (!res.ok) {
-        return res.text().then((text) => {
-          throw new Error(text);
-        });
-      }
-      return res;
-    }
-
-    const formSection = $('form-section');
     const formSourceSelect = $('form-source-select');
     const formBandcampUrlInput = $('form-bandcamp-url-input');
     const formTextFormatSelect = $('form-text-format-select');
@@ -379,7 +375,6 @@
     function hideFormError() {
       formErrorDiv.classList.remove('visible');
     }
-
     // Sends form data to the server and returns a promise for an array of objects that can be
     // passed to showEdits().
     function generateEdits() {
@@ -424,11 +419,74 @@
           break;
       }
 
-      return fetch('edits', { method: 'post', body })
-        .then((res) => handleFetchError(res))
-        .then((res) => res.json());
+      return fetch('edits', { method: 'post', body }).then((res) => {
+        if (res.ok) return res.json();
+        return res.text().then((text) => {
+          throw new Error(text);
+        });
+      });
     }
 
+    // Initialize the form.
+    (() => {
+      formSourceSelect.addEventListener('change', updateFormUI);
+      formTextFormatSelect.addEventListener('change', updateFormUI);
+      formTextTypeSelect.addEventListener('change', updateFormUI);
+      updateFormUI();
+
+      formTextToggleFieldsButton.addEventListener('click', () => {
+        formTextFieldsTableShown = !formTextFieldsTableShown;
+        updateFormUI();
+      });
+
+      formGenButton.addEventListener('click', () => {
+        const origText = formGenButton.innerText;
+        formGenButton.disabled = true;
+        formGenButton.innerText = 'Generating…';
+        hideFormError();
+
+        generateEdits()
+          .then((edits) => {
+            console.log(`Got ${edits.length} edit(s)`);
+            showEdits(edits);
+          })
+          .catch((err) => {
+            showFormError(err.message);
+          })
+          .finally(() => {
+            formGenButton.disabled = false;
+            formGenButton.innerText = origText;
+          });
+      });
+
+      formClearButton.addEventListener('click', () => {
+        clearFormFields();
+        hideFormError();
+        showEdits([]);
+      });
+    })();
+  </script>
+  <!-- end form JS -->
+  {{- end }}
+
+  <!-- edit JS -->
+  <script>
+    // This seems to confuse Prettier unless it's in its own script element.
+    const initialEdits = [
+      {{- range .Edits}}
+      {
+        desc: {{.Desc}},
+        url: {{.URL}},
+        params: [
+          {{- range .Params}}
+          {name: {{.Name}}, value: {{.Value}}},
+          {{- end}}
+        ],
+      },
+      {{- end}}
+    ];
+  </script>
+  <script>
     const editPreselect = 5; // number of checkboxes to automatically select
     const editSection = $('edit-section');
     const editHeaderCheckbox = $('edit-header-checkbox');
@@ -565,49 +623,8 @@
       updateEditUI();
     }
 
-    // Initialize the page.
+    // Initialize edit-related elements.
     (() => {
-      // Initialize form-related elements.
-      if (!initialEdits.length) {
-        formSection.classList.add('visible');
-        formSourceSelect.addEventListener('change', updateFormUI);
-        formTextFormatSelect.addEventListener('change', updateFormUI);
-        formTextTypeSelect.addEventListener('change', updateFormUI);
-        updateFormUI();
-
-        formTextToggleFieldsButton.addEventListener('click', () => {
-          formTextFieldsTableShown = !formTextFieldsTableShown;
-          updateFormUI();
-        });
-
-        formGenButton.addEventListener('click', () => {
-          const origText = formGenButton.innerText;
-          formGenButton.disabled = true;
-          formGenButton.innerText = 'Generating…';
-          hideFormError();
-
-          generateEdits()
-            .then((edits) => {
-              console.log(`Got ${edits.length} edit(s)`);
-              showEdits(edits);
-            })
-            .catch((err) => {
-              showFormError(err.message);
-            })
-            .finally(() => {
-              formGenButton.disabled = false;
-              formGenButton.innerText = origText;
-            });
-        });
-
-        formClearButton.addEventListener('click', () => {
-          clearFormFields();
-          hideFormError();
-          showEdits([]);
-        });
-      }
-
-      // Initialize edit-related elements.
       editHeaderCheckbox.addEventListener('click', () => {
         editLastClickIndex = -1;
         const empty = getNumSelectedEdits() === 0;
@@ -634,4 +651,5 @@
       }
     })();
   </script>
+  <!-- end edit JS -->
 </html>

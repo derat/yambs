@@ -96,7 +96,6 @@ func servePage(ctx context.Context, addr string, edits []seed.Edit) error {
 }
 
 // writePage writes an HTML page containing the supplied edits to w.
-// TODO: Only write the form part of the page if there are no edits.
 func writePage(w io.Writer, edits []seed.Edit) error {
 	tmpl, err := template.New("").Parse(pageTmpl)
 	if err != nil {
