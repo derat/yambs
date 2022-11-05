@@ -10,6 +10,7 @@
         --border-color: #ccc;
         --error-bg-color: #fcc;
         --error-border-color: #f99;
+        --text-fields-table-bg-color: #f5f5f5;
         --header-color: #eee;
         --link-color: #444;
         --margin: 8px;
@@ -31,6 +32,7 @@
         margin-right: var(--margin);
       }
       input[type='text'] {
+        box-sizing: border-box; /* include padding and border */
         padding: 2px 4px;
       }
       label:first-child {
@@ -58,20 +60,36 @@
         margin-bottom: var(--margin);
       }
 
+      .form-text-fields-table {
+        background-color: var(--text-fields-table-bg-color);
+        border: solid 1px var(--border-color);
+        border-radius: 6px;
+        display: none;
+        padding: 2px;
+      }
+      .form-text-fields-table td:first-child {
+        font-family: monospace;
+        padding-right: var(--margin);
+        vertical-align: top;
+      }
+      .form-text-fields-table.visible {
+        display: table;
+      }
+
       #form-bandcamp-url-input {
         max-width: 100%;
-        width: 400px;
+        width: 600px;
       }
       #form-text-fields-input {
         display: block;
         max-width: 100%;
-        width: 400px;
+        width: 600px;
       }
       #form-text-set-textarea {
         display: block;
         max-width: 100%;
         height: 50px;
-        width: 400px;
+        width: 600px;
       }
       #form-text-input-textarea {
         display: block;
@@ -184,17 +202,36 @@
             <option value="recording">Recording</option>
             <option value="release">Release</option>
           </select>
+          <button id="form-text-toggle-fields-button">Show available fields</button>
         </div>
+
         <div class="form-row">
-          <label for="form-text-set-textarea">
-            Values to set on all entities (as "field=value" lines):
-          </label>
-          <textarea id="form-text-set-textarea"></textarea>
+          {{- range .TypeFields}}
+          <table id="form-text-{{.Type}}-fields-table" class="form-text-fields-table">
+            {{- range .Fields}}
+            <tr>
+              <td>{{.Name}}</td>
+              <td>{{.Desc}}</td>
+            </tr>
+            {{- end}}
+          </table>
+          {{- end}}
         </div>
-        <div class="form-row">
-          <label for="form-text-fields-input">Input fields (comma-separated):</label>
-          <input id="form-text-fields-input" type="text" />
+
+        <!-- These inputs are only used for CSV and TSV input. -->
+        <div id="form-text-csv-tsv-section" class="section">
+          <div class="form-row">
+            <label for="form-text-set-textarea">
+              Values to set on all entities (as "field=value" lines):
+            </label>
+            <textarea id="form-text-set-textarea"></textarea>
+          </div>
+          <div class="form-row">
+            <label for="form-text-fields-input">Input fields (comma-separated):</label>
+            <input id="form-text-fields-input" type="text" />
+          </div>
         </div>
+
         <div class="form-row">
           <label for="form-text-input-textarea">Input in selected format:</label>
           <textarea id="form-text-input-textarea"></textarea>
@@ -270,20 +307,33 @@
     const formBandcampUrlInput = $('form-bandcamp-url-input');
     const formTextFormatSelect = $('form-text-format-select');
     const formTextTypeSelect = $('form-text-type-select');
+    const formTextCsvTsvSection = $('form-text-csv-tsv-section');
+    const formTextToggleFieldsButton = $('form-text-toggle-fields-button');
     const formTextFieldsInput = $('form-text-fields-input');
     const formTextSetTextarea = $('form-text-set-textarea');
     const formTextInputTextarea = $('form-text-input-textarea');
     const formGenButton = $('form-generate-button');
     const formErrorDiv = $('form-error-div');
+    let formTextFieldsTableShown = false;
 
     // Updates the state of form-related elements.
     function updateFormState() {
-      const sel = formSourceSelect.value;
+      const selSource = formSourceSelect.value;
       for (const source of ['bandcamp', 'text']) {
-        const section = $(`form-${source}-section`);
-        if (source === sel) section.classList.add('visible');
-        else section.classList.remove('visible');
+        $(`form-${source}-section`).classList.toggle('visible', source === selSource);
       }
+
+      const selType = formTextTypeSelect.value;
+      for (const type of ['recording', 'release']) {
+        const visible = formTextFieldsTableShown && type === selType;
+        $(`form-text-${type}-fields-table`).classList.toggle('visible', visible);
+      }
+      formTextToggleFieldsButton.innerText =
+        (formTextFieldsTableShown ? 'Hide' : 'Show') + ' available fields';
+
+      const selFormat = formTextFormatSelect.value;
+      formTextCsvTsvSection.classList.toggle('visible', selFormat !== 'keyval');
+
       // TODO: Update placeholder text.
     }
 
@@ -308,17 +358,17 @@
           const format = formTextFormatSelect.value;
           body.set('format', format);
 
-          // Trim whitespace at the beginning of lines and then drop empty lines.
-          formTextSetTextarea.value
-            .split('\n')
-            .map((v) => v.trimStart())
-            .filter(Boolean)
-            .forEach((v) => body.append('set', v));
+          // Set commands and the field list aren't used for the keyval format.
+          if (['csv', 'tsv'].includes(format)) {
+            // Trim whitespace at the beginning of lines and then drop empty lines.
+            formTextSetTextarea.value
+              .split('\n')
+              .map((v) => v.trimStart())
+              .filter(Boolean)
+              .forEach((v) => body.append('set', v));
 
-          // The field list isn't used for the keyval format.
-          const fieldsVal = formTextFieldsInput.value.trim();
-          if (['csv', 'tsv'].includes(format) && fieldsVal !== '') {
-            fieldsVal.split(',').forEach((v) => body.append('field', v.trim()));
+            const fields = formTextFieldsInput.value.trim();
+            if (fields !== '') fields.split(',').forEach((v) => body.append('field', v.trim()));
           }
 
           // Drop input lines that are empty or only contain whitespace,
@@ -398,9 +448,7 @@
       // the rows are selected.
       const count = getNumSelectedEdits();
       editHeaderCheckbox.checked = count > 0;
-      const partial = count > 0 && count < editCheckboxes.length;
-      if (partial) editHeaderCheckbox.classList.add('partial');
-      else editHeaderCheckbox.classList.remove('partial');
+      editHeaderCheckbox.classList.toggle('partial', count > 0 && count < editCheckboxes.length);
     }
 
     // Displays the supplied array of objects describing edits:
@@ -492,6 +540,11 @@
         formTextFormatSelect.addEventListener('change', updateFormState);
         formTextTypeSelect.addEventListener('change', updateFormState);
         updateFormState();
+
+        formTextToggleFieldsButton.addEventListener('click', () => {
+          formTextFieldsTableShown = !formTextFieldsTableShown;
+          updateFormState();
+        });
 
         formGenButton.addEventListener('click', () => {
           const origText = formGenButton.innerText;

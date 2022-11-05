@@ -15,9 +15,11 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"sort"
 	"time"
 
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/text"
 	"github.com/pkg/browser"
 )
 
@@ -94,23 +96,33 @@ func servePage(ctx context.Context, addr string, edits []seed.Edit) error {
 }
 
 // writePage writes an HTML page containing the supplied edits to w.
+// TODO: Only write the form part of the page if there are no edits.
 func writePage(w io.Writer, edits []seed.Edit) error {
 	tmpl, err := template.New("").Parse(pageTmpl)
 	if err != nil {
 		return err
 	}
-	infos, err := newEditInfos(edits)
+	editInfos, err := newEditInfos(edits)
 	if err != nil {
 		return err
 	}
-	return tmpl.Execute(w, struct{ Edits []*editInfo }{infos})
+	return tmpl.Execute(w, struct {
+		TypeFields []typeFields
+		Edits      []*editInfo
+	}{
+		TypeFields: []typeFields{
+			newTypeFields(seed.RecordingType),
+			newTypeFields(seed.ReleaseType),
+		},
+		Edits: editInfos,
+	})
 }
 
 //go:embed page.tmpl
 var pageTmpl string
 
-// editInfo is a version of seed.Edit used by browsers.
-// It's used both for baking edits into pages generated on the command line
+// editInfo is a version of seed.Edit used in HTML pages.
+// It's used both for passing edits to pageTmpl in CLI mode
 // and for returning edits via XHRs when running in server mode.
 type editInfo struct {
 	Desc   string      `json:"desc"`
@@ -161,4 +173,24 @@ func newEditInfos(edits []seed.Edit) ([]*editInfo, error) {
 		}
 	}
 	return infos, nil
+}
+
+// typeFields describes the fields that can be set for a given type.
+// It's passed to pageTmpl.
+type typeFields struct {
+	Type   string // e.g. "recording", "release"
+	Fields []fieldInfo
+}
+
+// fieldInfo describes an individual field.
+type fieldInfo struct{ Name, Desc string }
+
+// newTypeFields creates a typeFields for typ.
+func newTypeFields(typ seed.Type) typeFields {
+	var fields []fieldInfo
+	for field, desc := range text.ListFields(typ) {
+		fields = append(fields, fieldInfo{Name: field, Desc: desc})
+	}
+	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
+	return typeFields{Type: string(typ), Fields: fields}
 }
