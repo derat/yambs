@@ -107,12 +107,12 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 		return err
 	}
 	return tmpl.Execute(w, struct {
-		TypeFields []typeFields
-		Edits      []*editInfo
+		TypeInfo []typeInfo
+		Edits    []*editInfo
 	}{
-		TypeFields: []typeFields{
-			newTypeFields(seed.RecordingType),
-			newTypeFields(seed.ReleaseType),
+		TypeInfo: []typeInfo{
+			newTypeInfo(seed.RecordingType),
+			newTypeInfo(seed.ReleaseType),
 		},
 		Edits: editInfos,
 	})
@@ -164,6 +164,7 @@ func newEditInfo(edit seed.Edit) (*editInfo, error) {
 	return &info, nil
 }
 
+// newEditInfos calls newEditInfo for each of the supplied edits.
 func newEditInfos(edits []seed.Edit) ([]*editInfo, error) {
 	infos := make([]*editInfo, len(edits))
 	for i, edit := range edits {
@@ -175,22 +176,37 @@ func newEditInfos(edits []seed.Edit) ([]*editInfo, error) {
 	return infos, nil
 }
 
-// typeFields describes the fields that can be set for a given type.
+// typeInfo describes the fields that can be set for a given type.
 // It's passed to pageTmpl.
-type typeFields struct {
-	Type   string // e.g. "recording", "release"
-	Fields []fieldInfo
+type typeInfo struct {
+	Type   string      // seed.Type
+	Fields []fieldInfo // fields that can be set for the type
+
+	SetPlaceholder    string            // e.g. "field1=val\nfield2=val"
+	FieldsPlaceholder string            // e.g. "field1,field2"
+	InputPlaceholders map[string]string // keyed by text.Format
 }
 
 // fieldInfo describes an individual field.
 type fieldInfo struct{ Name, Desc string }
 
-// newTypeFields creates a typeFields for typ.
-func newTypeFields(typ seed.Type) typeFields {
+// newTypeInfo creates a typeInfo for typ.
+func newTypeInfo(typ seed.Type) typeInfo {
 	var fields []fieldInfo
 	for field, desc := range text.ListFields(typ) {
 		fields = append(fields, fieldInfo{Name: field, Desc: desc})
 	}
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
-	return typeFields{Type: string(typ), Fields: fields}
+
+	return typeInfo{
+		Type:              string(typ),
+		Fields:            fields,
+		SetPlaceholder:    text.SetPlaceholder(typ),
+		FieldsPlaceholder: text.FieldsPlaceholder(typ),
+		InputPlaceholders: map[string]string{
+			string(text.CSV):    text.InputPlaceholder(typ, text.CSV),
+			string(text.KeyVal): text.InputPlaceholder(typ, text.KeyVal),
+			string(text.TSV):    text.InputPlaceholder(typ, text.TSV),
+		},
+	}
 }

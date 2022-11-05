@@ -82,13 +82,15 @@
       }
       #form-text-fields-input {
         display: block;
+        font-family: monospace;
         max-width: 100%;
+        padding-top: 4px;
         width: 600px;
       }
       #form-text-set-textarea {
         display: block;
         max-width: 100%;
-        height: 50px;
+        height: 80px;
         width: 600px;
       }
       #form-text-input-textarea {
@@ -206,7 +208,7 @@
         </div>
 
         <div class="form-row">
-          {{- range .TypeFields}}
+          {{- range .TypeInfo}}
           <table id="form-text-{{.Type}}-fields-table" class="form-text-fields-table">
             {{- range .Fields}}
             <tr>
@@ -280,6 +282,26 @@
       },
       {{- end}}
     ];
+
+    const formSetPlaceholders = {
+      {{- range .TypeInfo}}
+      {{.Type}}: {{.SetPlaceholder}},
+      {{- end}}
+    };
+    const formFieldsPlaceholders = {
+      {{- range .TypeInfo}}
+      {{.Type}}: {{.FieldsPlaceholder}},
+      {{- end}}
+    };
+    const formInputPlaceholders = {
+      {{- range .TypeInfo}}
+      {{.Type}}: {
+        {{- range $format, $text := .InputPlaceholders}}
+        {{$format}}: {{$text}},
+        {{- end}}
+      },
+      {{- end}}
+    };
   </script>
   <script>
     const $ = (id) => document.getElementById(id);
@@ -310,8 +332,8 @@
     const formTextTypeSelect = $('form-text-type-select');
     const formTextCsvTsvSection = $('form-text-csv-tsv-section');
     const formTextToggleFieldsButton = $('form-text-toggle-fields-button');
-    const formTextFieldsInput = $('form-text-fields-input');
     const formTextSetTextarea = $('form-text-set-textarea');
+    const formTextFieldsInput = $('form-text-fields-input');
     const formTextInputTextarea = $('form-text-input-textarea');
     const formGenButton = $('form-generate-button');
     const formClearButton = $('form-clear-button');
@@ -336,7 +358,9 @@
       const selFormat = formTextFormatSelect.value;
       formTextCsvTsvSection.classList.toggle('visible', selFormat !== 'keyval');
 
-      // TODO: Update placeholder text.
+      formTextSetTextarea.placeholder = formSetPlaceholders[selType] || '';
+      formTextFieldsInput.placeholder = formFieldsPlaceholders[selType] || '';
+      formTextInputTextarea.placeholder = (formInputPlaceholders[selType] || {})[selFormat] || '';
     }
 
     // Clears form fields. Select elements are left unchanged.
