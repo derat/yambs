@@ -240,6 +240,7 @@
 
       <div class="button-row">
         <button id="form-generate-button">Generate edits</button>
+        <button id="form-clear-button">Clear</button>
       </div>
       <div id="form-error-div"></div>
     </div>
@@ -313,11 +314,12 @@
     const formTextSetTextarea = $('form-text-set-textarea');
     const formTextInputTextarea = $('form-text-input-textarea');
     const formGenButton = $('form-generate-button');
+    const formClearButton = $('form-clear-button');
     const formErrorDiv = $('form-error-div');
     let formTextFieldsTableShown = false;
 
     // Updates the state of form-related elements.
-    function updateFormState() {
+    function updateFormUI() {
       const selSource = formSourceSelect.value;
       for (const source of ['bandcamp', 'text']) {
         $(`form-${source}-section`).classList.toggle('visible', source === selSource);
@@ -335,6 +337,14 @@
       formTextCsvTsvSection.classList.toggle('visible', selFormat !== 'keyval');
 
       // TODO: Update placeholder text.
+    }
+
+    // Clears form fields. Select elements are left unchanged.
+    function clearFormFields() {
+      formBandcampUrlInput.value = '';
+      formTextFieldsInput.value = '';
+      formTextSetTextarea.value = '';
+      formTextInputTextarea.value = '';
     }
 
     // Displays or hides an error message.
@@ -431,11 +441,11 @@
       const start = range[1] + 1;
       const end = start + (range[1] - range[0] + 1);
       editCheckboxes.forEach((cb, idx) => (cb.checked = idx >= start && idx <= end));
-      updateEditState();
+      updateEditUI();
     }
 
     // Updates edit header checkbox state and buttons for the currently-checked checkboxes.
-    function updateEditState() {
+    function updateEditUI() {
       editOpenAllButton.disabled = editLinks.length === 0;
 
       // Update the "Open selected" button's text and disabled state.
@@ -490,7 +500,7 @@
             for (let i = start; i <= end; i++) editCheckboxes[i].checked = checked;
           }
           editLastClickIndex = idx;
-          updateEditState();
+          updateEditUI();
         });
         if (idx < editPreselect) cb.checked = true;
 
@@ -528,7 +538,7 @@
         });
       }
 
-      updateEditState();
+      updateEditUI();
     }
 
     // Initialize the page.
@@ -536,14 +546,14 @@
       // Initialize form-related elements.
       if (!initialEdits.length) {
         formSection.classList.add('visible');
-        formSourceSelect.addEventListener('change', updateFormState);
-        formTextFormatSelect.addEventListener('change', updateFormState);
-        formTextTypeSelect.addEventListener('change', updateFormState);
-        updateFormState();
+        formSourceSelect.addEventListener('change', updateFormUI);
+        formTextFormatSelect.addEventListener('change', updateFormUI);
+        formTextTypeSelect.addEventListener('change', updateFormUI);
+        updateFormUI();
 
         formTextToggleFieldsButton.addEventListener('click', () => {
           formTextFieldsTableShown = !formTextFieldsTableShown;
-          updateFormState();
+          updateFormUI();
         });
 
         formGenButton.addEventListener('click', () => {
@@ -565,6 +575,12 @@
               formGenButton.innerText = origText;
             });
         });
+
+        formClearButton.addEventListener('click', () => {
+          clearFormFields();
+          hideFormError();
+          showEdits([]);
+        });
       }
 
       // Initialize edit-related elements.
@@ -572,7 +588,7 @@
         editLastClickIndex = -1;
         const empty = getNumSelectedEdits() === 0;
         editCheckboxes.forEach((cb) => (cb.checked = empty));
-        updateEditState();
+        updateEditUI();
       });
       editOpenSelButton.addEventListener('click', () => {
         editLinks.filter((_, i) => editCheckboxes[i].checked).forEach((a) => a.click());
@@ -583,7 +599,7 @@
       });
 
       showEdits(initialEdits);
-      updateEditState();
+      updateEditUI();
 
       // If there's a single edit, just open it in the current window.
       if (editLinks.length === 1) {
