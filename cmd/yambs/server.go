@@ -44,7 +44,7 @@ func runServer(ctx context.Context, addr string) error {
 		if req.ContentLength > 0 {
 			reqSize = fmt.Sprintf(" (%d)", req.ContentLength)
 		}
-		log.Printf("%v %q%s from %s", req.Method, req.URL, reqSize, req.RemoteAddr)
+		log.Printf("%v %s%s from %s", req.Method, req.URL, reqSize, req.RemoteAddr)
 
 		switch req.URL.Path {
 		case "/":
