@@ -10,6 +10,6 @@ automatic_scaling:
   max_idle_instances: 1
 
 handlers:
-  - url: /(edits)?
+  - url: /(edits|favicon\.ico)?
     script: auto
     secure: always

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-    <link rel="icon" href="data:;base64,iVBORw0KGgo=" />
+    <link rel="icon" href="{{if .Edits}}data:;base64,iVBORw0KGgo={{else}}/favicon.ico{{end}}" />
     <title>yambs</title>
 
     <!-- generic CSS -->
@@ -100,6 +100,16 @@
         margin-bottom: var(--margin);
       }
 
+      #icon {
+        margin-right: 4px;
+        vertical-align: bottom;
+      }
+      @media (prefers-color-scheme: dark) {
+        #icon {
+          filter: drop-shadow(0 0 1px #fffa); /* add light glow */
+        }
+      }
+
       #edit-table {
         border: solid 1px var(--table-border-color);
         border-collapse: collapse;
@@ -146,7 +156,7 @@
     </style>
     <!-- end generic CSS -->
 
-    {{- if not .Edits }}
+    {{- if not .Edits}}
     <!-- form CSS -->
     <style>
       @media (prefers-color-scheme: dark) {
@@ -246,12 +256,15 @@
       }
     </style>
     <!-- end form CSS -->
-    {{- end }}
+    {{- end}}
   </head>
   <body>
-    <h1>yambs (Yet Another MusicBrainz Seeder)</h1>
+    <h1>
+      <img id="icon" src="{{.IconURL}}" alt="" height="22" />
+      yambs (Yet Another MusicBrainz Seeder)
+    </h1>
 
-    {{- if not .Edits }}
+    {{- if not .Edits}}
     <!-- form HTML -->
     <div>
       <p>
@@ -297,16 +310,16 @@
         </div>
 
         <div class="form-row">
-          {{- range .TypeInfo }}
-          <table id="form-text-{{ .Type }}-fields-table" class="form-text-fields-table">
-            {{- range .Fields }}
+          {{- range .TypeInfo}}
+          <table id="form-text-{{.Type}}-fields-table" class="form-text-fields-table">
+            {{- range .Fields}}
             <tr>
-              <td>{{ .Name }}</td>
-              <td>{{ .Desc }}</td>
+              <td>{{.Name}}</td>
+              <td>{{.Desc}}</td>
             </tr>
-            {{- end }}
+            {{- end}}
           </table>
-          {{- end }}
+          {{- end}}
         </div>
 
         <!-- These inputs are only used for CSV and TSV input. -->
@@ -336,7 +349,7 @@
       <div id="form-error-div"></div>
     </div>
     <!-- end form HTML -->
-    {{- end }}
+    {{- end}}
 
     <div id="edit-section" class="section">
       <h2>Seeded MusicBrainz edits</h2>
@@ -372,7 +385,7 @@
   <!-- end generic JS -->
 
   <!-- form JS -->
-  {{- if not .Edits }}
+  {{- if not .Edits}}
   <script>
     // This seems to confuse Prettier unless it's in its own script element.
     const formSetPlaceholders = {
@@ -541,7 +554,7 @@
     })();
   </script>
   <!-- end form JS -->
-  {{- end }}
+  {{- end}}
 
   <!-- edit JS -->
   <script>

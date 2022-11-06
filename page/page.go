@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -107,9 +108,11 @@ func Write(w io.Writer, edits []seed.Edit) error {
 		return err
 	}
 	return tmpl.Execute(w, struct {
+		IconURL  template.URL
 		TypeInfo []typeInfo
 		Edits    []*EditInfo
 	}{
+		IconURL: template.URL(iconURL),
 		TypeInfo: []typeInfo{
 			newTypeInfo(seed.RecordingType),
 			newTypeInfo(seed.ReleaseType),
@@ -120,6 +123,10 @@ func Write(w io.Writer, edits []seed.Edit) error {
 
 //go:embed page.tmpl
 var pageTmpl string
+
+//go:embed icon.png
+var iconData []byte
+var iconURL = "data:image/png;base64," + base64.StdEncoding.EncodeToString(iconData)
 
 // EditInfo is a version of seed.Edit used in HTML pages.
 // It's used both for passing edits to pageTmpl in CLI mode

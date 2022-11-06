@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -94,6 +95,11 @@ func main() {
 		if err := json.NewEncoder(w).Encode(infos); err != nil {
 			log.Printf("Failed sending edits to %s: %v", caddr, err)
 		}
+	})
+
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "image/x-icon")
+		w.Write(faviconData)
 	})
 
 	// Handle App Engine specifying the port to listen on.
@@ -219,3 +225,6 @@ func checkEnum(input interface{}, valid ...interface{}) bool {
 	}
 	return false
 }
+
+//go:embed favicon.ico
+var faviconData []byte
