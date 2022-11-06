@@ -53,7 +53,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
-	addr := flag.String("addr", "localhost:8999", "Address to listen on for HTTP requests")
+	addr := flag.String("addr", "localhost:8999", `Address to listen on for HTTP requests or "fastcgi"`)
 	fields := flag.String("fields", "", `Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")

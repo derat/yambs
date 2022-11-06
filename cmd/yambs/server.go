@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/http/fcgi"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ const (
 
 // runServer starts an HTTP server at addr to serve a page that lets users
 // generate seeded edits. This method never returns (unless serving fails).
+// If addr is "fastcgi", the server listens for FastCGI connections on stdin.
 func runServer(ctx context.Context, addr string) error {
 	// Just generate the page once.
 	var b bytes.Buffer
@@ -89,9 +91,14 @@ func runServer(ctx context.Context, addr string) error {
 		}
 	})
 
-	log.Println("Listening on", addr)
-	srv := http.Server{Addr: addr}
-	return srv.ListenAndServe()
+	if addr == "fastcgi" {
+		log.Print("Listening for FastCGI connections")
+		return fcgi.Serve(nil, nil)
+	} else {
+		log.Println("Listening on", addr)
+		srv := http.Server{Addr: addr}
+		return srv.ListenAndServe()
+	}
 }
 
 // httpError implements the error interface but also wraps an HTTP status code

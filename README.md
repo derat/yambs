@@ -39,7 +39,7 @@ Seeds MusicBrainz edits.
   -action value
     	Action to perform with seed URLs (open, print, serve, write) (default open)
   -addr string
-    	Address to listen on for HTTP requests (default "localhost:8999")
+    	Address to listen on for HTTP requests or "fastcgi" (default "localhost:8999")
   -fields string
     	Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")
   -format value
