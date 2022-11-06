@@ -28,7 +28,7 @@ func FetchPage(ctx context.Context, url string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
-	res, err := GetClient(ctx).Do(req)
+	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

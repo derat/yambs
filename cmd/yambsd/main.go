@@ -1,7 +1,7 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-// Package main implements an App Engine server for generating seeded edits.
+// Package main implements a web server for generating seeded edits.
 package main
 
 import (
@@ -9,10 +9,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -21,10 +23,6 @@ import (
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
-	"github.com/derat/yambs/web"
-
-	"google.golang.org/appengine/v2"
-	"google.golang.org/appengine/v2/urlfetch"
 )
 
 const (
@@ -36,15 +34,27 @@ const (
 	maxFields    = 1000
 )
 
+var version = "[non-release]"
+
 func main() {
+	flag.Usage = func() {
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]...\n"+
+			"Runs a web server for seeding MusicBrainz edits.\n\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+	addr := flag.String("addr", "localhost:8999", `Address to listen on for HTTP requests`)
+	flag.Parse()
+
 	// Just generate the page once.
 	var b bytes.Buffer
 	if err := page.Write(&b, nil); err != nil {
-		panic(fmt.Sprint("Failed generating page: ", err))
+		log.Fatal("Failed generating page: ", err)
 	}
 	form := b.Bytes()
 
-	// TODO: Consider switching to App Engine logging so messages are associated with requests.
+	db := db.NewDB(db.Version(version))
+	rm := newRateMap()
+
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path != "/" {
 			http.NotFound(w, req)
@@ -60,17 +70,11 @@ func main() {
 		}
 	})
 
-	db := db.NewDB()
-	rm := newRateMap()
-
 	http.HandleFunc("/edits", func(w http.ResponseWriter, req *http.Request) {
-		ctx := appengine.NewContext(req)
-		ctx, cancel := context.WithTimeout(ctx, editsTimeout)
+		ctx, cancel := context.WithTimeout(req.Context(), editsTimeout)
 		defer cancel()
 
-		// Attach the urlfetch client to the context so other packages can use it.
-		ctx = web.WithClient(ctx, urlfetch.Client(ctx))
-
+		caddr := clientAddr(req)
 		infos, err := getEditsForRequest(ctx, w, req, rm, db)
 		if err != nil {
 			var msg string
@@ -82,17 +86,24 @@ func main() {
 			if msg == "" {
 				msg = http.StatusText(code)
 			}
-			log.Printf("Sending %d to %s: %v", code, req.RemoteAddr, err)
+			log.Printf("Sending %d to %s: %v", code, caddr, err)
 			http.Error(w, msg, code)
 			return
 		}
-		log.Printf("Returning %d edit(s) to %s", len(infos), req.RemoteAddr)
+		log.Printf("Returning %d edit(s) to %s", len(infos), caddr)
 		if err := json.NewEncoder(w).Encode(infos); err != nil {
-			log.Printf("Failed sending edits to %s: %v", req.RemoteAddr, err)
+			log.Printf("Failed sending edits to %s: %v", caddr, err)
 		}
 	})
 
-	appengine.Main()
+	// Handle App Engine specifying the port to listen on.
+	if port := os.Getenv("PORT"); port != "" {
+		*addr = ":" + port
+	}
+	log.Print("Listening on ", *addr)
+	if err := http.ListenAndServe(*addr, nil); err != nil {
+		log.Fatal("Failed listening: ", err)
+	}
 }
 
 // httpError implements the error interface but also wraps an HTTP status code
@@ -122,13 +133,16 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 
 	// TODO: Check referrer?
 
-	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-		if !rm.update(ip, time.Now(), editsDelay) {
-			return nil, &httpError{
-				code: http.StatusTooManyRequests,
-				msg:  "Please wait a few seconds and try again",
-				err:  errors.New("too many requests"),
-			}
+	caddr := clientAddr(req)
+	ip, _, err := net.SplitHostPort(caddr)
+	if err != nil {
+		ip = caddr
+	}
+	if !rm.update(ip, time.Now(), editsDelay) {
+		return nil, &httpError{
+			code: http.StatusTooManyRequests,
+			msg:  "Please wait a few seconds and try again",
+			err:  errors.New("too many requests"),
 		}
 	}
 
@@ -138,7 +152,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	}
 
 	src := req.FormValue("source")
-	log.Printf("Handling %v-byte %q request from %s", req.ContentLength, src, req.RemoteAddr)
+	log.Printf("Handling %v-byte %q request from %s", req.ContentLength, src, caddr)
 
 	var edits []seed.Edit
 	switch src {
@@ -181,6 +195,19 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		return nil, httpErrorf(http.StatusBadRequest, "bad source %q", req.FormValue("source"))
 	}
 	return page.NewEditInfos(edits)
+}
+
+// clientAddr returns the client's address (which may be either "ip" or "ip:port").
+func clientAddr(req *http.Request) string {
+	// When running under App Engine, connections come from 127.0.0.1,
+	// so get the client IP from the X-Forwarded-For header.
+	if os.Getenv("GAE_ENV") != "" {
+		if hdr := req.Header.Get("X-Forwarded-For"); hdr != "" {
+			// X-Forwarded-For: <client>, <proxy1>, <proxy2>
+			return strings.SplitN(hdr, ", ", 2)[0]
+		}
+	}
+	return req.RemoteAddr
 }
 
 // checkEnum returns true if input appears in valid.

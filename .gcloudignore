@@ -16,4 +16,4 @@ LICENSE
 *.sh
 
 build/
-cmd/
+cmd/yambs/

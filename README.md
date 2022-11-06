@@ -12,22 +12,27 @@ Recording] page for each with various fields pre-filled.
 `yambs` can also read `key=value` lines from text files to seed the [Add
 Release] page, and it can use [Bandcamp] album pages to seed releases too.
 
+There's also a small [yambsd executable] that serves a web page for generating
+seeded edits.
+
 [MusicBrainz]: https://musicbrainz.org/
 [CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
 [TSV]: https://en.wikipedia.org/wiki/Tab-separated_values
 [Add Standalone Recording]: https://musicbrainz.org/recording/create
 [Add Release]: http://musicbrainz.org/release/add
 [Bandcamp]: https://bandcamp.com/
+[yambsd executable]: ./cmd/yambsd
 
 ## Usage
 
-To compile and install the `yambs` executable, install [Go] and run the
+To compile and install the [yambs executable], install [Go] and run the
 following command:
 
 ```sh
 go install ./cmd/yambs
 ```
 
+[yambs executable]: ./cmd/yambs
 [Go]: https://go.dev/
 
 ---
@@ -39,15 +44,13 @@ Seeds MusicBrainz edits.
   -action value
     	Action to perform with seed URLs (open, print, serve, write) (default open)
   -addr string
-    	Address to listen on for HTTP requests or "fastcgi" (default "localhost:8999")
+    	Address to listen on for -action=serve (default "localhost:8999")
   -fields string
     	Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")
   -format value
     	Format for text input (csv, keyval, tsv) (default tsv)
   -list-fields
     	Print available fields for -type and exit
-  -server
-    	Run a web server at -addr with a form for generating seed URLs
   -set value
     	Set a field for all entities (e.g. "artist=The Beatles")
   -type value

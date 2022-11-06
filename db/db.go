@@ -14,7 +14,6 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/derat/yambs/web"
 	"golang.org/x/time/rate"
 )
 
@@ -100,7 +99,7 @@ func (db *DB) doQuery(ctx context.Context, url string, dst interface{}) error {
 	}
 	req.Header.Set("User-Agent", fmt.Sprintf(userAgentFmt, db.version))
 
-	resp, err := web.GetClient(ctx).Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err
 	}
