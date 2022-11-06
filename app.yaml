@@ -1,10 +1,15 @@
-runtime: go115
+runtime: go116
 
 # app.yaml is supposed to be in the same directory as go.mod.
 main: server
 
 # Support using App Engine bundled services (e.g. memcache).
 app_engine_apis: true
+
+# Try to limit costs.
+automatic_scaling:
+  max_instances: 1
+  max_idle_instances: 1
 
 handlers:
   - url: /(edits)?

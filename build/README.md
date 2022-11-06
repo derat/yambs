@@ -1,5 +1,5 @@
 # build
 
-This directory contains a configuration file for running tests on [Cloud Build].
+This directory contains [Cloud Build] configuration files.
 
 [Cloud Build]: https://cloud.google.com/build
