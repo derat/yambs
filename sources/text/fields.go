@@ -231,9 +231,14 @@ func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) er
 			return err
 		}
 	}
-	// Forcing indexed fields to be used in order is maybe a bit restrictive, but
+	// Forcing indexed fields to be used in-order is maybe a bit restrictive, but
 	// it seems like an easy way to avoid blowing up memory if the user provides
 	// e.g. "artist999999999_name".
+	//
+	// TODO: It seems like the server should have limits on things like the number of artist
+	// credits, but if those limits exist (I couldn't find them in the code), they don't seem
+	// to be enforced in the frontend: when I hack the seeding code to pass an index like 500,
+	// the UI (slowly) adds 500 rows for artist credits. :-/
 	if idx > len(*items) {
 		return &fieldNameError{fmt.Sprintf("field %q has index %d but %d wasn't previously used", field, idx, idx-1)}
 	}
