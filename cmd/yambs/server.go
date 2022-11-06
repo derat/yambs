@@ -7,8 +7,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -23,6 +25,7 @@ const (
 	// TODO: Figure out reasonable values for these.
 	serverMaxReqBytes = 128 * 1024
 	serverReqTimeout  = 10 * time.Second
+	serverEditRate    = 3 * time.Second
 	serverMaxEdits    = 200
 	serverMaxFields   = 1000
 )
@@ -38,6 +41,7 @@ func runServer(ctx context.Context, addr string) error {
 	page := b.Bytes()
 
 	db := db.NewDB()
+	rm := newRateMap()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		var reqSize string
@@ -60,7 +64,7 @@ func runServer(ctx context.Context, addr string) error {
 		case "/edits":
 			ctx, cancel := context.WithTimeout(ctx, serverReqTimeout)
 			defer cancel()
-			infos, err := getEditsForRequest(ctx, w, req, db)
+			infos, err := getEditsForRequest(ctx, w, req, rm, db)
 			if err != nil {
 				var msg string
 				code := http.StatusInternalServerError
@@ -75,7 +79,7 @@ func runServer(ctx context.Context, addr string) error {
 				http.Error(w, msg, code)
 				return
 			}
-			log.Printf("Sending %d edit(s) to %s", len(infos), req.RemoteAddr)
+			log.Printf("Returning %d edit(s) to %s", len(infos), req.RemoteAddr)
 			if err := json.NewEncoder(w).Encode(infos); err != nil {
 				log.Printf("Failed sending edits to %s: %v", req.RemoteAddr, err)
 			}
@@ -108,13 +112,24 @@ func httpErrorf(code int, format string, args ...any) *httpError {
 }
 
 // getEditsForRequest generates editInfo objects in response to a /edits request to the server.
-func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request, db *db.DB) (
+func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
+	rm *rateMap, db *db.DB) (
 	[]*editInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
 	}
 
 	// TODO: Check referrer?
+
+	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
+		if !rm.update(ip, time.Now(), serverEditRate) {
+			return nil, &httpError{
+				code: http.StatusTooManyRequests,
+				msg:  "Please wait a few seconds and try again",
+				err:  errors.New("too many requests"),
+			}
+		}
+	}
 
 	req.Body = http.MaxBytesReader(w, req.Body, serverMaxReqBytes)
 	if err := req.ParseMultipartForm(serverMaxReqBytes); err != nil {
@@ -124,13 +139,13 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	var edits []seed.Edit
 	switch req.FormValue("source") {
 	case "bandcamp":
-		if u, err := bandcamp.CleanURL(req.FormValue("url")); err != nil {
+		if url, err := bandcamp.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
 				code: http.StatusBadRequest,
 				msg:  fmt.Sprint("Server only accepts bandcamp.com album URLs: ", err),
 				err:  fmt.Errorf("%q: %v", req.FormValue("bandcampUrl"), err),
 			}
-		} else if edits, err = bandcamp.Fetch(ctx, u); err != nil {
+		} else if edits, err = bandcamp.Fetch(ctx, url); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),
