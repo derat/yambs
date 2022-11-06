@@ -54,11 +54,10 @@ func main() {
 		flag.PrintDefaults()
 	}
 	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
-	addr := flag.String("addr", "localhost:8999", `Address to listen on for HTTP requests or "fastcgi"`)
+	addr := flag.String("addr", "localhost:8999", `Address to listen on for -action=serve`)
 	fields := flag.String("fields", "", `Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
-	server := flag.Bool("server", false, "Run a web server at -addr with a form for generating seed URLs")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
 	flag.Var(&editType, "type", fmt.Sprintf("Entity type of text input (%v)", editType.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
@@ -85,14 +84,6 @@ func main() {
 			sort.Slice(list, func(i, j int) bool { return list[i][0] < list[j][0] })
 			for _, f := range list {
 				fmt.Printf("%-"+strconv.Itoa(max)+"s  %s\n", f[0], f[1])
-			}
-			return 0
-		}
-
-		if *server {
-			if err := runServer(ctx, *addr); err != nil {
-				fmt.Fprintln(os.Stderr, "Failed serving:", err)
-				return 1
 			}
 			return 0
 		}

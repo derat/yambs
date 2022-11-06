@@ -11,6 +11,8 @@ require (
 )
 
 require (
+	github.com/golang/protobuf v1.3.1 // indirect
 	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
 	golang.org/x/time v0.1.0 // indirect
+	google.golang.org/appengine/v2 v2.0.2 // indirect
 )

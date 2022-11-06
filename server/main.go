@@ -1,6 +1,7 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
+// Package main implements an App Engine server for generating seeded edits.
 package main
 
 import (
@@ -12,7 +13,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"net/http/fcgi"
 	"strings"
 	"time"
 
@@ -21,85 +21,78 @@ import (
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
+	"github.com/derat/yambs/web"
+
+	"google.golang.org/appengine/v2"
+	"google.golang.org/appengine/v2/urlfetch"
 )
 
 const (
 	// TODO: Figure out reasonable values for these.
-	serverMaxReqBytes = 128 * 1024
-	serverReqTimeout  = 10 * time.Second
-	serverEditRate    = 3 * time.Second
-	serverMaxEdits    = 200
-	serverMaxFields   = 1000
+	maxReqBytes  = 128 * 1024
+	editsTimeout = 10 * time.Second
+	editsDelay   = 3 * time.Second
+	maxEdits     = 200
+	maxFields    = 1000
 )
 
-// runServer starts an HTTP server at addr to serve a page that lets users
-// generate seeded edits. This method never returns (unless serving fails).
-// If addr is "fastcgi", the server listens for FastCGI connections on stdin.
-func runServer(ctx context.Context, addr string) error {
+func main() {
 	// Just generate the page once.
 	var b bytes.Buffer
 	if err := page.Write(&b, nil); err != nil {
-		return err
+		panic(fmt.Sprint("Failed generating page: ", err))
 	}
-	page := b.Bytes()
+	form := b.Bytes()
+
+	// TODO: Consider switching to App Engine logging so messages are associated with requests.
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path != "/" {
+			http.NotFound(w, req)
+			return
+		}
+		if req.Method != http.MethodGet {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if _, err := w.Write(form); err != nil {
+			log.Print("Failed writing page: ", err)
+		}
+	})
 
 	db := db.NewDB()
 	rm := newRateMap()
 
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		var reqSize string
-		if req.ContentLength > 0 {
-			reqSize = fmt.Sprintf(" (%d)", req.ContentLength)
+	http.HandleFunc("/edits", func(w http.ResponseWriter, req *http.Request) {
+		ctx := appengine.NewContext(req)
+		ctx, cancel := context.WithTimeout(ctx, editsTimeout)
+		defer cancel()
+
+		// Attach the urlfetch client to the context so other packages can use it.
+		ctx = web.WithClient(ctx, urlfetch.Client(ctx))
+
+		infos, err := getEditsForRequest(ctx, w, req, rm, db)
+		if err != nil {
+			var msg string
+			code := http.StatusInternalServerError
+			if herr, ok := err.(*httpError); ok {
+				code = herr.code
+				msg = herr.msg
+			}
+			if msg == "" {
+				msg = http.StatusText(code)
+			}
+			log.Printf("Sending %d to %s: %v", code, req.RemoteAddr, err)
+			http.Error(w, msg, code)
+			return
 		}
-		log.Printf("%v %s%s from %s", req.Method, req.URL, reqSize, req.RemoteAddr)
-
-		switch req.URL.Path {
-		case "/":
-			if req.Method != http.MethodGet {
-				http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-				break
-			}
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			if _, err := w.Write(page); err != nil {
-				log.Print("Failed writing page: ", err)
-			}
-
-		case "/edits":
-			ctx, cancel := context.WithTimeout(ctx, serverReqTimeout)
-			defer cancel()
-			infos, err := getEditsForRequest(ctx, w, req, rm, db)
-			if err != nil {
-				var msg string
-				code := http.StatusInternalServerError
-				if herr, ok := err.(*httpError); ok {
-					code = herr.code
-					msg = herr.msg
-				}
-				if msg == "" {
-					msg = http.StatusText(code)
-				}
-				log.Printf("Sending %d to %s: %v", code, req.RemoteAddr, err)
-				http.Error(w, msg, code)
-				return
-			}
-			log.Printf("Returning %d edit(s) to %s", len(infos), req.RemoteAddr)
-			if err := json.NewEncoder(w).Encode(infos); err != nil {
-				log.Printf("Failed sending edits to %s: %v", req.RemoteAddr, err)
-			}
-
-		default:
-			http.NotFound(w, req)
+		log.Printf("Returning %d edit(s) to %s", len(infos), req.RemoteAddr)
+		if err := json.NewEncoder(w).Encode(infos); err != nil {
+			log.Printf("Failed sending edits to %s: %v", req.RemoteAddr, err)
 		}
 	})
 
-	if addr == "fastcgi" {
-		log.Print("Listening for FastCGI connections")
-		return fcgi.Serve(nil, nil)
-	} else {
-		log.Println("Listening on", addr)
-		srv := http.Server{Addr: addr}
-		return srv.ListenAndServe()
-	}
+	appengine.Main()
 }
 
 // httpError implements the error interface but also wraps an HTTP status code
@@ -130,7 +123,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	// TODO: Check referrer?
 
 	if ip, _, err := net.SplitHostPort(req.RemoteAddr); err == nil {
-		if !rm.update(ip, time.Now(), serverEditRate) {
+		if !rm.update(ip, time.Now(), editsDelay) {
 			return nil, &httpError{
 				code: http.StatusTooManyRequests,
 				msg:  "Please wait a few seconds and try again",
@@ -139,13 +132,16 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		}
 	}
 
-	req.Body = http.MaxBytesReader(w, req.Body, serverMaxReqBytes)
-	if err := req.ParseMultipartForm(serverMaxReqBytes); err != nil {
+	req.Body = http.MaxBytesReader(w, req.Body, maxReqBytes)
+	if err := req.ParseMultipartForm(maxReqBytes); err != nil {
 		return nil, &httpError{http.StatusBadRequest, "", err}
 	}
 
+	src := req.FormValue("source")
+	log.Printf("Handling %v-byte %q request from %s", req.ContentLength, src, req.RemoteAddr)
+
 	var edits []seed.Edit
-	switch req.FormValue("source") {
+	switch src {
 	case "bandcamp":
 		if url, err := bandcamp.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
@@ -173,7 +169,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		var err error
 		if edits, err = text.Read(ctx, strings.NewReader(req.FormValue("input")),
 			format, typ, req.Form["field"], req.Form["set"], db,
-			text.MaxEdits(serverMaxEdits), text.MaxFields(serverMaxFields)); err != nil {
+			text.MaxEdits(maxEdits), text.MaxFields(maxFields)); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),
