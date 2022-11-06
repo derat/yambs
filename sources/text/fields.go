@@ -213,13 +213,13 @@ func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) er
 		if re, err := regexp.Compile(prefix); err != nil {
 			return err
 		} else if match := re.FindString(field); match == "" {
-			return &fieldNameError{fmt.Sprintf("field not matched by %q", prefix)}
+			return &fieldNameError{fmt.Sprintf("field %q not matched by %q", field, prefix)}
 		} else {
 			field = field[len(match):]
 		}
 	} else {
 		if !strings.HasPrefix(field, prefix) {
-			return &fieldNameError{fmt.Sprintf("field doesn't start with %q", prefix)}
+			return &fieldNameError{fmt.Sprintf("field %q doesn't start with %q", field, prefix)}
 		}
 		field = field[len(prefix):]
 	}
@@ -235,7 +235,7 @@ func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) er
 	// it seems like an easy way to avoid blowing up memory if the user provides
 	// e.g. "artist999999999_name".
 	if idx > len(*items) {
-		return &fieldNameError{fmt.Sprintf("field has index %d but %d wasn't previously used", idx, idx-1)}
+		return &fieldNameError{fmt.Sprintf("field %q has index %d but %d wasn't previously used", field, idx, idx-1)}
 	}
 	if idx == len(*items) {
 		var item T
