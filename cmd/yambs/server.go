@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/page"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
@@ -37,7 +38,7 @@ const (
 func runServer(ctx context.Context, addr string) error {
 	// Just generate the page once.
 	var b bytes.Buffer
-	if err := writePage(&b, nil); err != nil {
+	if err := page.Write(&b, nil); err != nil {
 		return err
 	}
 	page := b.Bytes()
@@ -118,10 +119,10 @@ func httpErrorf(code int, format string, args ...any) *httpError {
 	return &httpError{code: code, err: fmt.Errorf(format, args...)}
 }
 
-// getEditsForRequest generates editInfo objects in response to a /edits request to the server.
+// getEditsForRequest generates page.EditInfo objects in response to a /edits request to the server.
 func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
 	rm *rateMap, db *db.DB) (
-	[]*editInfo, error) {
+	[]*page.EditInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
 	}
@@ -183,7 +184,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	default:
 		return nil, httpErrorf(http.StatusBadRequest, "bad source %q", req.FormValue("source"))
 	}
-	return newEditInfos(edits)
+	return page.NewEditInfos(edits)
 }
 
 // checkEnum returns true if input appears in valid.

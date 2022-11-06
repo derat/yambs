@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/page"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
@@ -141,7 +142,7 @@ func main() {
 
 		switch action.val {
 		case actionOpen:
-			if err := openPage(edits); err != nil {
+			if err := page.OpenFile(edits); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed opening page:", err)
 				return 1
 			}
@@ -161,12 +162,12 @@ func main() {
 				fmt.Println(u.String())
 			}
 		case actionServe:
-			if err := servePage(ctx, *addr, edits); err != nil {
+			if err := page.OpenHTTP(ctx, *addr, edits); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed serving page:", err)
 				return 1
 			}
 		case actionWrite:
-			if err := writePage(os.Stdout, edits); err != nil {
+			if err := page.Write(os.Stdout, edits); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed writing page:", err)
 				return 1
 			}

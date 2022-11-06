@@ -1,7 +1,8 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-package main
+// Package page creates HTML pages listing edits.
+package page
 
 import (
 	"bytes"
@@ -23,29 +24,29 @@ import (
 	"github.com/pkg/browser"
 )
 
-// openPage writes an HTML page containing edits to a temporary file
+// OpenFile writes an HTML page containing edits to a temporary file
 // and opens it in a browser.
-func openPage(edits []seed.Edit) error {
+func OpenFile(edits []seed.Edit) error {
 	tf, err := ioutil.TempFile("",
 		fmt.Sprintf("yambs-%s-*.html", time.Now().Format("20060102-150405")))
 	if err != nil {
 		return err
 	}
 	log.Print("Writing page to ", tf.Name())
-	if err := writePage(tf, edits); err != nil {
+	if err := Write(tf, edits); err != nil {
 		return err
 	}
 	return browser.OpenFile(tf.Name())
 }
 
-// servePage starts a local HTTP server at addr and opens an HTML page containing
+// OpenHTTP starts a local HTTP server at addr and opens an HTML page containing
 // edits in a browser. This is fairly complicated but it can be convenient if the
 // browser doesn't have direct filesystem access (e.g. the server is running in a
 // Chrome OS VM), and I think that a fixed host:port may be needed in order to
 // permanently tell Chrome to avoid blocking popups.
-func servePage(ctx context.Context, addr string, edits []seed.Edit) error {
+func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 	var b bytes.Buffer
-	if err := writePage(&b, edits); err != nil {
+	if err := Write(&b, edits); err != nil {
 		return err
 	}
 
@@ -95,19 +96,19 @@ func servePage(ctx context.Context, addr string, edits []seed.Edit) error {
 	}
 }
 
-// writePage writes an HTML page containing the supplied edits to w.
-func writePage(w io.Writer, edits []seed.Edit) error {
+// Write writes an HTML page containing the supplied edits to w.
+func Write(w io.Writer, edits []seed.Edit) error {
 	tmpl, err := template.New("").Parse(pageTmpl)
 	if err != nil {
 		return err
 	}
-	editInfos, err := newEditInfos(edits)
+	editInfos, err := NewEditInfos(edits)
 	if err != nil {
 		return err
 	}
 	return tmpl.Execute(w, struct {
 		TypeInfo []typeInfo
-		Edits    []*editInfo
+		Edits    []*EditInfo
 	}{
 		TypeInfo: []typeInfo{
 			newTypeInfo(seed.RecordingType),
@@ -120,10 +121,10 @@ func writePage(w io.Writer, edits []seed.Edit) error {
 //go:embed page.tmpl
 var pageTmpl string
 
-// editInfo is a version of seed.Edit used in HTML pages.
+// EditInfo is a version of seed.Edit used in HTML pages.
 // It's used both for passing edits to pageTmpl in CLI mode
 // and for returning edits via XHRs when running in server mode.
-type editInfo struct {
+type EditInfo struct {
 	Desc   string      `json:"desc"`
 	URL    string      `json:"url"`    // includes params iff GET
 	Params []paramInfo `json:"params"` // includes params iff POST
@@ -135,9 +136,9 @@ type paramInfo struct {
 	Value string `json:"value"`
 }
 
-// newEditInfo converts a seed.Edit into an editInfo struct.
-func newEditInfo(edit seed.Edit) (*editInfo, error) {
-	info := editInfo{Desc: edit.Description()}
+// NewEditInfo converts a seed.Edit into an EditInfo struct.
+func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
+	info := EditInfo{Desc: edit.Description()}
 
 	// Use a different approach depending on whether the edit requires a POST or not.
 	if edit.CanGet() {
@@ -163,12 +164,12 @@ func newEditInfo(edit seed.Edit) (*editInfo, error) {
 	return &info, nil
 }
 
-// newEditInfos calls newEditInfo for each of the supplied edits.
-func newEditInfos(edits []seed.Edit) ([]*editInfo, error) {
-	infos := make([]*editInfo, len(edits))
+// NewEditInfos calls NewEditInfo for each of the supplied edits.
+func NewEditInfos(edits []seed.Edit) ([]*EditInfo, error) {
+	infos := make([]*EditInfo, len(edits))
 	for i, edit := range edits {
 		var err error
-		if infos[i], err = newEditInfo(edit); err != nil {
+		if infos[i], err = NewEditInfo(edit); err != nil {
 			return nil, err
 		}
 	}
