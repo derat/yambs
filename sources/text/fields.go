@@ -205,9 +205,10 @@ var indexRegexp = regexp.MustCompile(`^(\d+)`)
 
 // getFieldIndex extracts an integer index from field[prefix:] and calls fn
 // with the corresponding item from items, reallocating if necessary.
+// items should be of type "*[]T" and fn should be "func(*T) error".
 // If prefix starts with "^", it is interpreted as a regular expression.
 // If the integer is missing, index 0 is used.
-func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) error {
+func indexedField(items interface{}, field, prefix string, fn interface{}) error {
 	// Strip off the part before the index.
 	if strings.HasPrefix(prefix, "^") {
 		if re, err := regexp.Compile(prefix); err != nil {
@@ -231,6 +232,14 @@ func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) er
 			return err
 		}
 	}
+
+	// This horrendous reflection code exists because the App Engine team is seemingly
+	// incapable of supporting a Go runtime modern enough to support generics.
+	slice := reflect.Indirect(reflect.ValueOf(items))
+	if slice.Kind() != reflect.Slice {
+		return fmt.Errorf("got %s instead of pointer to slice", slice.Type())
+	}
+
 	// Forcing indexed fields to be used in-order is maybe a bit restrictive, but
 	// it seems like an easy way to avoid blowing up memory if the user provides
 	// e.g. "artist999999999_name".
@@ -239,12 +248,24 @@ func indexedField[T any](items *[]T, field, prefix string, fn func(*T) error) er
 	// credits, but if those limits exist (I couldn't find them in the code), they don't seem
 	// to be enforced in the frontend: when I hack the seeding code to pass an index like 500,
 	// the UI (slowly) adds 500 rows for artist credits. :-/
-	if idx > len(*items) {
+	if idx > slice.Len() {
 		return &fieldNameError{fmt.Sprintf("field %q has index %d but %d wasn't previously used", field, idx, idx-1)}
 	}
-	if idx == len(*items) {
-		var item T
-		*items = append(*items, item)
+	if idx == slice.Len() {
+		item := reflect.Zero(slice.Type().Elem())
+		slice.Set(reflect.Append(slice, item))
 	}
-	return fn(&(*items)[idx])
+
+	args := []reflect.Value{slice.Index(idx).Addr()}
+	if fv := reflect.ValueOf(fn); fv.Kind() != reflect.Func {
+		return fmt.Errorf("got %s instead of function", fv.Type())
+	} else if out := fv.Call(args); len(out) != 1 {
+		return fmt.Errorf("function returned %d values instead of 1", len(out))
+	} else if out[0].IsNil() {
+		return nil
+	} else if err, ok := out[0].Interface().(error); !ok {
+		return errors.New("function returned non-error type")
+	} else {
+		return err
+	}
 }

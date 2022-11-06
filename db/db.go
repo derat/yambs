@@ -85,7 +85,7 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 }
 
 // doQuery sends a GET request for url and JSON-unmarshals the response into dst.
-func (db *DB) doQuery(ctx context.Context, url string, dst any) error {
+func (db *DB) doQuery(ctx context.Context, url string, dst interface{}) error {
 	// Wait until we can perform a query.
 	// TODO: We could be smarter here and bail out early if someone else
 	// successfully fetches the same thing while we're waiting.

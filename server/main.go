@@ -108,7 +108,7 @@ func (e *httpError) Error() string { return e.err.Error() }
 // httpErrorf returns an *httpError with the supplied status code and an err
 // field constructed from format and args. The user-visible message will just
 // be generated from code.
-func httpErrorf(code int, format string, args ...any) *httpError {
+func httpErrorf(code int, format string, args ...interface{}) *httpError {
 	return &httpError{code: code, err: fmt.Errorf(format, args...)}
 }
 
@@ -184,7 +184,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 }
 
 // checkEnum returns true if input appears in valid.
-func checkEnum[T comparable](input T, valid ...T) bool {
+func checkEnum(input interface{}, valid ...interface{}) bool {
 	for _, v := range valid {
 		if input == v {
 			return true

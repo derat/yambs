@@ -1,3 +1,10 @@
+# The "embed" package was introduced in Go 1.16.
+# TODO: dev_appserver.py appears to only support the go115 runtime.
+# Temporarily changing this to go115 for local development seems to work if a
+# newer version of Go is installed, though. I think that the way forward is to
+# stop using the bundled services and just run the server directly instead of
+# using dev_appserver.py, but I need to check that direct HTTP calls work in
+# place of urlfetch.
 runtime: go116
 
 # app.yaml is supposed to be in the same directory as go.mod.

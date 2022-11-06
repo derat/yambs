@@ -197,9 +197,9 @@ var (
 // albumData corresponds to the data-tralbum JSON object embedded in Bandcamp album pages.
 // I admire Bandcamp's impartiality in the camelCase vs. snake_case conflict.
 type albumData struct {
-	Artist   string `json:"artist"`
-	Packages []any  `json:"packages"`
-	HasAudio bool   `json:"hasAudio"`
+	Artist   string        `json:"artist"`
+	Packages []interface{} `json:"packages"`
+	HasAudio bool          `json:"hasAudio"`
 	Current  struct {
 		Title            string   `json:"title"`
 		Type             string   `json:"type"`
