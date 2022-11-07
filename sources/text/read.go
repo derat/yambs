@@ -93,7 +93,7 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 			val := cols[j]
 			err := setField(edit, field, val)
 			if _, ok := err.(*fieldNameError); ok {
-				return nil, err
+				return nil, fmt.Errorf("%q: %v", field, err)
 			} else if err != nil {
 				return nil, fmt.Errorf("bad %v %q: %v", field, val, err)
 			}

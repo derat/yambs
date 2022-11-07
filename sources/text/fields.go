@@ -80,13 +80,13 @@ func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 	for _, kv := range mv.MapKeys() {
 		if sv := kv.String(); patternMatches(sv, field) {
 			if fn != nil {
-				return nil, &fieldNameError{fmt.Sprintf("multiple fields matched by %q", field)}
+				return nil, &fieldNameError{"multiple fields matched"}
 			}
 			fn = mv.MapIndex(kv).FieldByName("Fn").Interface()
 		}
 	}
 	if fn == nil {
-		return nil, &fieldNameError{fmt.Sprintf("unknown field %q", field)}
+		return nil, &fieldNameError{"unknown field"}
 	}
 	return fn, nil
 }
@@ -214,13 +214,13 @@ func indexedField(items interface{}, field, prefix string, fn interface{}) error
 		if re, err := regexp.Compile(prefix); err != nil {
 			return err
 		} else if match := re.FindString(field); match == "" {
-			return &fieldNameError{fmt.Sprintf("field %q not matched by %q", field, prefix)}
+			return &fieldNameError{fmt.Sprintf("%q not matched by %q", field, prefix)}
 		} else {
 			field = field[len(match):]
 		}
 	} else {
 		if !strings.HasPrefix(field, prefix) {
-			return &fieldNameError{fmt.Sprintf("field %q doesn't start with %q", field, prefix)}
+			return &fieldNameError{fmt.Sprintf("%q doesn't start with %q", field, prefix)}
 		}
 		field = field[len(prefix):]
 	}
@@ -249,7 +249,7 @@ func indexedField(items interface{}, field, prefix string, fn interface{}) error
 	// to be enforced in the frontend: when I hack the seeding code to pass an index like 500,
 	// the UI (slowly) adds 500 rows for artist credits. :-/
 	if idx > slice.Len() {
-		return &fieldNameError{fmt.Sprintf("field %q has index %d but %d wasn't previously used", field, idx, idx-1)}
+		return &fieldNameError{fmt.Sprintf("field has index %d but %d wasn't previously used", idx, idx-1)}
 	}
 	if idx == slice.Len() {
 		item := reflect.Zero(slice.Type().Elem())
