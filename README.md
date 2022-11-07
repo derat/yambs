@@ -5,15 +5,14 @@
 `yambs` is a command-line program for seeding edits to the [MusicBrainz] music
 database.
 
-It's useful if you're trying to add a bunch of standalone recordings: given a
-[CSV] or [TSV] file describing recordings, `yambs` can open the [Add Standalone
-Recording] page for each with various fields pre-filled.
+It can simplify adding multiple standalone recordings: given a [CSV] or [TSV]
+file describing recordings, `yambs` can open the [Add Standalone Recording] page
+for each with various fields pre-filled.
 
 `yambs` can also read `key=value` lines from text files to seed the [Add
 Release] page, and it can use [Bandcamp] album pages to seed releases too.
 
-There's also a small [yambsd executable] that serves a web page for generating
-seeded edits.
+There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 
 [MusicBrainz]: https://musicbrainz.org/
 [CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
@@ -21,7 +20,6 @@ seeded edits.
 [Add Standalone Recording]: https://musicbrainz.org/recording/create
 [Add Release]: http://musicbrainz.org/release/add
 [Bandcamp]: https://bandcamp.com/
-[yambsd executable]: ./cmd/yambsd
 
 ## Usage
 
@@ -61,6 +59,20 @@ Seeds MusicBrainz edits.
     	Print the version and exit
 ```
 
+`yambs` reads the supplied file or URL (or stdin if no positional argument is
+supplied) and performs the action specified by the `-action` flag:
+
+*   `open`: Open edits in a browser using a temporary file.
+*   `print`: Write edit links to stdout (only possible for recordings).
+*   `serve`: Open edits in a browser using a short-lived webserver launched at
+    `-addr` (useful if you're running `yambs` in a container).
+*   `write`: Write a webpage containing the edits to stdout.
+
+If you supply a URL, `yambs` will fetch and parse it.
+
+If you supply a filename, you should also pass the `-type`, `-format`,
+`-fields`, and `-set` flags to tell `yambs` how to interpret the file.
+
 ---
 
 To add multiple non-album recordings for a single artist, you can run a command
@@ -69,6 +81,7 @@ like the following:
 ```sh
 yambs \
   -type recording \
+  -format tsv \
   -fields name,length,edit_note \
   -set artist=7e84f845-ac16-41fe-9ff8-df12eb32af55 \
   -set url0_url=https://www.example.org/ \
@@ -102,14 +115,19 @@ To edit existing recordings, specify their [MBID]s via the `mbid` field:
 ```sh
 yambs \
   -type recording \
+  -format csv \
   -fields mbid,name \
-  <recordings.tsv
+  <recordings.csv
 ```
 
-```tsv
-c55e74ff-bd7d-40ff-a591-c6993c59bda8	Sgt. Pepper’s Lonely Hearts Club Band
+`recordings.csv`:
+
+```csv
+c55e74ff-bd7d-40ff-a591-c6993c59bda8,Sgt. Pepper’s Lonely Hearts Club Band
 ...
 ```
+
+Note that this example uses the `csv` format rather than `tsv`.
 
 ---
 
@@ -118,6 +136,7 @@ More-complicated artist credits can also be assigned:
 ```
 yambs \
   -type recording \
+  -format tsv
   -fields ... \
   -set artist0_mbid=1a054dd8-c5fa-40b6-9397-61c26b0185d4 \
   -set artist0_credited=virt \
@@ -139,7 +158,7 @@ yambs \
   <release.txt
 ```
 
-with a `release.txt` file like the following:
+`release.txt`:
 
 ```txt
 title=Some Album
@@ -182,6 +201,13 @@ in the [musicbrainz-server](https://github.com/metabrainz/musicbrainz-server/)
 repository.
 
 [MBID]: https://musicbrainz.org/doc/MusicBrainz_Identifier
+
+---
+
+There's also a [yambsd executable] that exposes the same functionality through a
+webpage (with some limits to avoid abuse).
+
+[yambsd executable]: ./cmd/yambsd
 
 ## Why?
 
