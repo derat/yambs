@@ -17,7 +17,8 @@ type ArtistCredit struct {
 	// ID contains the artist's database ID (i.e. the 'id' column from the 'artist' table).
 	// This is only needed for the /recording/create form, I think.
 	ID int32
-	// Name contains the artist's name. This is unneeded if MBID or ID is set.
+	// Name contains the artist's name for pre-filling the search field.
+	// This is unneeded if MBID or ID is set.
 	Name string
 	// NameAsCredited contains the name under which the artist was credited.
 	// This is only needed if it's different than MBID or Name.

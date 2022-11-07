@@ -236,7 +236,7 @@ func (tr *Track) setParams(vals url.Values, prefix string) {
 		vals.Set(prefix+"length", fmt.Sprintf("%d", tr.Length.Milliseconds()))
 	}
 	for i, ac := range tr.Artists {
-		ac.setParams(vals, prefix+fmt.Sprintf("artist_credit.%d.", i))
+		ac.setParams(vals, prefix+fmt.Sprintf("artist_credit.names.%d.", i))
 	}
 }
 

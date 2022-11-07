@@ -57,6 +57,11 @@ type Recording struct {
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
+
+	// TODO: Figure out if it's possible to seed non-URL relationships.
+	// The UI is complicated, and it seems like releases have a separate form
+	// for editing relationships so there's unfortunately no documentation at
+	// https://wiki.musicbrainz.org/Development/Release_Editor_Seeding.
 }
 
 func (rec *Recording) Type() Type { return RecordingType }
