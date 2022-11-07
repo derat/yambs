@@ -24,6 +24,7 @@ import (
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
+	"github.com/derat/yambs/web"
 )
 
 const (
@@ -54,6 +55,7 @@ func main() {
 	form := b.Bytes()
 
 	db := db.NewDB(db.Version(version))
+	web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 	rm := newRateMap()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {

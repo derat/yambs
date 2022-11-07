@@ -28,11 +28,16 @@ func FetchPage(ctx context.Context, url string) (*Page, error) {
 	if err != nil {
 		return nil, err
 	}
+	if userAgent != "" {
+		req.Header.Set("User-Agent", userAgent)
+	}
+
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer res.Body.Close()
+
 	if res.StatusCode != 200 {
 		return nil, fmt.Errorf("status %v: %v", res.StatusCode, res.Status)
 	}
@@ -119,3 +124,9 @@ func getText(n *html.Node, addSpaces bool) string {
 	}
 	return text
 }
+
+// SetUserAgent sets a value for the "User-Agent" header to be sent
+// in all future HTTP requests.
+func SetUserAgent(ua string) { userAgent = ua }
+
+var userAgent string

@@ -23,6 +23,7 @@ import (
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/text"
+	"github.com/derat/yambs/web"
 )
 
 var version = "[non-release]"
@@ -120,6 +121,7 @@ func main() {
 		}
 
 		db := db.NewDB(db.Version(version))
+		web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 		var edits []seed.Edit
 		if srcURL != "" {
 			var err error
