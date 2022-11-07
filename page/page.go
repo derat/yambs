@@ -148,7 +148,8 @@ func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
 	info := EditInfo{Desc: edit.Description()}
 
 	// Use a different approach depending on whether the edit requires a POST or not.
-	if edit.CanGet() {
+	switch edit.Method() {
+	case "GET":
 		// If we can use GET, construct a URL including any parameters since <form method="GET">
 		// adds an annoying question mark even if there aren't any parameters.
 		u, err := url.Parse(edit.URL())
@@ -157,7 +158,7 @@ func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
 		}
 		u.RawQuery = edit.Params().Encode()
 		info.URL = u.String()
-	} else {
+	case "POST":
 		// If we need to use POST, keep the parameters separate since <form> annoyingly
 		// clears the URL's query string.
 		info.URL = edit.URL()
@@ -166,6 +167,8 @@ func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
 				info.Params = append(info.Params, paramInfo{Name: name, Value: val})
 			}
 		}
+	default:
+		return nil, fmt.Errorf("unsupported HTTP method %q", edit.Method())
 	}
 
 	return &info, nil

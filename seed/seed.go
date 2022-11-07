@@ -38,9 +38,9 @@ type Edit interface {
 	// Params returns form values that should be sent to seed the edit form.
 	// Note that some parameters contain multiple values (i.e. don't call Get()).
 	Params() url.Values
-	// CanGet() returns true if the request for URL can use the GET method rather than POST.
+	// Method() returns the HTTP method that should be used for the request for URL.
 	// GET is preferable since it avoids an anti-CSRF interstitial page.
-	CanGet() bool
+	Method() string
 	// Finish fixes up fields in the edit.
 	// This should be called once after filling the edit's fields.
 	// This only exists because recordings are dumb and require

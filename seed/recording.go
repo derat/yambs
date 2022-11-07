@@ -6,6 +6,7 @@ package seed
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strings"
 	"time"
@@ -41,12 +42,21 @@ type Recording struct {
 	// ISRCs contains 12-byte alphanumeric codes that identify audio or music video recordings.
 	// See https://musicbrainz.org/doc/ISRC.
 	ISRCs []string
+	// URLs contains relationships between this recording and one or more URLs.
+	// See https://musicbrainz.org/doc/Style/Relationships/URLs.
+	//
+	// As of 20221107, https://musicbrainz.org/recording/create lists the following types:
+	//
+	//  LinkType_License_Recording_URL ("license")
+	//  LinkType_PurchaseForDownload_Recording_URL ("purchase for download")
+	//  LinkType_DownloadForFree_Recording_URL ("download for free")
+	//  LinkType_StreamingMusic_Recording_URL ("stream for free")
+	//  LinkType_StreamingPaid_Recording_URL ("streaming page")
+	//  LinkType_Crowdfunding_Recording_URL ("crowdfunding page")
+	URLs []URL
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
-	// TODO: Figure out if there's any way to seed relationships or external links
-	// for this form. Per https://community.metabrainz.org/t/seeding-recordings/188972/12?u=derat,
-	// I couldn't find one. Is it possible to do this through a separate edit?
 }
 
 func (rec *Recording) Type() Type { return RecordingType }
@@ -98,13 +108,22 @@ func (rec *Recording) Params() url.Values {
 	for i, isrc := range rec.ISRCs {
 		vals.Set(fmt.Sprintf("edit-recording.isrcs.%d", i), isrc)
 	}
+	for i, u := range rec.URLs {
+		u.setParams(vals, fmt.Sprintf("edit-recording.url.%d.", i), rec.Method())
+	}
 	if rec.EditNote != "" {
 		vals.Set("edit-recording.edit_note", rec.EditNote)
 	}
 	return vals
 }
 
-func (rec *Recording) CanGet() bool { return true }
+// I'm not sure how bogus it is to use GET instead of POST here,
+// but there's no documentation about seeding recordings. ¯\_(ツ)_/¯
+// When I tried using POST, the recording length wasn't accepted
+// (maybe it needs to be MM:SS instead of milliseconds?), and it's
+// generally more annoying to use POST since there's an interstitial
+// page to prevent XSRFs that the user needs to click through.
+func (rec *Recording) Method() string { return http.MethodGet }
 
 func (rec *Recording) Finish(ctx context.Context, db *db.DB) error {
 	for i := range rec.Artists {

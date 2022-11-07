@@ -6,6 +6,7 @@ package seed
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -123,13 +124,13 @@ func (rel *Release) Params() url.Values {
 		m.setParams(vals, fmt.Sprintf("mediums.%d.", i))
 	}
 	for i, u := range rel.URLs {
-		u.setParams(vals, fmt.Sprintf("urls.%d.", i))
+		u.setParams(vals, fmt.Sprintf("urls.%d.", i), rel.Method())
 	}
 	set("edit_note", rel.EditNote)
 	return vals
 }
 
-func (rel *Release) CanGet() bool { return false }
+func (rel *Release) Method() string { return http.MethodPost }
 
 // ReleaseEvent contains an event corresponding to a release. Unknown fields can be omitted.
 type ReleaseEvent struct {

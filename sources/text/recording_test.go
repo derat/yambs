@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -73,6 +74,9 @@ func TestRead_Recording_All(t *testing.T) {
 		isrc2      = "USBBB0400002"
 		recMBID    = "5e1a028f-461d-4ec8-aa10-97c4cb7262dc"
 		recName    = "Recording Name"
+		url        = "https://www.example.org/foo"
+		url2       = "https://www.example.org/bar"
+		linkType   = seed.LinkType_DownloadForFree_Recording_URL
 	)
 
 	db := db.NewDB(db.DisallowQueries)
@@ -91,6 +95,9 @@ func TestRead_Recording_All(t *testing.T) {
 		recMBID,
 		recName,
 		"true",
+		url,
+		strconv.Itoa(int(linkType)),
+		url2,
 	}}); err != nil {
 		t.Fatal("Failed writing input:", err)
 	}
@@ -106,6 +113,9 @@ func TestRead_Recording_All(t *testing.T) {
 		"mbid",
 		"name",
 		"video",
+		"url0_url",
+		"url0_type",
+		"url1_url",
 	}, nil, db)
 	if err != nil {
 		t.Fatal("Read failed:", err)
@@ -124,6 +134,7 @@ func TestRead_Recording_All(t *testing.T) {
 			MBID:           recMBID,
 			Name:           recName,
 			Video:          true,
+			URLs:           []seed.URL{{URL: url, LinkType: linkType}, {URL: url2}},
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"net/url"
 	"os"
 	"regexp"
@@ -139,9 +140,9 @@ func main() {
 			}
 		case actionPrint:
 			for _, ed := range edits {
-				if !ed.CanGet() {
-					fmt.Fprintf(os.Stderr, "Can't print bare URL; %s edit requires POST request\n",
-						ed.Type())
+				if ed.Method() != http.MethodGet {
+					fmt.Fprintf(os.Stderr, "Can't print bare URL; %s edit requires %s request\n",
+						ed.Type(), ed.Method())
 					return 1
 				}
 				u, err := url.Parse(ed.URL())

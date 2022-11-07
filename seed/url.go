@@ -4,6 +4,7 @@
 package seed
 
 import (
+	"net/http"
 	"net/url"
 	"strconv"
 )
@@ -21,11 +22,31 @@ type URL struct {
 
 // setParams sets query parameters in vals corresponding to non-empty fields in url.
 // The supplied prefix (e.g. "urls.0.") is prepended before each parameter name.
-func (url *URL) setParams(vals url.Values, prefix string) {
+// method contains the HTTP method that will be used (e.g. "GET" or "POST").
+func (url *URL) setParams(vals url.Values, prefix, method string) {
+	// Weirdly, recordings (or maybe all forms seeded with GET) use different
+	// field names for URLs from the ones that are documented at
+	// https://wiki.musicbrainz.org/Development/Release_Editor_Seeding
+	// (which uses POST). The place where I finally found the alternate names is
+	// https://github.com/metabrainz/musicbrainz-server/blob/master/root/static/scripts/edit/externalLinks.js:
+	//
+	//  const seededLinkRegex = new RegExp(
+	//    '(?:\\?|&)edit-' + sourceType +
+	//      '\\.url\\.([0-9]+)\\.(text|link_type_id)=([^&]+)',
+	//    'g',
+	//  );
+	ifGet := func(get, post string) string {
+		if method == http.MethodGet {
+			return get
+		}
+		return post
+	}
+
 	if url.URL != "" {
-		vals.Set(prefix+"url", url.URL)
+		vals.Set(prefix+ifGet("text", "url"), url.URL)
 	}
 	if url.LinkType != 0 {
-		vals.Set(prefix+"link_type", strconv.Itoa(int(url.LinkType)))
+		vals.Set(prefix+ifGet("link_type_id", "link_type"),
+			strconv.Itoa(int(url.LinkType)))
 	}
 }

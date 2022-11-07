@@ -69,6 +69,18 @@ var recordingFields = map[string]fieldInfo{
 		"Recording's name",
 		func(r *seed.Recording, k, v string) error { return setString(&r.Name, v) },
 	},
+	"url*_url": {
+		"URL related to recording",
+		func(r *seed.Recording, k, v string) error {
+			return recordingURL(r, k, func(u *seed.URL) error { return setString(&u.URL, v) })
+		},
+	},
+	"url*_type": {
+		"Integer link type describing how URL is related to recording",
+		func(r *seed.Recording, k, v string) error {
+			return recordingURL(r, k, func(u *seed.URL) error { return setInt((*int)(&u.LinkType), v) })
+		},
+	},
 	"video": {
 		`Whether this is a video recording ("1" or "true" if true)`,
 		func(r *seed.Recording, k, v string) error { return setBool(&r.Video, v) },
@@ -77,4 +89,7 @@ var recordingFields = map[string]fieldInfo{
 
 func recordingArtist(r *seed.Recording, k string, fn func(*seed.ArtistCredit) error) error {
 	return indexedField(&r.Artists, k, "artist", fn)
+}
+func recordingURL(r *seed.Recording, k string, fn func(*seed.URL) error) error {
+	return indexedField(&r.URLs, k, "url", fn)
 }

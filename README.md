@@ -71,6 +71,8 @@ yambs \
   -type recording \
   -fields name,length,edit_note \
   -set artist=7e84f845-ac16-41fe-9ff8-df12eb32af55 \
+  -set url0_url=https://www.example.org/ \
+  -set url0_type=255 \
   <recordings.tsv
 ```
 
@@ -85,6 +87,13 @@ Song #2	53234.35	info from https://example.org/song2.html
 The recordings' names, lengths, and edit notes will be read from the TSV file,
 and the `-set artist=...` flag sets all recordings' `artist` field to the
 [specified artist](https://musicbrainz.org/artist/7e84f845-ac16-41fe-9ff8-df12eb32af55).
+
+Likewise, the `-set url0_...` flags add a [URL relationship] to each recording.
+[seed/enums.go] enumerates the different link types that can be specified
+between entities; `255` corresponds to `LinkType_DownloadForFree_Recording_URL`.
+
+[URL relationship]: https://musicbrainz.org/doc/Style/Relationships/URLs
+[seed/enums.go]: ./seed/enums.go
 
 ---
 
@@ -153,6 +162,9 @@ url0_type=75
 edit_note=https://www.example.org
 ```
 
+[seed/enums.go] shows that the `url0_type=75` line corresponds to
+`LinkType_DownloadForFree_Release_URL`.
+
 ---
 
 Pass the `-list-fields` flag to list all available fields for a given entity
@@ -164,7 +176,7 @@ yambs -type release   -list-fields
 ```
 
 Acceptable values for various fields are listed in
-[seed/enums.go](./seed/enums.go), which is automatically generated from
+[seed/enums.go], which is automatically generated from
 [t/sql/initial.sql](https://github.com/metabrainz/musicbrainz-server/blob/master/t/sql/initial.sql)
 in the [musicbrainz-server](https://github.com/metabrainz/musicbrainz-server/)
 repository.

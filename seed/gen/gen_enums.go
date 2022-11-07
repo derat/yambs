@@ -61,14 +61,30 @@ func main() {
 			`which don't appear to be referenced anywhere else in the server repo.`,
 		},
 		Values: []enumValue{
-			// These IDs are listed in https://musicbrainz.org/release/add, so presumably they're
-			// being used. Comments are from po/relationships.pot.
+			// These IDs are listed in https://musicbrainz.org/recording/create and
+			// https://musicbrainz.org/release/add, so presumably they're being used.
+			// Comments are from po/relationships.pot.
+			{
+				Name:  "Crowdfunding_Recording_URL",
+				Value: "905",
+				Comment: wrap(
+					"This links a recording to the relevant crowdfunding project at a "+
+						"crowdfunding site like Kickstarter or Indiegogo.", commentLen),
+			},
 			{
 				Name:  "Crowdfunding_Release_URL",
 				Value: "906",
 				Comment: wrap(
 					"This links a release to the relevant crowdfunding project at a crowdfunding "+
 						"site like Kickstarter or Indiegogo.", commentLen),
+			},
+			{
+				Name:  "StreamingPaid_Recording_URL",
+				Value: "979",
+				Comment: wrap(
+					"This relationship type is used to link a track to a site where the track can "+
+						"be legally streamed for a subscription fee, e.g. Tidal. "+
+						"If the site allows free streaming, use \"free streaming\" instead.", commentLen),
 			},
 			{
 				Name:  "StreamingPaid_Release_URL",
