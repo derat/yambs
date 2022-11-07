@@ -100,16 +100,6 @@
         margin-bottom: var(--margin);
       }
 
-      #icon {
-        margin-right: 4px;
-        vertical-align: bottom;
-      }
-      @media (prefers-color-scheme: dark) {
-        #icon {
-          filter: drop-shadow(0 0 1px #fffa); /* add light glow */
-        }
-      }
-
       #edit-table {
         border: solid 1px var(--table-border-color);
         border-collapse: collapse;
@@ -220,6 +210,26 @@
         display: table;
       }
 
+      #title {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #icon {
+        margin-right: 4px;
+        vertical-align: bottom;
+      }
+      @media (prefers-color-scheme: dark) {
+        #icon {
+          filter: drop-shadow(0 0 1px #fffa); /* add light glow */
+        }
+      }
+      #version {
+        font-size: 12px;
+        font-weight: normal;
+        opacity: 0.5;
+      }
+
       #form-bandcamp-url-input {
         max-width: 100%;
         width: 600px;
@@ -259,13 +269,15 @@
     {{- end}}
   </head>
   <body>
-    <h1>
-      <img id="icon" src="{{.IconURL}}" alt="" height="22" />
-      yambs (Yet Another MusicBrainz Seeder)
-    </h1>
-
     {{- if not .Edits}}
     <!-- form HTML -->
+    <h1 id="title">
+      <img id="icon" src="{{.IconURL}}" alt="" height="22" />
+      yambs (Yet Another MusicBrainz Seeder)
+      <!-- prettier-ignore -->
+      {{if .Version}}<span id="version">{{.Version}}</span>{{end}}
+    </h1>
+
     <div>
       <p>
         This is a tool for seeding
@@ -367,6 +379,7 @@
         <button id="edit-open-selected-button">Open selected</button>
       </div>
     </div>
+
     <div id="edit-opening-overlay">Opening edit…</div>
   </body>
 

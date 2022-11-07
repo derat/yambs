@@ -13,3 +13,7 @@ handlers:
   - url: /(edits|favicon\.ico)?
     script: auto
     secure: always
+
+env_variables:
+  # The next line is rewritten by build/deploy_app.sh.
+  APP_VERSION: unknown

@@ -1,7 +1,14 @@
 steps:
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: bash
-    args: ['-e', '--', 'build/deploy_app.sh', '-p', '$_PROJECT_ID']
+    # prettier-ignore
+    args:
+      [
+        '-e', '--',
+        'build/deploy_app.sh',
+        '-p', '$_PROJECT_ID',
+        '-c', '$SHORT_SHA',
+      ]
 
 # The _BUILD_LOGS substition variable should be set to e.g. "gs://my-logs".
 logsBucket: $_BUILD_LOGS

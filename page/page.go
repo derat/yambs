@@ -34,7 +34,7 @@ func OpenFile(edits []seed.Edit) error {
 		return err
 	}
 	log.Print("Writing page to ", tf.Name())
-	if err := Write(tf, edits); err != nil {
+	if err := Write(tf, edits, ""); err != nil {
 		return err
 	}
 	return browser.OpenFile(tf.Name())
@@ -47,7 +47,7 @@ func OpenFile(edits []seed.Edit) error {
 // permanently tell Chrome to avoid blocking popups.
 func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 	var b bytes.Buffer
-	if err := Write(&b, edits); err != nil {
+	if err := Write(&b, edits, ""); err != nil {
 		return err
 	}
 
@@ -98,7 +98,8 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 }
 
 // Write writes an HTML page containing the supplied edits to w.
-func Write(w io.Writer, edits []seed.Edit) error {
+// If version is non-empty, it will be included in the page.
+func Write(w io.Writer, edits []seed.Edit, version string) error {
 	tmpl, err := template.New("").Parse(pageTmpl)
 	if err != nil {
 		return err
@@ -109,10 +110,12 @@ func Write(w io.Writer, edits []seed.Edit) error {
 	}
 	return tmpl.Execute(w, struct {
 		IconURL  template.URL
+		Version  string
 		TypeInfo []typeInfo
 		Edits    []*EditInfo
 	}{
 		IconURL: template.URL(iconURL),
+		Version: version,
 		TypeInfo: []typeInfo{
 			newTypeInfo(seed.RecordingType),
 			newTypeInfo(seed.ReleaseType),

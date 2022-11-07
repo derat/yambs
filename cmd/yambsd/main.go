@@ -36,7 +36,14 @@ const (
 	maxFields    = 1000
 )
 
-var version = "[non-release]"
+var version string
+
+func init() {
+	// When deploying to App Engine, app.yaml passes the version string via an environment variable.
+	if v := os.Getenv("APP_VERSION"); v != "" {
+		version = v
+	}
+}
 
 func main() {
 	flag.Usage = func() {
@@ -49,7 +56,7 @@ func main() {
 
 	// Just generate the page once.
 	var b bytes.Buffer
-	if err := page.Write(&b, nil); err != nil {
+	if err := page.Write(&b, nil, version); err != nil {
 		log.Fatal("Failed generating page: ", err)
 	}
 	form := b.Bytes()

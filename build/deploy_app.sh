@@ -5,13 +5,16 @@ Usage: $0 [flags]... [gcloud args]...
 Deploy the App Engine app to GCP and delete old versions.
 
 Flags:
+  -c  Short commit hash
   -p  GCP project ID to use
 EOF
 )
 
+commit=unknown
 project=
-while getopts p: o; do
+while getopts c:p: o; do
   case $o in
+    c) commit="$OPTARG" ;;
     p) project="$OPTARG" ;;
     \?) echo "$usage" >&2 && exit 2 ;;
   esac
@@ -22,6 +25,10 @@ if [ -z "$project" ]; then
   echo 'GCP project ID must be specified using -p' >&2
   exit 2
 fi
+
+# Inject a version string into app.yaml.
+version="$(date --utc +%Y%m%d)-${commit}"
+sed -i -r -e "s/^(\s*APP_VERSION:).*/\1 '${version}'/" app.yaml
 
 # As of November 2021, 'beta' is required here to use App Engine bundled
 # services (e.g. memcache) from the go115 runtime. Without it, the 'deploy'

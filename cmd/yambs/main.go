@@ -169,7 +169,7 @@ func main() {
 				return 1
 			}
 		case actionWrite:
-			if err := page.Write(os.Stdout, edits); err != nil {
+			if err := page.Write(os.Stdout, edits, ""); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed writing page:", err)
 				return 1
 			}

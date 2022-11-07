@@ -13,7 +13,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func TestWrite(t *testing.T) {
+func TestWrite_Edits(t *testing.T) {
 	info, err := seed.NewInfo("Info Description", "https://www.example.org/")
 	if err != nil {
 		t.Fatal("NewInfo failed:", err)
@@ -31,7 +31,7 @@ func TestWrite(t *testing.T) {
 	}
 
 	var b bytes.Buffer
-	if err := Write(&b, edits); err != nil {
+	if err := Write(&b, edits, ""); err != nil {
 		t.Fatal("Write failed:", err)
 	}
 
@@ -44,6 +44,21 @@ func TestWrite(t *testing.T) {
 		if url := template.JSEscapeString(ed.URL()); !strings.Contains(b.String(), url) {
 			t.Errorf("Write didn't include edit URL %q", url)
 		}
+	}
+	if _, err := html.Parse(&b); err != nil {
+		t.Error("Write wrote invalid HTML:", err)
+	}
+}
+
+func TestWrite_Form(t *testing.T) {
+	// Also check that we can write the no-edits version of the page with the form.
+	const version = "20221105-deadbeef"
+	var b bytes.Buffer
+	if err := Write(&b, nil, version); err != nil {
+		t.Fatal("Write failed:", err)
+	}
+	if !strings.Contains(b.String(), version) {
+		t.Errorf("Write didn't include version %q", version)
 	}
 	if _, err := html.Parse(&b); err != nil {
 		t.Error("Write wrote invalid HTML:", err)
