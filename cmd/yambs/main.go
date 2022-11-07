@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -27,20 +28,19 @@ import (
 var version = "[non-release]"
 
 const (
-	actionOpen  = "open"  // open the page
+	actionOpen  = "open"  // open the page from a temp file
 	actionPrint = "print" // print URLs
-	actionServe = "serve" // serve the page locally over HTTP
+	actionServe = "serve" // open the page from a local HTTP server
 	actionWrite = "write" // write the page to stdout
 )
 
 func main() {
 	action := enumFlag{
-		val:     actionOpen,
+		val:     defaultAction(),
 		allowed: []string{actionOpen, actionPrint, actionServe, actionWrite},
 	}
 	editType := enumFlag{
-		// TODO: Get rid of the default value?
-		val:     string(seed.RecordingType),
+		val:     "", // empty default
 		allowed: []string{string(seed.RecordingType), string(seed.ReleaseType)},
 	}
 	format := enumFlag{
@@ -59,7 +59,7 @@ func main() {
 	fields := flag.String("fields", "", `Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
-	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "artist=The Beatles")`)
+	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "edit_note=from https://www.example.org")`)
 	flag.Var(&editType, "type", fmt.Sprintf("Entity type of text input (%v)", editType.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	printVersion := flag.Bool("version", false, "Print the version and exit")
@@ -74,6 +74,10 @@ func main() {
 		}
 
 		if *listFields {
+			if editType.val == "" {
+				fmt.Fprintln(os.Stderr, "Must specify entity type via -type")
+				return 2
+			}
 			var list [][2]string // name, desc
 			var max int
 			for name, desc := range text.ListFields(seed.Type(editType.val)) {
@@ -124,6 +128,10 @@ func main() {
 				return 1
 			}
 		} else {
+			if editType.val == "" {
+				fmt.Fprintln(os.Stderr, "Must specify entity type via -type")
+				return 2
+			}
 			var err error
 			if edits, err = text.Read(ctx, r, text.Format(format.val), seed.Type(editType.val),
 				strings.Split(*fields, ","), setCmds, db); err != nil {
@@ -167,6 +175,16 @@ func main() {
 
 		return 0
 	}())
+}
+
+func defaultAction() string {
+	// If we're running in a Chrome OS Crostini container, the external Chrome process won't
+	// be able to access files that we write to /tmp, so start a web server instead.
+	// TODO: Is there a better way to detect this case?
+	if _, err := exec.LookPath("garcon-url-handler"); err == nil && os.Getenv("BROWSER") == "" {
+		return actionServe
+	}
+	return actionOpen
 }
 
 var urlRegexp = regexp.MustCompile("(?i)^https?://")

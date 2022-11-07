@@ -21,7 +21,7 @@ There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 [Add Release]: http://musicbrainz.org/release/add
 [Bandcamp]: https://bandcamp.com/
 
-## Usage
+## Installation
 
 To compile and install the [yambs executable], install [Go] and run the
 following command:
@@ -33,7 +33,7 @@ go install ./cmd/yambs
 [yambs executable]: ./cmd/yambs
 [Go]: https://go.dev/
 
----
+## Usage
 
 ```
 Usage yambs: [flag]... <FILE/URL>
@@ -50,9 +50,9 @@ Seeds MusicBrainz edits.
   -list-fields
     	Print available fields for -type and exit
   -set value
-    	Set a field for all entities (e.g. "artist=The Beatles")
+    	Set a field for all entities (e.g. "edit_note=from https://www.example.org")
   -type value
-    	Entity type of text input (recording, release) (default recording)
+    	Entity type of text input (recording, release)
   -verbose
     	Enable verbose logging
   -version
@@ -73,7 +73,7 @@ If you supply a URL, `yambs` will fetch and parse it.
 If you supply a filename, you should also pass the `-type`, `-format`,
 `-fields`, and `-set` flags to tell `yambs` how to interpret the file.
 
----
+### Examples
 
 To add multiple non-album recordings for a single artist, you can run a command
 like the following:
