@@ -11,8 +11,8 @@ import (
 	"github.com/derat/yambs/seed"
 )
 
-// SetPlaceholder returns a placeholder for the web interface's "set" textarea.
-func SetPlaceholder(typ seed.Type) string {
+// SetExample returns an example value for the web interface's "set" textarea.
+func SetExample(typ seed.Type) string {
 	const editNote = "edit_note=https://www.example.org/"
 	switch typ {
 	case seed.RecordingType:
@@ -23,8 +23,8 @@ func SetPlaceholder(typ seed.Type) string {
 	return ""
 }
 
-// FieldsPlaceholder returns a placeholder for the web interface's "fields" input.
-func FieldsPlaceholder(typ seed.Type) string {
+// FieldsExample returns an example value for the web interface's "fields" input.
+func FieldsExample(typ seed.Type) string {
 	switch typ {
 	case seed.RecordingType:
 		return "name,length"
@@ -34,8 +34,8 @@ func FieldsPlaceholder(typ seed.Type) string {
 	return ""
 }
 
-// InputPlaceholder returns a placeholder for the web interface's "input" textarea.
-func InputPlaceholder(typ seed.Type, format Format) string {
+// InputExample returns an example value for the web interface's "input" textarea.
+func InputExample(typ seed.Type, format Format) string {
 	if format == KeyVal {
 		switch typ {
 		case seed.RecordingType:

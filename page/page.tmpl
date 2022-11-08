@@ -209,6 +209,12 @@
       .form-text-fields-table.visible {
         display: table;
       }
+      .form-example {
+        display: inline-block;
+        opacity: 0.5;
+        padding-bottom: 3px;
+        text-decoration: underline dotted;
+      }
 
       #title {
         overflow: hidden;
@@ -354,18 +360,25 @@
         <div id="form-text-csv-tsv-section" class="section">
           <div class="form-row">
             <label for="form-text-set-textarea">
-              Values to set on all entities (as "field=value" lines):
+              Values to set on all entities ("field=value" lines):
+              <span id="form-text-set-example" class="form-example">example</span>
             </label>
             <textarea id="form-text-set-textarea"></textarea>
           </div>
           <div class="form-row">
-            <label for="form-text-fields-input">Input fields (comma-separated):</label>
+            <label for="form-text-fields-input">
+              Input fields (comma-separated list):
+              <span id="form-text-fields-example" class="form-example">example</span>
+            </label>
             <input id="form-text-fields-input" type="text" />
           </div>
         </div>
 
         <div id="form-text-input-row" class="form-row">
-          <label for="form-text-input-textarea">Input in selected format:</label>
+          <label for="form-text-input-textarea">
+            Input (<span id="form-text-input-format"></span>):
+            <span id="form-text-input-example" class="form-example">example</span>
+          </label>
           <textarea id="form-text-input-textarea"></textarea>
           <input id="form-text-input-file-input" type="file" accept=".csv,.tsv,.txt" />
           <button id="form-text-input-file-button">Load file…</button>
@@ -419,20 +432,20 @@
   {{- if not .Edits}}
   <script>
     // This seems to confuse Prettier unless it's in its own script element.
-    const formSetPlaceholders = {
+    const formSetExamples = {
       {{- range .TypeInfo}}
-      {{.Type}}: {{.SetPlaceholder}},
+      {{.Type}}: {{.SetExample}},
       {{- end}}
     };
-    const formFieldsPlaceholders = {
+    const formFieldsExamples = {
       {{- range .TypeInfo}}
-      {{.Type}}: {{.FieldsPlaceholder}},
+      {{.Type}}: {{.FieldsExample}},
       {{- end}}
     };
-    const formInputPlaceholders = {
+    const formInputExamples = {
       {{- range .TypeInfo}}
       {{.Type}}: {
-        {{- range $format, $text := .InputPlaceholders}}
+        {{- range $format, $text := .InputExamples}}
         {{$format}}: {{$text}},
         {{- end}}
       },
@@ -446,8 +459,12 @@
     const formTextTypeSelect = $('form-text-type-select');
     const formTextCsvTsvSection = $('form-text-csv-tsv-section');
     const formTextToggleFieldsButton = $('form-text-toggle-fields-button');
+    const formTextSetExample = $('form-text-set-example');
     const formTextSetTextarea = $('form-text-set-textarea');
+    const formTextFieldsExample = $('form-text-fields-example');
     const formTextFieldsInput = $('form-text-fields-input');
+    const formTextInputFormat = $('form-text-input-format');
+    const formTextInputExample = $('form-text-input-example');
     const formTextInputTextarea = $('form-text-input-textarea');
     const formTextInputFileInput = $('form-text-input-file-input');
     const formTextInputFileButton = $('form-text-input-file-button');
@@ -474,9 +491,21 @@
       const selFormat = formTextFormatSelect.value;
       formTextCsvTsvSection.classList.toggle('visible', selFormat !== 'keyval');
 
-      formTextSetTextarea.placeholder = formSetPlaceholders[selType] || '';
-      formTextFieldsInput.placeholder = formFieldsPlaceholders[selType] || '';
-      formTextInputTextarea.placeholder = (formInputPlaceholders[selType] || {})[selFormat] || '';
+      switch (selFormat) {
+        case 'csv':
+          formTextInputFormat.innerText = 'lines of comma-separated values';
+          break;
+        case 'keyval':
+          formTextInputFormat.innerText = '"field=value" lines';
+          break;
+        case 'tsv':
+          formTextInputFormat.innerText = 'lines of tab-separated values';
+          break;
+      }
+
+      formTextSetExample.title = formSetExamples[selType] || '';
+      formTextFieldsExample.title = formFieldsExamples[selType] || '';
+      formTextInputExample.title = (formInputExamples[selType] || {})[selFormat] || '';
     }
 
     // Clears form fields. Select elements are left unchanged.

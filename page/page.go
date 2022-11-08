@@ -195,9 +195,9 @@ type typeInfo struct {
 	Type   string      // seed.Type
 	Fields []fieldInfo // fields that can be set for the type
 
-	SetPlaceholder    string            // e.g. "field1=val\nfield2=val"
-	FieldsPlaceholder string            // e.g. "field1,field2"
-	InputPlaceholders map[string]string // keyed by text.Format
+	SetExample    string            // e.g. "field1=val\nfield2=val"
+	FieldsExample string            // e.g. "field1,field2"
+	InputExamples map[string]string // keyed by text.Format
 }
 
 // fieldInfo describes an individual field.
@@ -212,14 +212,14 @@ func newTypeInfo(typ seed.Type) typeInfo {
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
 
 	return typeInfo{
-		Type:              string(typ),
-		Fields:            fields,
-		SetPlaceholder:    text.SetPlaceholder(typ),
-		FieldsPlaceholder: text.FieldsPlaceholder(typ),
-		InputPlaceholders: map[string]string{
-			string(text.CSV):    text.InputPlaceholder(typ, text.CSV),
-			string(text.KeyVal): text.InputPlaceholder(typ, text.KeyVal),
-			string(text.TSV):    text.InputPlaceholder(typ, text.TSV),
+		Type:          string(typ),
+		Fields:        fields,
+		SetExample:    text.SetExample(typ),
+		FieldsExample: text.FieldsExample(typ),
+		InputExamples: map[string]string{
+			string(text.CSV):    text.InputExample(typ, text.CSV),
+			string(text.KeyVal): text.InputExample(typ, text.KeyVal),
+			string(text.TSV):    text.InputExample(typ, text.TSV),
 		},
 	}
 }
