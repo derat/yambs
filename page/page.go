@@ -201,13 +201,19 @@ type typeInfo struct {
 }
 
 // fieldInfo describes an individual field.
-type fieldInfo struct{ Name, Desc string }
+type fieldInfo struct {
+	Name string
+	Desc template.HTML
+}
 
 // newTypeInfo creates a typeInfo for typ.
 func newTypeInfo(typ seed.Type) typeInfo {
 	var fields []fieldInfo
-	for field, desc := range text.ListFields(typ) {
-		fields = append(fields, fieldInfo{Name: field, Desc: desc})
+	for field, desc := range text.ListFields(typ, true /* html */) {
+		fields = append(fields, fieldInfo{
+			Name: field,
+			Desc: template.HTML(desc),
+		})
 	}
 	sort.Slice(fields, func(i, j int) bool { return fields[i].Name < fields[j].Name })
 

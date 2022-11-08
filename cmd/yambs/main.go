@@ -81,7 +81,7 @@ func main() {
 			}
 			var list [][2]string // name, desc
 			var max int
-			for name, desc := range text.ListFields(seed.Type(editType.val)) {
+			for name, desc := range text.ListFields(seed.Type(editType.val), false /* html */) {
 				list = append(list, [2]string{name, desc})
 				if len(name) > max {
 					max = len(name)

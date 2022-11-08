@@ -76,7 +76,7 @@ var recordingFields = map[string]fieldInfo{
 		},
 	},
 	"url*_type": {
-		"Integer link type describing how URL is related to recording",
+		"Integer [link type](" + linkTypeURL + ") describing how URL is related to recording",
 		func(r *seed.Recording, k, v string) error {
 			return recordingURL(r, k, func(u *seed.URL) error { return setInt((*int)(&u.LinkType), v) })
 		},

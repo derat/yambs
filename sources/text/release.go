@@ -18,7 +18,7 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setMBID(&r.ReleaseGroup, v) },
 	},
 	"types": {
-		`Comma-separated types for new release group (e.g. "Single,Soundtrack")`,
+		`Comma-separated [types](` + typesURL + `) for new release group (e.g. "Single,Soundtrack")`,
 		func(r *seed.Release, k, v string) error {
 			var vals []string
 			setStringSlice(&vals, v, ",")
@@ -41,19 +41,19 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setString(&r.Barcode, v) },
 	},
 	"language": {
-		`Release language as ISO 693-3 code (e.g. "eng", "deu", "jpn")`,
+		`Release language as [ISO 693-3 code](` + langURL + `) (e.g. "eng", "deu", "jpn")`,
 		func(r *seed.Release, k, v string) error { return setString(&r.Language, v) },
 	},
 	"script": {
-		`Release script as ISO 15924 code (e.g. "Latn", "Cyrl")`,
+		`Release script as [ISO 15924 code](` + scriptURL + `) (e.g. "Latn", "Cyrl")`,
 		func(r *seed.Release, k, v string) error { return setString(&r.Script, v) },
 	},
 	"status": {
-		`Release status (e.g. "Official", "Promotion", "Bootleg", "Pseudo-Release")`,
+		`[Release status](` + statusURL + `) (e.g. "Official", "Promotion", "Bootleg", "Pseudo-Release")`,
 		func(r *seed.Release, k, v string) error { return setString((*string)(&r.Status), v) },
 	},
 	"packaging": {
-		`Release packaging (e.g. "Jewel Case", "None")`,
+		`[Release packaging](` + packagingURL + `) (e.g. "Jewel Case", "None")`,
 		func(r *seed.Release, k, v string) error { return setString((*string)(&r.Packaging), v) },
 	},
 	"event*_year": {
@@ -96,7 +96,7 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"event*_country": {
-		`Country of release event as ISO code (e.g. "GB", "US", "FR", "XW")`,
+		`Country of release event as [ISO 3166-1 alpha-2 code](` + countryURL + `) (e.g. "GB", "US", "FR", "XW")`,
 		func(rel *seed.Release, k, v string) error {
 			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
 				return setString(&ev.Country, v)
@@ -160,7 +160,7 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"medium*_format": {
-		`Medium format (e.g. "CD", "Digital Media")`,
+		`[Medium format](` + formatURL + `) (e.g. "CD", "Digital Media")`,
 		func(rel *seed.Release, k, v string) error {
 			return releaseMedium(rel, k, func(med *seed.Medium) error {
 				return setString((*string)(&med.Format), v)
@@ -246,7 +246,7 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"url*_type": {
-		"Integer link type describing how URL is related to release",
+		"Integer [link type](" + linkTypeURL + ") describing how URL is related to release",
 		func(rel *seed.Release, k, v string) error {
 			return releaseURL(rel, k, func(u *seed.URL) error { return setInt((*int)(&u.LinkType), v) })
 		},

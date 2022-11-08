@@ -16,20 +16,33 @@ import (
 	"github.com/derat/yambs/seed"
 )
 
-// FieldDescriptions returns a map from the names of fields that can be passed
+// ListFields returns a map from the names of fields that can be passed
 // to Read for typ to human-readable descriptions.
-func ListFields(typ seed.Type) map[string]string {
+// If html is true, links in descriptions are rewritten to HTML links.
+func ListFields(typ seed.Type, html bool) map[string]string {
 	m, ok := typeFields[typ]
 	if !ok {
 		return nil
 	}
+
+	linkRepl := "$1"
+	if html {
+		linkRepl = `<a href="$2" target="_blank">$1</a>`
+	}
+
 	fields := make(map[string]string)
 	iter := reflect.ValueOf(m).MapRange()
 	for iter.Next() {
-		fields[iter.Key().String()] = iter.Value().FieldByName("Desc").String()
+		name := iter.Key().String()
+		desc := iter.Value().FieldByName("Desc").String()
+		desc = mdLinkRegexp.ReplaceAllString(desc, linkRepl)
+		fields[name] = desc
 	}
 	return fields
 }
+
+// mdLinkRegexp (poorly) matches a MarkDown-style link like "[link](https://www.example.org/)".
+var mdLinkRegexp = regexp.MustCompile(`\[([^]]+)\]\(([^)]+)\)`)
 
 // fieldInfo contains information about a field that can be set by the user.
 // If struct fields are renamed, the code that accesses them via reflection
