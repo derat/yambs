@@ -247,12 +247,28 @@
         height: 80px;
         width: 600px;
       }
+
+      #form-text-input-row {
+        position: relative;
+      }
       #form-text-input-textarea {
         display: block;
         max-width: 100%;
         height: 300px;
         width: 800px;
       }
+      #form-text-input-file-input {
+        display: none;
+      }
+      #form-text-input-file-button {
+        left: var(--margin);
+        position: absolute;
+        bottom: 8px;
+      }
+      #form-text-input-file-button.hidden {
+        display: none;
+      }
+
       #form-error-div {
         background-color: var(--form-error-bg-color);
         border: solid 1px var(--form-error-border-color);
@@ -348,9 +364,11 @@
           </div>
         </div>
 
-        <div class="form-row">
+        <div id="form-text-input-row" class="form-row">
           <label for="form-text-input-textarea">Input in selected format:</label>
           <textarea id="form-text-input-textarea"></textarea>
+          <input id="form-text-input-file-input" type="file" accept=".csv,.tsv,.txt" />
+          <button id="form-text-input-file-button">Load file…</button>
         </div>
       </div>
 
@@ -431,6 +449,8 @@
     const formTextSetTextarea = $('form-text-set-textarea');
     const formTextFieldsInput = $('form-text-fields-input');
     const formTextInputTextarea = $('form-text-input-textarea');
+    const formTextInputFileInput = $('form-text-input-file-input');
+    const formTextInputFileButton = $('form-text-input-file-button');
     const formGenButton = $('form-generate-button');
     const formClearButton = $('form-clear-button');
     const formErrorDiv = $('form-error-div');
@@ -464,13 +484,22 @@
       formBandcampUrlInput.value = '';
       formTextFieldsInput.value = '';
       formTextSetTextarea.value = '';
-      formTextInputTextarea.value = '';
+      setFormTextInputTextareaValue('');
+    }
+
+    // Sets |formTextInputFileInput|'s value.
+    function setFormTextInputTextareaValue(value) {
+      formTextInputTextarea.value = value;
+      // Setting the value doesn't seem to trigger an input event
+      // (at least on Chrome 106), so dispatch one manually.
+      formTextInputTextarea.dispatchEvent(new Event('input'));
     }
 
     // Displays or hides an error message.
     function showFormError(msg) {
       formErrorDiv.innerText = msg;
       formErrorDiv.classList.add('visible');
+      window.setTimeout(() => formErrorDiv.scrollIntoView(false /* alignToTop */));
     }
     function hideFormError() {
       formErrorDiv.classList.remove('visible');
@@ -537,6 +566,29 @@
       formTextToggleFieldsButton.addEventListener('click', () => {
         formTextFieldsTableShown = !formTextFieldsTableShown;
         updateFormUI();
+      });
+
+      // Only show the file button when the input textarea is empty.
+      formTextInputTextarea.addEventListener('input', () => {
+        const empty = !formTextInputTextarea.value.length;
+        formTextInputFileButton.classList.toggle('hidden', !empty);
+      });
+
+      // Make the button trigger the hidden file input.
+      formTextInputFileButton.addEventListener('click', () => {
+        formTextInputFileInput.click();
+      });
+      formTextInputFileInput.addEventListener('input', () => {
+        const files = formTextInputFileInput.files;
+        if (!files.length) return;
+        const fr = new FileReader();
+        fr.addEventListener('load', () => {
+          setFormTextInputTextareaValue(fr.result.trimRight('\n'));
+          // Clear the file input so its 'input' event will fire again
+          // if the same file is selected later.
+          formTextInputFileInput.value = null;
+        });
+        fr.readAsText(files[0]);
       });
 
       formGenButton.addEventListener('click', () => {
