@@ -125,7 +125,7 @@ func main() {
 		var edits []seed.Edit
 		if srcURL != "" {
 			var err error
-			if edits, err = bandcamp.Fetch(ctx, srcURL); err != nil {
+			if edits, err = bandcamp.Fetch(ctx, srcURL, db); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed fetching page:", err)
 				return 1
 			}

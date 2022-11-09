@@ -178,7 +178,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 				msg:  fmt.Sprint("Server only accepts bandcamp.com album URLs: ", err),
 				err:  fmt.Errorf("%q: %v", req.FormValue("bandcampUrl"), err),
 			}
-		} else if edits, err = bandcamp.Fetch(ctx, url); err != nil {
+		} else if edits, err = bandcamp.Fetch(ctx, url, db); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),

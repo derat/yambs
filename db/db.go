@@ -7,10 +7,13 @@ package db
 import (
 	"context"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"sync"
 
@@ -24,9 +27,20 @@ const (
 	userAgentFmt   = "yambs/%s ( https://github.com/derat/yambs )"
 )
 
+// entityType is an entity type sent to the MusicBrainz API.
+type entityType string
+
+const (
+	artistType entityType = "artist"
+	labelType  entityType = "label"
+)
+
 // DB queries the MusicBrainz database.
 type DB struct {
-	databaseIDs     sync.Map      // string MBID to int32 database ID
+	// TODO: Use LRU caches instead.
+	databaseIDs sync.Map                 // string MBID to int32 database ID
+	urlMBIDs    map[entityType]*sync.Map // string URL to string MBID
+
 	limiter         *rate.Limiter // rate-limits network requests
 	disallowQueries bool          // don't allow network traffic
 	version         string        // included in User-Agent header
@@ -34,7 +48,13 @@ type DB struct {
 
 // NewDB returns a new DB object.
 func NewDB(opts ...Option) *DB {
-	db := DB{limiter: rate.NewLimiter(maxQPS, rateBucketSize)}
+	db := DB{
+		urlMBIDs: map[entityType]*sync.Map{
+			artistType: &sync.Map{},
+			labelType:  &sync.Map{},
+		},
+		limiter: rate.NewLimiter(maxQPS, rateBucketSize),
+	}
 	for _, o := range opts {
 		o(&db)
 	}
@@ -63,19 +83,20 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 		return id.(int32), nil
 	}
 
-	if db.disallowQueries {
-		return 0, errors.New("querying not allowed")
-	}
-
 	// Actually query the database.
+	log.Print("Requesting database ID for ", mbid)
+	r, err := db.doQuery(ctx, "https://musicbrainz.org/ws/js/entity/"+mbid)
+	if err != nil {
+		return 0, err
+	}
+	defer r.Close()
+
 	var data struct {
 		ID int32 `json:"id"`
 	}
-	log.Print("Requesting database ID for ", mbid)
-	if err := db.doQuery(ctx, "https://musicbrainz.org/ws/js/entity/"+mbid, &data); err != nil {
+	if err := json.NewDecoder(r).Decode(&data); err != nil {
 		return 0, err
-	}
-	if data.ID == 0 {
+	} else if data.ID == 0 {
 		return 0, errors.New("server didn't return ID")
 	}
 	log.Print("Got database ID ", data.ID)
@@ -83,43 +104,132 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 	return data.ID, nil
 }
 
-// doQuery sends a GET request for url and JSON-unmarshals the response into dst.
-func (db *DB) doQuery(ctx context.Context, url string, dst interface{}) error {
+// GetArtistMBIDFromURL returns the MBID of the artist related to linkURL.
+// If no artist is related to the URL, an empty string is returned.
+func (db *DB) GetArtistMBIDFromURL(ctx context.Context, linkURL string) (string, error) {
+	return db.getMBIDFromURL(ctx, linkURL, artistType)
+}
+
+// GetLabelMBIDFromURL returns the MBID of the label related to linkURL.
+// If no label is related to the URL, an empty string is returned.
+func (db *DB) GetLabelMBIDFromURL(ctx context.Context, linkURL string) (string, error) {
+	return db.getMBIDFromURL(ctx, linkURL, labelType)
+}
+
+// getMBIDFromURL returns the MBID of the specified entity type related to linkURL.
+// An empty string is returned if no relations are found.
+func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityType) (string, error) {
+	// Check the cache first.
+	cache := db.urlMBIDs[entity]
+	if mbid, ok := cache.Load(linkURL); ok {
+		return mbid.(string), nil
+	}
+
+	log.Printf("Requesting %v MBID for %v", entity, linkURL)
+	reqURL := fmt.Sprintf("https://musicbrainz.org/ws/2/url?resource=%s&inc=%s-rels",
+		url.QueryEscape(linkURL), entity)
+	r, err := db.doQuery(ctx, reqURL)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	// Parse an XML response like the following:
+	//
+	//  <?xml version="1.0" encoding="UTF-8"?>
+	//  <metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#">
+	//    <url id="010fc5d6-2ef6-4852-9075-61184fdc972a">
+	//  	<resource>https://pillarsinthesky.bandcamp.com/</resource>
+	//  	<relation-list target-type="artist">
+	//  	  <relation type="bandcamp" type-id="c550166e-0548-4a18-b1d4-e2ae423a3e88">
+	//  		<target>7ba8b326-34ba-472b-b710-b01dc1f14f94</target>
+	//  		<direction>backward</direction>
+	//  		<artist id="7ba8b326-34ba-472b-b710-b01dc1f14f94" type="Person" type-id="b6e035f4-3ce9-331c-97df-83397230b0df">
+	//  		  <name>Pillars in the Sky</name>
+	//  		  <sort-name>Pillars in the Sky</sort-name>
+	//  		</artist>
+	//  	  </relation>
+	//  	</relation-list>
+	//    </url>
+	//  </metadata>
+	var md struct {
+		XMLName       xml.Name `xml:"metadata"`
+		RelationLists []struct {
+			TargetType string   `xml:"target-type,attr"`
+			Relations  []string `xml:"relation>target"`
+		} `xml:"url>relation-list"`
+	}
+	if err := xml.NewDecoder(r).Decode(&md); err != nil {
+		return "", err
+	}
+	for _, list := range md.RelationLists {
+		if entityType(list.TargetType) != entity {
+			continue
+		}
+		// TODO: Figure out a better way to handle multiple relations.
+		if nr := len(list.Relations); nr != 1 {
+			return "", fmt.Errorf("got %d relations for URL", nr)
+		}
+		mbid := list.Relations[0]
+		log.Print("Got MBID ", mbid)
+		cache.Store(linkURL, mbid)
+		return mbid, nil
+	}
+	return "", nil
+}
+
+// doQuery sends a GET request for url and returns the response body.
+// The caller should close the body if error is non-nil.
+func (db *DB) doQuery(ctx context.Context, url string) (io.ReadCloser, error) {
+	if db.disallowQueries {
+		return nil, errors.New("querying not allowed")
+	}
+
 	// Wait until we can perform a query.
 	// TODO: We could be smarter here and bail out early if someone else
 	// successfully fetches the same thing while we're waiting.
 	if err := db.limiter.Wait(ctx); err != nil {
-		return err
+		return nil, err
 	}
 
 	log.Print("Sending GET request for ", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	req.Header.Set("User-Agent", fmt.Sprintf(userAgentFmt, db.version))
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("server returned %v: %v", resp.StatusCode, resp.Status)
+		resp.Body.Close()
+		return nil, fmt.Errorf("server returned %v: %v", resp.StatusCode, resp.Status)
 	}
-	return json.NewDecoder(resp.Body).Decode(dst)
+	return resp.Body, nil
+}
+
+// SetDatabaseIDForTest hardcodes an ID for GetDatabaseID to return.
+func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {
+	db.databaseIDs.Store(mbid, id)
+}
+
+// SetArtistMBIDFromURLForTest hardcodes an MBID for GetArtistMBIDFromURL to return.
+func (db *DB) SetArtistMBIDFromURLForTest(url, mbid string) {
+	db.urlMBIDs[artistType].Store(url, mbid)
+}
+
+// SetLabelMBIDFromURLForTest hardcodes an MBID for GetLabelMBIDFromURL to return.
+func (db *DB) SetLabelMBIDFromURLForTest(url, mbid string) {
+	db.urlMBIDs[labelType].Store(url, mbid)
 }
 
 // mbidRegexp matches a MusicBrainz ID (i.e. a UUID).
 var mbidRegexp = regexp.MustCompile(
 	`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
-// IsMBID returns true if mbid looks like a corectly-formatted MBID (i.e. a UUID).
+// IsMBID returns true if mbid looks like a correctly-formatted MBID (i.e. a UUID).
 // Note that this method does not check that the MBID is actually assigned to anything.
 func IsMBID(mbid string) bool { return mbidRegexp.MatchString(mbid) }
-
-// SetDatabaseIDForTest hardcodes an ID for GetDatabaseID to return.
-func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {
-	db.databaseIDs.Store(mbid, id)
-}

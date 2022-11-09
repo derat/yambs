@@ -4,12 +4,14 @@
 package bandcamp
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/web"
 	"github.com/google/go-cmp/cmp"
@@ -17,6 +19,26 @@ import (
 )
 
 func TestParsePage(t *testing.T) {
+	ctx := context.Background()
+	db := db.NewDB(db.DisallowQueries)
+
+	// Add canned MBIDs for artists and label lookups.
+	for url, mbid := range map[string]string{
+		"https://louiezong.bandcamp.com/":       "0e2c603f-fd71-4ab6-af96-92c3e936586d",
+		"https://louiscole.bandcamp.com/":       "525ef747-abf6-423c-98b4-cd49c0c07927",
+		"https://pillarsinthesky.bandcamp.com/": "7ba8b326-34ba-472b-b710-b01dc1f14f94",
+		"https://thelovelymoon.bandcamp.com/":   "f34ae170-055d-46bc-9208-a750a646481b",
+		// "https://volaband.bandcamp.com/album/live-from-the-pool" omitted
+	} {
+		db.SetArtistMBIDFromURLForTest(url, mbid)
+	}
+	for url, mbid := range map[string]string{
+		"https://brainfeeder.bandcamp.com/": "20b3d6f9-9086-48d9-802f-5f808456a0ef",
+		// "https://mascotlabelgroup.bandcamp.com/" omitted
+	} {
+		db.SetLabelMBIDFromURLForTest(url, mbid)
+	}
+
 	for _, tc := range []struct {
 		url string
 		rel *seed.Release
@@ -34,7 +56,10 @@ func TestParsePage(t *testing.T) {
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
 				Events:    []seed.ReleaseEvent{{Year: 2022, Month: 6, Day: 17, Country: "XW"}},
-				Artists:   []seed.ArtistCredit{{Name: "Louie Zong"}},
+				Artists: []seed.ArtistCredit{{
+					MBID: "0e2c603f-fd71-4ab6-af96-92c3e936586d",
+					Name: "Louie Zong",
+				}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
@@ -87,7 +112,10 @@ func TestParsePage(t *testing.T) {
 				Packaging: seed.ReleasePackaging_None,
 				Events:    []seed.ReleaseEvent{{Year: 2022, Month: 8, Day: 2, Country: "XW"}},
 				Labels:    []seed.ReleaseLabel{{Name: "Brainfeeder"}},
-				Artists:   []seed.ArtistCredit{{Name: "Louis cole"}},
+				Artists: []seed.ArtistCredit{{
+					MBID: "525ef747-abf6-423c-98b4-cd49c0c07927",
+					Name: "Louis cole",
+				}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
@@ -119,7 +147,10 @@ func TestParsePage(t *testing.T) {
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
 				Events:    []seed.ReleaseEvent{{Year: 2015, Month: 5, Day: 3, Country: "XW"}},
-				Artists:   []seed.ArtistCredit{{Name: "Pillars In The Sky"}},
+				Artists: []seed.ArtistCredit{{
+					MBID: "7ba8b326-34ba-472b-b710-b01dc1f14f94",
+					Name: "Pillars In The Sky",
+				}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
@@ -155,7 +186,10 @@ func TestParsePage(t *testing.T) {
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
 				Events:    []seed.ReleaseEvent{{Year: 2022, Month: 10, Day: 22, Country: "XW"}},
-				Artists:   []seed.ArtistCredit{{Name: "The Lovely Moon"}},
+				Artists: []seed.ArtistCredit{{
+					MBID: "f34ae170-055d-46bc-9208-a750a646481b",
+					Name: "The Lovely Moon",
+				}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
@@ -243,7 +277,7 @@ func TestParsePage(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := parsePage(page, tc.url)
+			rel, img, err := parsePage(ctx, page, tc.url, db)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}

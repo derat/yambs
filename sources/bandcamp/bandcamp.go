@@ -9,12 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/web"
 	"golang.org/x/net/html"
@@ -26,12 +28,12 @@ const editNote = "\n\n(seeded using https://github.com/derat/yambs)"
 // Fetch generates seeded edits from the Bandcamp page at url.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-func Fetch(ctx context.Context, url string) ([]seed.Edit, error) {
+func Fetch(ctx context.Context, url string, db *db.DB) ([]seed.Edit, error) {
 	page, err := web.FetchPage(ctx, url)
 	if err != nil {
 		return nil, err
 	}
-	rel, img, err := parsePage(page, url)
+	rel, img, err := parsePage(ctx, page, url, db)
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +46,11 @@ func Fetch(ctx context.Context, url string) ([]seed.Edit, error) {
 
 // parsePage extracts release information from the supplied page.
 // It's separate from Fetch to make testing easier.
-func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, err error) {
+func parsePage(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
+	rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
-	if strings.HasPrefix(url, "http://") {
-		url = "https" + url[4:]
+	if strings.HasPrefix(pageURL, "http://") {
+		pageURL = "https" + pageURL[4:]
 	}
 
 	var album albumData
@@ -73,7 +76,7 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 		Language: "eng",
 		Script:   "Latn",
 		Mediums:  []seed.Medium{seed.Medium{Format: seed.MediumFormat_DigitalMedia}},
-		EditNote: url + editNote,
+		EditNote: pageURL + editNote,
 	}
 
 	// Add the primary type for the release group.
@@ -88,6 +91,15 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 		rel.Types = append(rel.Types, seed.ReleaseGroupType_Single)
 	default:
 		return nil, nil, fmt.Errorf("unsupported type %q", album.Current.Type)
+	}
+
+	// Try to find the artist's MBID from the URL.
+	if au := getArtistURL(pageURL); au != "" {
+		if mbid, err := db.GetArtistMBIDFromURL(ctx, au); err != nil {
+			log.Printf("Failed getting artist MBID from %v: %v", au, err)
+		} else if mbid != "" {
+			rel.Artists[0].MBID = mbid
+		}
 	}
 
 	// I'm guessing that the publish date is when the album was created in Bandcamp,
@@ -151,30 +163,42 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 		if album.Current.FreeDownloadPage != "" ||
 			pref == 1 ||
 			(pref == 2 && album.Current.MinimumPrice == 0) {
-			addURL(url, seed.LinkType_DownloadForFree_Release_URL)
+			addURL(pageURL, seed.LinkType_DownloadForFree_Release_URL)
 		}
 		if pref == 2 {
-			addURL(url, seed.LinkType_PurchaseForDownload_Release_URL)
+			addURL(pageURL, seed.LinkType_PurchaseForDownload_Release_URL)
 		}
 	}
 	if numTracks := len(med.Tracks); album.HasAudio && numTracks > 0 &&
 		numTracks >= metaTracks && // no hidden tracks
 		numTracks == streamableTracks {
-		addURL(url, seed.LinkType_StreamingMusic_Release_URL)
+		addURL(pageURL, seed.LinkType_StreamingMusic_Release_URL)
 	}
 	// Check if the page has a Creative Commons license.
-	if lurl, err := page.Query("div#license a.cc-icons").Attr("href"); err == nil {
-		addURL(lurl, seed.LinkType_License_Release_URL)
+	if lu, err := page.Query("div#license a.cc-icons").Attr("href"); err == nil {
+		addURL(lu, seed.LinkType_License_Release_URL)
 	}
 
-	// If there's a back link to a label, prefill the search field.
-	// TODO: The userscript appears to also use the link URL to search for the label's MBID.
+	// If there's a back link to a label, prefill the search field and/or MBID.
+	var labelName, labelMBID string
 	if res := page.Query("a.back-to-label-link span.back-link-text"); res.Err == nil {
 		if n := res.Node.LastChild; n != nil && n.Type == html.TextNode {
-			rel.Labels = append(rel.Labels, seed.ReleaseLabel{
-				Name: strings.TrimSpace(n.Data),
-			})
+			labelName = strings.TrimSpace(n.Data)
 		}
+	}
+	if val, err := page.Query("a.back-to-label-link").Attr("href"); err == nil {
+		if labelURL, err := url.Parse(val); err == nil {
+			labelURL.RawQuery = "" // clear "?from=btl"
+			if labelMBID, err = db.GetLabelMBIDFromURL(ctx, labelURL.String()); err != nil {
+				log.Printf("Failed getting artist MBID from %s: %v", labelURL, err)
+			}
+		}
+	}
+	if labelName != "" || labelMBID != "" {
+		rel.Labels = append(rel.Labels, seed.ReleaseLabel{
+			Name: labelName,
+			MBID: labelMBID,
+		})
 	}
 
 	// If there aren't any media besides the digital download, seed the UPC if present.
@@ -269,6 +293,17 @@ var (
 	hostRegexp = regexp.MustCompile(`^[-a-z0-9]+\.bandcamp\.com$`)
 	pathRegexp = regexp.MustCompile(`^/(?:album|track)/[-a-z0-9]+$`)
 )
+
+func getArtistURL(orig string) string {
+	u, err := url.Parse(orig)
+	if err != nil {
+		return ""
+	}
+	if strings.HasSuffix(u.Host, ".bandcamp.com") {
+		return "https://" + u.Host + "/"
+	}
+	return ""
+}
 
 // CleanURL returns a cleaned version of a Bandcamp URL like
 // "https://artist-name.bandcamp.com/album/album-name" or
