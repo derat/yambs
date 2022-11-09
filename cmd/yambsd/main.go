@@ -31,9 +31,11 @@ const (
 	// TODO: Figure out reasonable values for these.
 	maxReqBytes  = 128 * 1024
 	editsTimeout = 10 * time.Second
-	editsDelay   = 3 * time.Second
 	maxEdits     = 200
 	maxFields    = 1000
+
+	editsDelay       = 3 * time.Second
+	editsRateMapSize = 256
 )
 
 var version string
@@ -63,7 +65,7 @@ func main() {
 
 	db := db.NewDB(db.Version(version))
 	web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
-	rm := newRateMap()
+	rm := newRateMap(editsDelay, editsRateMapSize)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		if req.URL.Path != "/" {
@@ -148,12 +150,14 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 
 	// TODO: Check referrer?
 
+	now := time.Now()
 	caddr := clientAddr(req)
+
 	ip, _, err := net.SplitHostPort(caddr)
 	if err != nil {
 		ip = caddr
 	}
-	if !rm.update(ip, time.Now(), editsDelay) {
+	if !rm.attempt(ip, now) {
 		return nil, &httpError{
 			code: http.StatusTooManyRequests,
 			msg:  "Please wait a few seconds and try again",

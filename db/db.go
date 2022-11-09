@@ -15,8 +15,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"sync"
 
+	"github.com/derat/yambs/cache"
 	"golang.org/x/time/rate"
 )
 
@@ -25,6 +25,9 @@ const (
 	maxQPS         = 1
 	rateBucketSize = 1
 	userAgentFmt   = "yambs/%s ( https://github.com/derat/yambs )"
+
+	// TODO: Should cache entries also expire after a certain amount of time?
+	cacheSize = 256 // size for various caches
 )
 
 // entityType is an entity type sent to the MusicBrainz API.
@@ -35,11 +38,11 @@ const (
 	labelType  entityType = "label"
 )
 
-// DB queries the MusicBrainz database.
+// DB queries the MusicBrainz database using its API.
+// See https://musicbrainz.org/doc/MusicBrainz_API.
 type DB struct {
-	// TODO: Use LRU caches instead.
-	databaseIDs sync.Map                 // string MBID to int32 database ID
-	urlMBIDs    map[entityType]*sync.Map // string URL to string MBID
+	databaseIDs *cache.LRU                // string MBID to int32 database ID
+	urlMBIDs    map[entityType]*cache.LRU // string URL to string MBID
 
 	limiter         *rate.Limiter // rate-limits network requests
 	disallowQueries bool          // don't allow network traffic
@@ -49,9 +52,10 @@ type DB struct {
 // NewDB returns a new DB object.
 func NewDB(opts ...Option) *DB {
 	db := DB{
-		urlMBIDs: map[entityType]*sync.Map{
-			artistType: &sync.Map{},
-			labelType:  &sync.Map{},
+		databaseIDs: cache.NewLRU(cacheSize),
+		urlMBIDs: map[entityType]*cache.LRU{
+			artistType: cache.NewLRU(cacheSize),
+			labelType:  cache.NewLRU(cacheSize),
 		},
 		limiter: rate.NewLimiter(maxQPS, rateBucketSize),
 	}
@@ -79,7 +83,7 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 		return 0, errors.New("malformed MBID")
 	}
 
-	if id, ok := db.databaseIDs.Load(mbid); ok {
+	if id, ok := db.databaseIDs.Get(mbid); ok {
 		return id.(int32), nil
 	}
 
@@ -100,7 +104,7 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 		return 0, errors.New("server didn't return ID")
 	}
 	log.Print("Got database ID ", data.ID)
-	db.databaseIDs.Store(mbid, data.ID)
+	db.databaseIDs.Set(mbid, data.ID)
 	return data.ID, nil
 }
 
@@ -121,7 +125,7 @@ func (db *DB) GetLabelMBIDFromURL(ctx context.Context, linkURL string) (string, 
 func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityType) (string, error) {
 	// Check the cache first.
 	cache := db.urlMBIDs[entity]
-	if mbid, ok := cache.Load(linkURL); ok {
+	if mbid, ok := cache.Get(linkURL); ok {
 		return mbid.(string), nil
 	}
 
@@ -172,7 +176,7 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 		}
 		mbid := list.Relations[0]
 		log.Print("Got MBID ", mbid)
-		cache.Store(linkURL, mbid)
+		cache.Set(linkURL, mbid)
 		return mbid, nil
 	}
 	return "", nil
@@ -213,17 +217,17 @@ func (db *DB) doQuery(ctx context.Context, url string) (io.ReadCloser, error) {
 
 // SetDatabaseIDForTest hardcodes an ID for GetDatabaseID to return.
 func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {
-	db.databaseIDs.Store(mbid, id)
+	db.databaseIDs.Set(mbid, id)
 }
 
 // SetArtistMBIDFromURLForTest hardcodes an MBID for GetArtistMBIDFromURL to return.
 func (db *DB) SetArtistMBIDFromURLForTest(url, mbid string) {
-	db.urlMBIDs[artistType].Store(url, mbid)
+	db.urlMBIDs[artistType].Set(url, mbid)
 }
 
 // SetLabelMBIDFromURLForTest hardcodes an MBID for GetLabelMBIDFromURL to return.
 func (db *DB) SetLabelMBIDFromURLForTest(url, mbid string) {
-	db.urlMBIDs[labelType].Store(url, mbid)
+	db.urlMBIDs[labelType].Set(url, mbid)
 }
 
 // mbidRegexp matches a MusicBrainz ID (i.e. a UUID).
