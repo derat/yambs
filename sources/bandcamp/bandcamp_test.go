@@ -74,6 +74,77 @@ func TestParsePage(t *testing.T) {
 			img: "https://f4.bcbits.com/img/a1689585732_0.jpg",
 		},
 		{
+			// This is an album URL, but it has a single track that matches the album title
+			// so it should be treated as a single rather than an album.
+			url: "https://louiscole.bandcamp.com/album/let-it-happen",
+			rel: &seed.Release{
+				Title:     "Let it Happen",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Barcode:   "5054429157154",
+				Language:  "eng",
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Year: 2022, Month: 8, Day: 2, Country: "XW"}},
+				Labels:    []seed.ReleaseLabel{{Name: "Brainfeeder"}},
+				Artists:   []seed.ArtistCredit{{Name: "Louis cole"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Let it Happen", Length: sec(403)},
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://louiscole.bandcamp.com/album/let-it-happen",
+						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
+					},
+					{
+						URL:      "https://louiscole.bandcamp.com/album/let-it-happen",
+						LinkType: seed.LinkType_StreamingMusic_Release_URL,
+					},
+				},
+				EditNote: "https://louiscole.bandcamp.com/album/let-it-happen" + editNote,
+			},
+			img: "https://f4.bcbits.com/img/a3000320182_0.jpg",
+		},
+		{
+			// This is a non-album track URL, which should be treated as a single.
+			url: "https://pillarsinthesky.bandcamp.com/track/arcanum",
+			rel: &seed.Release{
+				Title:     "Arcanum",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Language:  "eng",
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Year: 2015, Month: 5, Day: 3, Country: "XW"}},
+				Artists:   []seed.ArtistCredit{{Name: "Pillars In The Sky"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Arcanum", Length: sec(341.294)},
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
+						LinkType: seed.LinkType_DownloadForFree_Release_URL,
+					},
+					{
+						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
+						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
+					},
+					{
+						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
+						LinkType: seed.LinkType_StreamingMusic_Release_URL,
+					},
+				},
+				EditNote: "https://pillarsinthesky.bandcamp.com/track/arcanum" + editNote,
+			},
+			img: "https://f4.bcbits.com/img/a2320496643_0.jpg",
+		},
+		{
 			// This album has a Creative Commons license.
 			url: "https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
 			rel: &seed.Release{
@@ -202,4 +273,28 @@ func getFilename(url string) string {
 
 func sec(sec float64) time.Duration {
 	return time.Duration(sec * float64(time.Second))
+}
+
+func TestCleanURL(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want string
+		ok   bool // if false, error should be returned
+	}{
+		{"https://louiezong.bandcamp.com/album/cartoon-funk", "https://louiezong.bandcamp.com/album/cartoon-funk", true},
+		{"http://louiezong.bandcamp.com/album/cartoon-funk", "https://louiezong.bandcamp.com/album/cartoon-funk", true},
+		{"https://pillarsinthesky.bandcamp.com/track/arcanum", "https://pillarsinthesky.bandcamp.com/track/arcanum", true},
+		{"http://pillarsinthesky.bandcamp.com/track/arcanum", "https://pillarsinthesky.bandcamp.com/track/arcanum", true},
+		{"http://user:pass@artist.bandcamp.com/album/name?foo=bar#hash", "https://artist.bandcamp.com/album/name", true},
+		{"https://daily.bandcamp.com/best-jazz/the-best-jazz-on-bandcamp-october-2022", "", false},
+		{"https://artist.example.org/album/name", "", false},
+	} {
+		if got, err := CleanURL(tc.in); !tc.ok && err == nil {
+			t.Errorf("CleanURL(%q) = %q; wanted error", tc.in, got)
+		} else if tc.ok && err != nil {
+			t.Errorf("CleanURL(%q) failed: %v", tc.in, err)
+		} else if tc.ok && got != tc.want {
+			t.Errorf("CleanURL(%q) = %q; want %q", tc.in, got, tc.want)
+		}
+	}
 }

@@ -50,29 +50,22 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 		url = "https" + url[4:]
 	}
 
-	val, err := page.Query("script[data-tralbum]").Attr("data-tralbum")
-	if err != nil {
-		return nil, nil, err
+	var album albumData
+	if err := unmarshalAttr(page, "script[data-tralbum]", "data-tralbum", &album); err != nil {
+		return nil, nil, fmt.Errorf("album data: %v", err)
 	}
-	var data albumData
-	if err := json.Unmarshal([]byte(val), &data); err != nil {
-		return nil, nil, err
-	}
-	// TODO: Support more types. The userscript maps "track" to a single release type,
-	// unless "album_embed_data" is set, in which case it treats it as an individual
-	// track on a parent album.
-	if data.Current.Type != "album" {
-		return nil, nil, fmt.Errorf("non-album type %q", data.Current.Type)
+	var embed embedData
+	if err := unmarshalAttr(page, "script[data-embed]", "data-embed", &embed); err != nil {
+		return nil, nil, fmt.Errorf("embed data: %v", err)
 	}
 
 	rel = &seed.Release{
-		Title: data.Current.Title,
+		Title: album.Current.Title,
 		// TODO: Add logic for detecting "various artists", maybe.
 		// The userscript checks if all tracks have titles like "artist - tracktitle" with
 		// non-numeric artists (which would instead be a track number) and tests the album
 		// artist against '^various(?: artists)?$'.
-		Artists:   []seed.ArtistCredit{{Name: data.Artist}},
-		Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+		Artists:   []seed.ArtistCredit{{Name: album.Artist}},
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 		// The userscript appears to hardcode these too, but it might not be too hard
@@ -83,13 +76,27 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 		EditNote: url + editNote,
 	}
 
+	// Add the primary type for the release group.
+	switch album.Current.Type {
+	case "album":
+		rel.Types = append(rel.Types, seed.ReleaseGroupType_Album)
+	case "track":
+		// Add the track as a single if it isn't part of an album.
+		if embed.AlbumEmbedData.Linkback != "" {
+			return nil, nil, errors.New("track is part of " + embed.AlbumEmbedData.Linkback)
+		}
+		rel.Types = append(rel.Types, seed.ReleaseGroupType_Single)
+	default:
+		return nil, nil, fmt.Errorf("unsupported type %q", album.Current.Type)
+	}
+
 	// I'm guessing that the publish date is when the album was created in Bandcamp,
 	// while the release date is when it was actually made available to users (but
 	// can maybe also be set to some arbitrary date?). Follow the userscript's logic
 	// of using the release date unless it precedes Bandcamp's launch.
-	date := time.Time(data.Current.ReleaseDate)
+	date := time.Time(album.Current.ReleaseDate)
 	if date.IsZero() || date.Before(bandcampLaunch) {
-		date = time.Time(data.Current.PublishDate)
+		date = time.Time(album.Current.PublishDate)
 	}
 	if !date.IsZero() {
 		rel.Events = []seed.ReleaseEvent{{
@@ -103,7 +110,7 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 	// Add a single medium with all of the tracks.
 	med := &rel.Mediums[0]
 	var streamableTracks int
-	for _, tr := range data.TrackInfo {
+	for _, tr := range album.TrackInfo {
 		// TODO: If we previously guessed that this release has various artists,
 		// try to parse them from the title here. The userscript uses "^(.+) - (.+)$",
 		// but the MB data also has an "artist" field -- is it used? Seems to be null
@@ -129,21 +136,28 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 		med.Tracks = append(med.Tracks, seed.Track{Title: "[unknown]"})
 	}
 
+	// If there's just one track and its name matches the album name,
+	// treat this as a single rather than a full album.
+	if len(rel.Types) == 1 && rel.Types[0] == seed.ReleaseGroupType_Album &&
+		len(med.Tracks) == 1 && strings.EqualFold(med.Tracks[0].Title, rel.Title) {
+		rel.Types = []seed.ReleaseGroupType{seed.ReleaseGroupType_Single}
+	}
+
 	// Add URLs. This logic is lifted wholesale from the userscript.
 	addURL := func(u string, lt seed.LinkType) {
 		rel.URLs = append(rel.URLs, seed.URL{URL: u, LinkType: lt})
 	}
-	if pref := data.Current.DownloadPref; pref != 0 {
-		if data.Current.FreeDownloadPage != "" ||
+	if pref := album.Current.DownloadPref; pref != 0 {
+		if album.Current.FreeDownloadPage != "" ||
 			pref == 1 ||
-			(pref == 2 && data.Current.MinimumPrice == 0) {
+			(pref == 2 && album.Current.MinimumPrice == 0) {
 			addURL(url, seed.LinkType_DownloadForFree_Release_URL)
 		}
 		if pref == 2 {
 			addURL(url, seed.LinkType_PurchaseForDownload_Release_URL)
 		}
 	}
-	if numTracks := len(med.Tracks); data.HasAudio && numTracks > 0 &&
+	if numTracks := len(med.Tracks); album.HasAudio && numTracks > 0 &&
 		numTracks >= metaTracks && // no hidden tracks
 		numTracks == streamableTracks {
 		addURL(url, seed.LinkType_StreamingMusic_Release_URL)
@@ -166,8 +180,8 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 	// If there aren't any media besides the digital download, seed the UPC if present.
 	// (The userscript's justification for this is that "UPCs generally apply to physical
 	// releases".)
-	if len(data.Packages) == 0 && data.Current.UPC != "" {
-		rel.Barcode = data.Current.UPC
+	if len(album.Packages) == 0 && album.Current.UPC != "" {
+		rel.Barcode = album.Current.UPC
 	}
 
 	// Add an informational edit containing the full-resolution cover art to make it easy
@@ -186,6 +200,15 @@ func parsePage(page *web.Page, url string) (rel *seed.Release, img *seed.Info, e
 	return rel, img, nil
 }
 
+// unmarshalAttr selects the element matched by query and JSON-unmarshals attr.
+func unmarshalAttr(page *web.Page, query, attr string, dst interface{}) error {
+	val, err := page.Query(query).Attr(attr)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal([]byte(val), dst)
+}
+
 var (
 	// bandcampLaunch contains the Bandcamp launch date:
 	// https://blog.bandcamp.com/2008/09/16/hello-cleveland/
@@ -194,7 +217,8 @@ var (
 	metaDescRegexp = regexp.MustCompile(`^(\d+) track album$`)
 )
 
-// albumData corresponds to the data-tralbum JSON object embedded in Bandcamp album pages.
+// albumData corresponds to the data-tralbum JSON object embedded in Bandcamp album pages,
+// which appears to be loaded into window.TralbumData.
 // I admire Bandcamp's impartiality in the camelCase vs. snake_case conflict.
 type albumData struct {
 	Artist   string        `json:"artist"`
@@ -232,14 +256,23 @@ func (d *jsonDate) UnmarshalJSON(b []byte) error {
 
 func (d jsonDate) String() string { return time.Time(d).String() }
 
+// embedData corresponds to the data-embed JSON object embedded in Bandcamp album pages,
+// which appears to be loaded into window.EmbedData.
+type embedData struct {
+	AlbumEmbedData struct {
+		Linkback string `json:"linkback"`
+	} `json:"album_embed_data"`
+}
+
 var (
 	// TODO: I'm just guessing here based on what I've seen.
-	hostRegexp      = regexp.MustCompile(`^[-a-z0-9]+\.bandcamp\.com$`)
-	albumPathRegexp = regexp.MustCompile(`^/album/[-a-z0-9]+$`)
+	hostRegexp = regexp.MustCompile(`^[-a-z0-9]+\.bandcamp\.com$`)
+	pathRegexp = regexp.MustCompile(`^/(?:album|track)/[-a-z0-9]+$`)
 )
 
 // CleanURL returns a cleaned version of a Bandcamp URL like
-// "https://artist-name.bandcamp.com/album/album-name".
+// "https://artist-name.bandcamp.com/album/album-name" or
+// "https://artist-name.bandcamp.com/track/track-name".
 // An error is returned if the URL doesn't match this format.
 func CleanURL(orig string) (string, error) {
 	u, err := url.Parse(strings.ToLower(orig))
@@ -249,8 +282,8 @@ func CleanURL(orig string) (string, error) {
 	if !hostRegexp.MatchString(u.Host) {
 		return "", errors.New(`host not "<name>.bandcamp.com"`)
 	}
-	if !albumPathRegexp.MatchString(u.Path) {
-		return "", errors.New(`path not "/album/<name>"`)
+	if !pathRegexp.MatchString(u.Path) {
+		return "", errors.New(`path not "/album/<name>" or "/track/<name>"`)
 	}
 	u.Scheme = "https"
 	u.User = nil
