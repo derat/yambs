@@ -229,8 +229,8 @@ or standalone recording edit:
 ```sh
 yambs \
   -type recording \
-  -artist0_mbid=7e84f845-ac16-41fe-9ff8-df12eb32af55 \
-  -edit_note='from artist-provided MP3 at https://www.example.org/song.mp3' \
+  -set artist=7e84f845-ac16-41fe-9ff8-df12eb32af55 \
+  -set edit_note='from artist-provided MP3 at https://www.example.org/song.mp3' \
   /path/to/a/song.mp3
 ```
 
