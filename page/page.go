@@ -17,7 +17,9 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/derat/yambs/seed"
@@ -46,11 +48,6 @@ func OpenFile(edits []seed.Edit) error {
 // Chrome OS VM), and I think that a fixed host:port may be needed in order to
 // permanently tell Chrome to avoid blocking popups.
 func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
-	var b bytes.Buffer
-	if err := Write(&b, edits, ""); err != nil {
-		return err
-	}
-
 	// Bind to the port first.
 	ls, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -58,22 +55,58 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 	}
 	defer ls.Close()
 
-	// Get the real address in case the port wasn't specified and launch the browser.
-	url := fmt.Sprintf("http://%s/", ls.Addr().String())
-	log.Print("Listening at ", url)
-	if err := browser.OpenURL(url); err != nil {
+	// Get the real address in case the port wasn't specified.
+	srvURL := fmt.Sprintf("http://%s/", ls.Addr().String())
+	log.Print("Listening at ", srvURL)
+
+	// If there are seed.Info edits with file:// URLs, rewrite them to point at the web server.
+	filePaths := make(map[string]struct{})
+	for i, ed := range edits {
+		if _, ok := ed.(*seed.Info); ok && strings.HasPrefix(ed.URL(), "file://") {
+			u, err := url.Parse(ed.URL())
+			if err != nil {
+				return err
+			}
+			u.Scheme = "http"
+			u.Host = ls.Addr().String()
+			if edits[i], err = seed.NewInfo(ed.Description(), u.String()); err != nil {
+				return err
+			}
+			filePaths[u.Path] = struct{}{}
+		}
+	}
+
+	var b bytes.Buffer
+	if err := Write(&b, edits, ""); err != nil {
 		return err
 	}
 
-	// Report that we're done after we've served the page a single time.
+	// Launch the browser before we start handling requests.
+	if err := browser.OpenURL(srvURL); err != nil {
+		return err
+	}
+
+	// Report that we're done after we've served the page a single time,
+	// but only if there aren't any rewritten file:// URLs that we need to serve.
 	done := make(chan struct{})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/" {
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		if req.URL.Path == "/" {
 			w.Header().Set("Content-Type", "text/html")
 			w.Write(b.Bytes())
-			close(done)
+			if len(filePaths) == 0 {
+				close(done)
+			}
+		} else if _, ok := filePaths[req.URL.Path]; ok {
+			f, err := os.Open(req.URL.Path)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer f.Close()
+			// TODO: Stat the file so we can pass modtime?
+			http.ServeContent(w, req, f.Name(), time.Time{}, f)
 		} else {
-			http.NotFound(w, r)
+			http.NotFound(w, req)
 		}
 	})
 

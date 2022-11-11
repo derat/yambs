@@ -22,6 +22,8 @@ type ArtistCredit struct {
 	Name string
 	// NameAsCredited contains the name under which the artist was credited.
 	// This is only needed if it's different than MBID or Name.
+	// TODO: Actually, it seems like Name is maybe ignored in favor of NameAsCredited
+	// when seeding the standalone recording form? Investigate further.
 	NameAsCredited string
 	// JoinPhrase contains text for joining this artist's name with the next one's, e.g. " & ".
 	JoinPhrase string

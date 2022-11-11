@@ -10,7 +10,8 @@ file describing recordings, `yambs` can open the [Add Standalone Recording] page
 for each with various fields pre-filled.
 
 `yambs` can also read `key=value` lines from text files to seed the [Add
-Release] page, and it can use [Bandcamp] album pages to seed releases too.
+Release] page, and it can use [Bandcamp] album pages and local MP3 files to seed
+edits too.
 
 There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 
