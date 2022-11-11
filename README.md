@@ -53,7 +53,7 @@ Seeds MusicBrainz edits.
   -set value
     	Set a field for all entities (e.g. "edit_note=from https://www.example.org")
   -type value
-    	Entity type of text input (recording, release)
+    	Entity type for text or MP3 input (recording, release)
   -verbose
     	Enable verbose logging
   -version
@@ -134,7 +134,7 @@ Note that this example uses the `csv` format rather than `tsv`.
 
 More-complicated artist credits can also be assigned:
 
-```
+```sh
 yambs \
   -type recording \
   -format tsv
@@ -152,7 +152,7 @@ yambs \
 
 The `keyval` format can be used to seed a single entity across multiple lines:
 
-```
+```sh
 yambs \
   -type release \
   -format keyval \
@@ -190,7 +190,7 @@ edit_note=https://www.example.org
 Pass the `-list-fields` flag to list all available fields for a given entity
 type:
 
-```
+```sh
 yambs -type recording -list-fields
 yambs -type release   -list-fields
 ```
@@ -205,8 +205,42 @@ repository.
 
 ---
 
-There's also a [yambsd executable] that exposes the same functionality through a
-webpage (with some limits to avoid abuse).
+You can pass Bandcamp album URLs to seed release edits:
+
+```sh
+yambs https://austinwintory.bandcamp.com/album/journey
+```
+
+The page that is opened will include a link to the album's highest-resolution
+cover art to make it easier to add in a followup edit.
+
+If you pass a Bandcamp track URL that isn't part of an album, an edit to add it
+as a single will be created:
+
+```sh
+yambs https://caribouband.bandcamp.com/track/tin
+```
+
+---
+
+You can pass the path to a local MP3 file to use it to seed a (single) release
+or standalone recording edit:
+
+```sh
+yambs \
+  -type recording \
+  -artist0_mbid=7e84f845-ac16-41fe-9ff8-df12eb32af55 \
+  -edit_note='from artist-provided MP3 at https://www.example.org/song.mp3' \
+  /path/to/a/song.mp3
+```
+
+If the MP3 file contains embedded images, they will be extracted to temporary
+files so they can be added as cover art.
+
+---
+
+There's also a [yambsd executable] that exposes most of the same functionality
+through a webpage (with some limits to avoid abuse).
 
 [yambsd executable]: ./cmd/yambsd
 
