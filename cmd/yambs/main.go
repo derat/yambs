@@ -138,7 +138,7 @@ func main() {
 			}
 			var err error
 			if f, ok := r.(*os.File); ok && strings.HasSuffix(strings.ToLower(f.Name()), ".mp3") {
-				if edits, err = mp3.Read(f, seed.Type(editType.val), setCmds); err != nil {
+				if edits, err = mp3.ReadFile(f, seed.Type(editType.val), setCmds); err != nil {
 					fmt.Fprintln(os.Stderr, "Failed reading MP3 file:", err)
 					return 1
 				}

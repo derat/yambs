@@ -15,10 +15,10 @@ import (
 	"github.com/derat/yambs/sources/text"
 )
 
-// Read reads the passed-in MP3 file and returns an edit of the requested type
+// ReadFile reads the passed-in MP3 file and returns an edit of the requested type
 // (i.e. either a standalone recording or a "single" release) and additional
 // informational edits for any embedded images.
-func Read(f *os.File, typ seed.Type, rawSetCmds []string) ([]seed.Edit, error) {
+func ReadFile(f *os.File, typ seed.Type, rawSetCmds []string) ([]seed.Edit, error) {
 	setCmds, err := text.ParseSetCommands(rawSetCmds, typ)
 	if err != nil {
 		return nil, err
