@@ -47,7 +47,7 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 		o(&cfg)
 	}
 
-	setPairs, err := readSetCommands(rawSetCmds)
+	setPairs, err := ParseSetCommands(rawSetCmds, typ)
 	if err != nil {
 		return nil, err
 	}
@@ -85,13 +85,13 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 		}
 
 		for _, pair := range setPairs {
-			if err := setField(edit, pair[0], pair[1]); err != nil {
+			if err := SetField(edit, pair[0], pair[1]); err != nil {
 				return nil, fmt.Errorf("failed setting %q: %v", pair[0]+"="+pair[1], err)
 			}
 		}
 		for j, field := range fields {
 			val := cols[j]
-			err := setField(edit, field, val)
+			err := SetField(edit, field, val)
 			if _, ok := err.(*fieldNameError); ok {
 				return nil, fmt.Errorf("%q: %v", field, err)
 			} else if err != nil {
@@ -121,19 +121,6 @@ func MaxEdits(max int) Option { return func(c *config) { c.maxEdits = max } }
 // MaxEdits returns an Option that limits the maximum number of fields that can be set.
 // "field=value" directives are included in the count.
 func MaxFields(max int) Option { return func(c *config) { c.maxFields = max } }
-
-// readSetCommands parses a list of "field=val" commands.
-func readSetCommands(cmds []string) ([][2]string, error) {
-	pairs := make([][2]string, len(cmds))
-	for i, cmd := range cmds {
-		parts := strings.SplitN(cmd, "=", 2)
-		if len(parts) != 2 {
-			return nil, fmt.Errorf(`malformed set command %q (want "field=val")`, cmd)
-		}
-		pairs[i] = [2]string{parts[0], parts[1]}
-	}
-	return pairs, nil
-}
 
 // rowReader is used by Read to read entity data row-by-row.
 type rowReader interface {

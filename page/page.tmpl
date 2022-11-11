@@ -572,6 +572,9 @@
           break;
 
         case 'bandcamp':
+          // TODO: Let the user supply set commands and pass them as a "set" param, maybe.
+          // We'd also need to add a "Show available fields" button in the Bandcamp
+          // section that displays the fields for releases.
           body.set('source', 'bandcamp');
           body.set('url', formBandcampUrlInput.value.trim());
           break;

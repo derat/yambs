@@ -12,25 +12,34 @@ import (
 	"github.com/derat/mpeg"
 	"github.com/derat/taglib-go/taglib"
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/text"
 )
 
 // Read reads the passed-in MP3 file and returns an edit of the requested type
 // (i.e. either a standalone recording or a "single" release) and additional
 // informational edits for any embedded images.
-// TODO: Accept set commands like how text.Read does.
-func Read(f *os.File, typ seed.Type) ([]seed.Edit, error) {
+func Read(f *os.File, typ seed.Type, rawSetCmds []string) ([]seed.Edit, error) {
+	setCmds, err := text.ParseSetCommands(rawSetCmds, typ)
+	if err != nil {
+		return nil, err
+	}
+
 	song, err := readSongInfo(f)
 	if err != nil {
 		return nil, err
 	}
 
-	// Add the recording or release edit.
-	var edits []seed.Edit
-	if ed, err := createSongEdit(song, typ); err != nil {
+	// Create the recording or release edit.
+	edit, err := createSongEdit(song, typ)
+	if err != nil {
 		return nil, err
-	} else {
-		edits = append(edits, ed)
 	}
+	for _, pair := range setCmds {
+		if err := text.SetField(edit, pair[0], pair[1]); err != nil {
+			return nil, fmt.Errorf("failed setting %q: %v", pair[0]+"="+pair[1], err)
+		}
+	}
+	edits := []seed.Edit{edit}
 
 	// Add an informational edit for each embedded image.
 	for _, img := range song.images {

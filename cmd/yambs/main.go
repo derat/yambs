@@ -62,7 +62,7 @@ func main() {
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "edit_note=from https://www.example.org")`)
-	flag.Var(&editType, "type", fmt.Sprintf("Entity type of text or MP3 input (%v)", editType.allowedList()))
+	flag.Var(&editType, "type", fmt.Sprintf("Entity type for text or MP3 input (%v)", editType.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	printVersion := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
@@ -123,10 +123,11 @@ func main() {
 
 		db := db.NewDB(db.Version(version))
 		web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
+
 		var edits []seed.Edit
 		if srcURL != "" {
 			var err error
-			if edits, err = bandcamp.Fetch(ctx, srcURL, db); err != nil {
+			if edits, err = bandcamp.Fetch(ctx, srcURL, setCmds, db); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed fetching page:", err)
 				return 1
 			}
@@ -137,7 +138,7 @@ func main() {
 			}
 			var err error
 			if f, ok := r.(*os.File); ok && strings.HasSuffix(strings.ToLower(f.Name()), ".mp3") {
-				if edits, err = mp3.Read(f, seed.Type(editType.val)); err != nil {
+				if edits, err = mp3.Read(f, seed.Type(editType.val), setCmds); err != nil {
 					fmt.Fprintln(os.Stderr, "Failed reading MP3 file:", err)
 					return 1
 				}

@@ -18,6 +18,7 @@ import (
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 	"golang.org/x/net/html"
 )
@@ -28,7 +29,12 @@ const editNote = "\n\n(seeded using https://github.com/derat/yambs)"
 // Fetch generates seeded edits from the Bandcamp page at url.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-func Fetch(ctx context.Context, url string, db *db.DB) ([]seed.Edit, error) {
+func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]seed.Edit, error) {
+	setCmds, err := text.ParseSetCommands(rawSetCmds, seed.ReleaseType)
+	if err != nil {
+		return nil, err
+	}
+
 	page, err := web.FetchPage(ctx, url)
 	if err != nil {
 		return nil, err
@@ -37,7 +43,13 @@ func Fetch(ctx context.Context, url string, db *db.DB) ([]seed.Edit, error) {
 	if err != nil {
 		return nil, err
 	}
+	for _, cmd := range setCmds {
+		if err := text.SetField(rel, cmd[0], cmd[1]); err != nil {
+			return nil, err
+		}
+	}
 	edits := []seed.Edit{rel}
+
 	if img != nil {
 		edits = append(edits, img)
 	}

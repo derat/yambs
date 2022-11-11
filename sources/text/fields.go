@@ -57,8 +57,9 @@ var typeFields = map[seed.Type]map[string]fieldInfo{
 	seed.ReleaseType:   releaseFields,
 }
 
-// setField sets the named field in edit.
-func setField(edit seed.Edit, field, val string) error {
+// SetField sets the named field in edit.
+// The field must be appropriate for the edit's type (see ListFields).
+func SetField(edit seed.Edit, field, val string) error {
 	// TODO: Maybe try to rewrite all of this code to use generics at some point.
 	// The function casts below will panic if a function has the wrong signature.
 	fn, err := findFieldFunc(edit.Type(), field)
@@ -71,7 +72,7 @@ func setField(edit seed.Edit, field, val string) error {
 	case *seed.Release:
 		return fn.(func(*seed.Release, string, string) error)(tedit, field, val)
 	default:
-		return fmt.Errorf("unknown edit type %q", edit.Type())
+		return fmt.Errorf("unsupported edit type %q", edit.Type())
 	}
 }
 
@@ -80,7 +81,7 @@ func setField(edit seed.Edit, field, val string) error {
 func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
 	m, ok := typeFields[typ]
 	if !ok {
-		return nil, fmt.Errorf("unknown edit type %q", typ)
+		return nil, fmt.Errorf("unsupported edit type %q", typ)
 	}
 	if field == "" {
 		return nil, &fieldNameError{"missing field name"}
@@ -281,4 +282,32 @@ func indexedField(items interface{}, field, prefix string, fn interface{}) error
 	} else {
 		return err
 	}
+}
+
+// ParseSetCommands parses "field=val" commands into pairs and validates that
+// they can be used to set fields on a seed.Edit of the supplied type.
+func ParseSetCommands(cmds []string, typ seed.Type) ([][2]string, error) {
+	// This is a bit hokey: create a throwaway edit to use to test the commands.
+	var edit seed.Edit
+	switch typ {
+	case seed.RecordingType:
+		edit = &seed.Recording{}
+	case seed.ReleaseType:
+		edit = &seed.Release{}
+	default:
+		return nil, fmt.Errorf("unsupported edit type %q", typ)
+	}
+
+	pairs := make([][2]string, len(cmds))
+	for i, cmd := range cmds {
+		parts := strings.SplitN(cmd, "=", 2)
+		if len(parts) != 2 {
+			return nil, fmt.Errorf(`malformed set command %q (want "field=val")`, cmd)
+		}
+		if err := SetField(edit, parts[0], parts[1]); err != nil {
+			return nil, fmt.Errorf("unable to set %q: %v", cmd, err)
+		}
+		pairs[i] = [2]string{parts[0], parts[1]}
+	}
+	return pairs, nil
 }
