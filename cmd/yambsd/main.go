@@ -12,6 +12,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -111,6 +112,10 @@ func main() {
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Content-Type", "image/x-icon")
 		w.Write(faviconData)
+	})
+	http.HandleFunc("/robots.txt", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Content-Type", "text/plain")
+		io.WriteString(w, "User-agent: *\nAllow: /\n")
 	})
 
 	// Handle App Engine specifying the port to listen on.
