@@ -221,12 +221,14 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
-      #icon {
-        margin-right: 4px;
+      #title svg {
+        height: 20px;
+        margin: 2px 4px 2px 2px;
         vertical-align: bottom;
+        width: 28.2px;
       }
       @media (prefers-color-scheme: dark) {
-        #icon {
+        #title svg {
           filter: drop-shadow(0 0 1px #fffa); /* add light glow */
         }
       }
@@ -294,8 +296,7 @@
     {{- if not .Edits}}
     <!-- form HTML -->
     <h1 id="title">
-      <img id="icon" src="{{.IconURL}}" alt="" height="22" />
-      yambs (Yet Another MusicBrainz Seeder)
+      {{.IconSVG}} yambs (Yet Another MusicBrainz Seeder)
       <!-- prettier-ignore -->
       {{if .Version}}<span id="version">{{.Version}}</span>{{end}}
     </h1>
