@@ -672,7 +672,7 @@
     ];
   </script>
   <script>
-    const editPreselect = 5; // number of checkboxes to automatically select
+    const editPreselect = 10; // number of checkboxes to automatically select
     const editSection = $('edit-section');
     const editHeaderCheckbox = $('edit-header-checkbox');
     const editOpenAllButton = $('edit-open-all-button');
@@ -706,7 +706,7 @@
       if (!range || range[1] === editLinks.length - 1) return;
 
       const start = range[1] + 1;
-      const end = start + (range[1] - range[0] + 1);
+      const end = start + (range[1] - range[0]);
       editCheckboxes.forEach((cb, idx) => (cb.checked = idx >= start && idx <= end));
       updateEditUI();
     }
