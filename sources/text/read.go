@@ -90,6 +90,12 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 			}
 		}
 		for j, field := range fields {
+			// Skip setting anything if the field name is empty.
+			// This is handy if the input file contains additional columns that
+			// the user doesn't want to use.
+			if field == "" {
+				continue
+			}
 			val := cols[j]
 			err := SetField(edit, field, val)
 			if _, ok := err.(*fieldNameError); ok {

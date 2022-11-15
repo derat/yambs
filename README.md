@@ -130,6 +130,8 @@ c55e74ff-bd7d-40ff-a591-c6993c59bda8,Sgt. Pepper’s Lonely Hearts Club Band
 
 Note that this example uses the `csv` format rather than `tsv`.
 
+[MBID]: https://musicbrainz.org/doc/MusicBrainz_Identifier
+
 ---
 
 More-complicated artist credits can also be assigned:
@@ -201,7 +203,9 @@ Acceptable values for various fields are listed in
 in the [musicbrainz-server](https://github.com/metabrainz/musicbrainz-server/)
 repository.
 
-[MBID]: https://musicbrainz.org/doc/MusicBrainz_Identifier
+Columns in input files can be skipped by passing blank field names. For example,
+`-fields foo,,bar` maps the first column to field `foo`, skips the second
+column, and maps the third column to `bar`.
 
 ---
 

@@ -199,3 +199,22 @@ func TestRead_Recording_MaxFields(t *testing.T) {
 		t.Fatal("Read unexpectedly accepted input with too many fields (including set commands)")
 	}
 }
+
+func TestRead_Recording_SkipField(t *testing.T) {
+	// Check that an empty field name can be passed to skip the corresponding column.
+	got, err := Read(context.Background(),
+		strings.NewReader("Name 1\tfoo\t3:56\nName 2\tbar\t0:45\n"),
+		TSV, seed.RecordingType, []string{"name", "", "length"}, nil,
+		db.NewDB(db.DisallowQueries))
+	if err != nil {
+		t.Fatal("Read failed:", err)
+	}
+
+	want := []seed.Edit{
+		&seed.Recording{Name: "Name 1", Length: 3*time.Minute + 56*time.Second},
+		&seed.Recording{Name: "Name 2", Length: 45 * time.Second},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Error("Read returned wrong edits:\n" + diff)
+	}
+}
