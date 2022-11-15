@@ -87,7 +87,9 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 		return id.(int32), nil
 	}
 
-	// Actually query the database.
+	// Actually query the database. The /ws/js endpoints apparently exist
+	// for field completion rather than being part of the API (/ws/2).
+	// See https://wiki.musicbrainz.org/Development/Search_Architecture.
 	log.Print("Requesting database ID for ", mbid)
 	r, err := db.doQuery(ctx, "https://musicbrainz.org/ws/js/entity/"+mbid)
 	if err != nil {
