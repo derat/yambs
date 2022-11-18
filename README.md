@@ -203,9 +203,15 @@ Acceptable values for various fields are listed in
 in the [musicbrainz-server](https://github.com/metabrainz/musicbrainz-server/)
 repository.
 
-Columns in input files can be skipped by passing blank field names. For example,
-`-fields foo,,bar` maps the first column to field `foo`, skips the second
-column, and maps the third column to `bar`.
+A column in an input file can be assigned to multiple fields by supplying
+slash-separated field names. For example, `-fields
+name,url0_url/edit_note,length` maps the first column to field `name`, the
+second column to fields `url0_url` and `edit_note`, and the third column to
+field `length`.
+
+A column can be skipped by passing an empty field name. For example, `-fields
+name,,length` maps the first column to field `name`, skips the second column,
+and maps the third column to `length`.
 
 ---
 

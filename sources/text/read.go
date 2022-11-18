@@ -39,6 +39,8 @@ type config struct {
 
 // Read reads one or more edits of the specified type from r in the specified format.
 // fields specifies the field associated with each column (unused for the KeyVal format).
+// Multiple fields can be associated with a single column by separating their names with
+// slashes, and empty field names indicate that the column should be ignored.
 // rawSets contains "field=value" directives describing values to set for all edits.
 func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 	fields []string, rawSetCmds []string, db *db.DB, opts ...Option) ([]seed.Edit, error) {
@@ -55,9 +57,16 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 	if err != nil {
 		return nil, err
 	}
-	if len(fields) == 0 {
+
+	// Count fields, including slash-separated names.
+	// Empty fields are included but that's arguably safer.
+	var nfields int
+	for _, f := range fields {
+		nfields += len(strings.Split(f, "/"))
+	}
+	if nfields == 0 {
 		return nil, errors.New("no fields specified")
-	} else if cfg.maxFields > 0 && len(setPairs)+len(fields) > cfg.maxFields {
+	} else if cfg.maxFields > 0 && len(setPairs)+nfields > cfg.maxFields {
 		return nil, errors.New("too many fields")
 	}
 
@@ -96,12 +105,14 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 			if field == "" {
 				continue
 			}
-			val := cols[j]
-			err := SetField(edit, field, val)
-			if _, ok := err.(*fieldNameError); ok {
-				return nil, fmt.Errorf("%q: %v", field, err)
-			} else if err != nil {
-				return nil, fmt.Errorf("bad %v %q: %v", field, val, err)
+			for _, fd := range strings.Split(field, "/") {
+				val := cols[j]
+				err := SetField(edit, fd, val)
+				if _, ok := err.(*fieldNameError); ok {
+					return nil, fmt.Errorf("%q: %v", fd, err)
+				} else if err != nil {
+					return nil, fmt.Errorf("bad %v %q: %v", fd, val, err)
+				}
 			}
 		}
 

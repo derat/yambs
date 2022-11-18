@@ -188,15 +188,44 @@ func TestRead_Recording_MaxFields(t *testing.T) {
 	}
 
 	// It should return an error if too many fields are supplied.
-	if _, err := Read(ctx, strings.NewReader("Name\nArtist\n3:45"), TSV, seed.RecordingType,
+	if _, err := Read(ctx, strings.NewReader("Name\tArtist\t3:45"), TSV, seed.RecordingType,
 		[]string{"name", "artist0_name", "length"}, nil, db, opt); err == nil {
 		t.Fatal("Read unexpectedly accepted input with too many fields")
 	}
 
 	// Set commands should count toward the limit too.
-	if _, err := Read(ctx, strings.NewReader("Name\n3:45"), TSV, seed.RecordingType,
+	if _, err := Read(ctx, strings.NewReader("Name\t3:45"), TSV, seed.RecordingType,
 		[]string{"name", "length"}, []string{"artist0_name=Artist"}, db, opt); err == nil {
 		t.Fatal("Read unexpectedly accepted input with too many fields (including set commands)")
+	}
+
+	// Slash-separated fields should be counted as well.
+	if _, err := Read(ctx, strings.NewReader("Name\t3:45"), TSV, seed.RecordingType,
+		[]string{"name/artist0_name", "length"}, nil, db, opt); err == nil {
+		t.Fatal("Read unexpectedly accepted input with too many fields (slash-separated)")
+	}
+}
+
+func TestRead_Recording_MultipleFields(t *testing.T) {
+	// Check that multiple slash-separated fields can be specified.
+	const (
+		url1 = "https://example.org/foo"
+		url2 = "https://example.org/bar"
+	)
+	got, err := Read(context.Background(),
+		strings.NewReader("Name 1\t"+url1+"\nName 2\t"+url2+"\n"),
+		TSV, seed.RecordingType, []string{"name", "url0_url/edit_note"}, nil,
+		db.NewDB(db.DisallowQueries))
+	if err != nil {
+		t.Fatal("Read failed:", err)
+	}
+
+	want := []seed.Edit{
+		&seed.Recording{Name: "Name 1", URLs: []seed.URL{{URL: url1}}, EditNote: url1},
+		&seed.Recording{Name: "Name 2", URLs: []seed.URL{{URL: url2}}, EditNote: url2},
+	}
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Error("Read returned wrong edits:\n" + diff)
 	}
 }
 
