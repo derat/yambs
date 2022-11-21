@@ -16,7 +16,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -66,7 +68,7 @@ func main() {
 	}
 	form := b.Bytes()
 
-	db := db.NewDB(db.Version(version))
+	mbdb := db.NewDB(db.Version(version))
 	web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 	rm := newRateMap(editsDelay, editsRateMapSize)
 
@@ -85,12 +87,13 @@ func main() {
 		}
 	})
 
+	// Generate edits requested via the form.
 	http.HandleFunc("/edits", func(w http.ResponseWriter, req *http.Request) {
 		ctx, cancel := context.WithTimeout(req.Context(), editsTimeout)
 		defer cancel()
 
 		caddr := clientAddr(req)
-		infos, err := getEditsForRequest(ctx, w, req, rm, db)
+		infos, err := getEditsForRequest(ctx, w, req, rm, mbdb)
 		if err != nil {
 			var msg string
 			code := http.StatusInternalServerError
@@ -109,6 +112,24 @@ func main() {
 		if err := json.NewEncoder(w).Encode(infos); err != nil {
 			log.Printf("Failed sending edits to %s: %v", caddr, err)
 		}
+	})
+
+	// Perform redirects for seed.AddCoverArtRedirectURI.
+	http.HandleFunc("/redirect-add-cover-art", func(w http.ResponseWriter, req *http.Request) {
+		mbid := req.FormValue("release_mbid")
+		if !db.IsMBID(mbid) {
+			http.Error(w, "Invalid release_mbid parameter", http.StatusBadRequest)
+			return
+		}
+		dst, err := url.Parse(req.Referer())
+		if err != nil || !mbSrvRegexp.MatchString(dst.Host) {
+			http.Error(w, "Bad referrer", http.StatusBadRequest)
+			return
+		}
+		dst.Path = "/release/" + mbid + "/add-cover-art"
+		dst.RawQuery = ""
+		dst.Fragment = ""
+		http.Redirect(w, req, dst.String(), http.StatusFound)
 	})
 
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, req *http.Request) {
@@ -130,6 +151,9 @@ func main() {
 	}
 }
 
+// mbSrvRegexp matches a hostname under musicbrainz.org.
+var mbSrvRegexp = regexp.MustCompile(`(?i)(?:^|\.)musicbrainz\.org$`)
+
 // httpError implements the error interface but also wraps an HTTP status code
 // and message that should be rutrned to the user.
 type httpError struct {
@@ -149,7 +173,7 @@ func httpErrorf(code int, format string, args ...interface{}) *httpError {
 
 // getEditsForRequest generates page.EditInfo objects in response to a /edits request to the server.
 func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
-	rm *rateMap, db *db.DB) (
+	rm *rateMap, mbdb *db.DB) (
 	[]*page.EditInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
@@ -189,7 +213,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 				msg:  fmt.Sprint("Server only accepts bandcamp.com album URLs: ", err),
 				err:  fmt.Errorf("%q: %v", req.FormValue("bandcampUrl"), err),
 			}
-		} else if edits, err = bandcamp.Fetch(ctx, url, req.Form["set"], db); err != nil {
+		} else if edits, err = bandcamp.Fetch(ctx, url, req.Form["set"], mbdb); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),
@@ -208,7 +232,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		}
 		var err error
 		if edits, err = text.Read(ctx, strings.NewReader(req.FormValue("input")),
-			format, typ, req.Form["field"], req.Form["set"], db,
+			format, typ, req.Form["field"], req.Form["set"], mbdb,
 			text.MaxEdits(maxEdits), text.MaxFields(maxFields)); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,

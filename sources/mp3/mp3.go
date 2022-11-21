@@ -53,6 +53,12 @@ func ReadFile(f *os.File, typ seed.Type, rawSetCmds []string) ([]seed.Edit, erro
 		}
 	}
 
+	// If we're creating a release and extracted at least one image, redirect to the
+	// Add Cover Art page after the release is created.
+	if rel, ok := edits[0].(*seed.Release); ok && len(edits) > 1 {
+		rel.RedirectURI = seed.AddCoverArtRedirectURI
+	}
+
 	return edits, nil
 }
 

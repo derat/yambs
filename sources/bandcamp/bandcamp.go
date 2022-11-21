@@ -52,6 +52,7 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]s
 
 	if img != nil {
 		edits = append(edits, img)
+		rel.RedirectURI = seed.AddCoverArtRedirectURI
 	}
 	return edits, nil
 }

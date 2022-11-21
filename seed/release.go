@@ -72,6 +72,10 @@ type Release struct {
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
+	// RedirectURI contains a URL for MusicBrainz to redirect to after the edit is created.
+	// The MusicBrainz server will add a "release_mbid" query parameter containing the
+	// new release's MBID.
+	RedirectURI string
 }
 
 func (rel *Release) Type() Type { return ReleaseType }
@@ -129,10 +133,24 @@ func (rel *Release) Params() url.Values {
 		u.setParams(vals, fmt.Sprintf("urls.%d.", i), rel.Method())
 	}
 	set("edit_note", rel.EditNote)
+	set("redirect_uri", rel.RedirectURI)
 	return vals
 }
 
 func (rel *Release) Method() string { return http.MethodPost }
+
+func (rel *Release) Finish(ctx context.Context, db *db.DB) error { return nil }
+
+// AddCoverArtRedirectURI can be used as a Release's RedirectURI to automatically redirect to the
+// "Add Cover Art" page after the release has been created.
+//
+// Regrettably, the Add Release page passes the MBID to the redirect URL via a "release_mbid" query
+// parameter, while the Add Cover Art form requires the MBID to be passed as part of the path
+// (https://musicbrainz.org/release/<mbid>/add-cover-art).
+//
+// TODO: Change this to not redirect through yambsd if/when the MB server provides a way to rewrite
+// the final redirect URL.
+const AddCoverArtRedirectURI = "https://yambs.erat.org/redirect-add-cover-art"
 
 // ReleaseEvent contains an event corresponding to a release. Unknown fields can be omitted.
 type ReleaseEvent struct {
@@ -241,5 +259,3 @@ func (tr *Track) setParams(vals url.Values, prefix string) {
 		ac.setParams(vals, prefix+fmt.Sprintf("artist_credit.names.%d.", i))
 	}
 }
-
-func (rel *Release) Finish(ctx context.Context, db *db.DB) error { return nil }

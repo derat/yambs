@@ -61,7 +61,8 @@ func TestRelease_Params(t *testing.T) {
 			{URL: "https://www.example.org/foo", LinkType: LinkType_Crowdfunding_Release_URL},
 			{URL: "https://www.example.org/bar", LinkType: LinkType_DownloadForFree_Release_URL},
 		},
-		EditNote: "here's the edit note",
+		EditNote:    "here's the edit note",
+		RedirectURI: "https://www.example.org/foo",
 	}
 
 	want := url.Values{
@@ -98,6 +99,7 @@ func TestRelease_Params(t *testing.T) {
 		"mediums.1.track.0.number":    {rel.Mediums[1].Tracks[0].Number},
 		"name":                        {rel.Title},
 		"packaging":                   {string(rel.Packaging)},
+		"redirect_uri":                {rel.RedirectURI},
 		"release_group":               {rel.ReleaseGroup},
 		"script":                      {rel.Script},
 		"status":                      {string(rel.Status)},
