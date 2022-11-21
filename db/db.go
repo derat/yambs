@@ -28,6 +28,8 @@ const (
 
 	// TODO: Should cache entries also expire after a certain amount of time?
 	cacheSize = 256 // size for various caches
+
+	defaultServer = "musicbrainz.org"
 )
 
 // entityType is an entity type sent to the MusicBrainz API.
@@ -46,6 +48,7 @@ type DB struct {
 
 	limiter         *rate.Limiter // rate-limits network requests
 	disallowQueries bool          // don't allow network traffic
+	server          string        // server hostname
 	version         string        // included in User-Agent header
 }
 
@@ -58,6 +61,7 @@ func NewDB(opts ...Option) *DB {
 			labelType:  cache.NewLRU(cacheSize),
 		},
 		limiter: rate.NewLimiter(maxQPS, rateBucketSize),
+		server:  defaultServer,
 	}
 	for _, o := range opts {
 		o(&db)
@@ -71,6 +75,10 @@ type Option func(db *DB)
 // DisallowQueries is an Option that configures DB to report an error
 // when it would need to perform a query over the network.
 var DisallowQueries = func(db *DB) { db.disallowQueries = true }
+
+// Server returns an Option that configure DB to make calls to the specified
+// hostname, e.g. "musicbrains.org" or "test.musicbrainz.org".
+func Server(s string) Option { return func(db *DB) { db.server = s } }
 
 // Version returns an Option that sets the application version for the
 // User-Agent header.
@@ -91,7 +99,7 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 	// for field completion rather than being part of the API (/ws/2).
 	// See https://wiki.musicbrainz.org/Development/Search_Architecture.
 	log.Print("Requesting database ID for ", mbid)
-	r, err := db.doQuery(ctx, "https://musicbrainz.org/ws/js/entity/"+mbid)
+	r, err := db.doQuery(ctx, "https://"+db.server+"/ws/js/entity/"+mbid)
 	if err != nil {
 		return 0, err
 	}
@@ -132,8 +140,8 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 	}
 
 	log.Printf("Requesting %v MBID for %v", entity, linkURL)
-	reqURL := fmt.Sprintf("https://musicbrainz.org/ws/2/url?resource=%s&inc=%s-rels",
-		url.QueryEscape(linkURL), entity)
+	reqURL := fmt.Sprintf("https://%s/ws/2/url?resource=%s&inc=%s-rels",
+		db.server, url.QueryEscape(linkURL), entity)
 	r, err := db.doQuery(ctx, reqURL)
 	if err != nil {
 		return "", err

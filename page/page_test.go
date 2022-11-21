@@ -30,8 +30,9 @@ func TestWrite_Edits(t *testing.T) {
 		info,
 	}
 
+	const srv = "test.musicbrainz.org"
 	var b bytes.Buffer
-	if err := Write(&b, edits, ""); err != nil {
+	if err := Write(&b, edits, Server(srv)); err != nil {
 		t.Fatal("Write failed:", err)
 	}
 
@@ -41,7 +42,7 @@ func TestWrite_Edits(t *testing.T) {
 		if desc := template.JSEscapeString(ed.Description()); !strings.Contains(b.String(), desc) {
 			t.Errorf("Write didn't include edit description %q", desc)
 		}
-		if url := template.JSEscapeString(ed.URL()); !strings.Contains(b.String(), url) {
+		if url := template.JSEscapeString(ed.URL(srv)); !strings.Contains(b.String(), url) {
 			t.Errorf("Write didn't include edit URL %q", url)
 		}
 	}
@@ -54,7 +55,7 @@ func TestWrite_Form(t *testing.T) {
 	// Also check that we can write the no-edits version of the page with the form.
 	const version = "20221105-deadbeef"
 	var b bytes.Buffer
-	if err := Write(&b, nil, version); err != nil {
+	if err := Write(&b, nil, Version(version)); err != nil {
 		t.Fatal("Write failed:", err)
 	}
 	if !strings.Contains(b.String(), version) {

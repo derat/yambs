@@ -61,6 +61,7 @@ func main() {
 	fields := flag.String("fields", "", `Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
+	server := flag.String("server", "musicbrainz.org", "MusicBrainz server hostname")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "edit_note=from https://www.example.org")`)
 	flag.Var(&editType, "type", fmt.Sprintf("Entity type for text or MP3 input (%v)", editType.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
@@ -121,7 +122,7 @@ func main() {
 			return 2
 		}
 
-		db := db.NewDB(db.Version(version))
+		db := db.NewDB(db.Server(*server), db.Version(version))
 		web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 
 		var edits []seed.Edit
@@ -151,9 +152,14 @@ func main() {
 			}
 		}
 
+		opts := []page.Option{
+			page.Server(*server),
+			page.Version(version), // not actually displayed
+		}
+
 		switch action.val {
 		case actionOpen:
-			if err := page.OpenFile(edits); err != nil {
+			if err := page.OpenFile(edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed opening page:", err)
 				return 1
 			}
@@ -164,7 +170,7 @@ func main() {
 						ed.Type(), ed.Method())
 					return 1
 				}
-				u, err := url.Parse(ed.URL())
+				u, err := url.Parse(ed.URL(*server))
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Failed parsing URL:", err)
 					return 1
@@ -173,12 +179,12 @@ func main() {
 				fmt.Println(u.String())
 			}
 		case actionServe:
-			if err := page.OpenHTTP(ctx, *addr, edits); err != nil {
+			if err := page.OpenHTTP(ctx, *addr, edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed serving page:", err)
 				return 1
 			}
 		case actionWrite:
-			if err := page.Write(os.Stdout, edits, ""); err != nil {
+			if err := page.Write(os.Stdout, edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed writing page:", err)
 				return 1
 			}

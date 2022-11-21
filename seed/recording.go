@@ -83,11 +83,11 @@ func (rec *Recording) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (rec *Recording) URL() string {
+func (rec *Recording) URL(srv string) string {
 	if rec.MBID != "" {
-		return "https://musicbrainz.org/recording/" + rec.MBID + "/edit"
+		return "https://" + srv + "/recording/" + rec.MBID + "/edit"
 	}
-	return "https://musicbrainz.org/recording/create"
+	return "https://" + srv + "/recording/create"
 }
 
 func (rec *Recording) Params() url.Values {

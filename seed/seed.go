@@ -34,7 +34,8 @@ type Edit interface {
 	// Description returns a human-readable description of the edit.
 	Description() string
 	// URL returns a URL to seed the edit form.
-	URL() string
+	// srv contains the MusicBrainz server hostname, e.g. "musicbrainz.org" or "test.musicbrainz.org".
+	URL(srv string) string
 	// Params returns form values that should be sent to seed the edit form.
 	// Note that some parameters contain multiple values (i.e. don't call Get()).
 	Params() url.Values

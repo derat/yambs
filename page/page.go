@@ -26,16 +26,18 @@ import (
 	"github.com/pkg/browser"
 )
 
+const defaultServer = "musicbrainz.org"
+
 // OpenFile writes an HTML page containing edits to a temporary file
 // and opens it in a browser.
-func OpenFile(edits []seed.Edit) error {
+func OpenFile(edits []seed.Edit, opts ...Option) error {
 	tf, err := ioutil.TempFile("",
 		fmt.Sprintf("yambs-%s-*.html", time.Now().Format("20060102-150405")))
 	if err != nil {
 		return err
 	}
 	log.Print("Writing page to ", tf.Name())
-	if err := Write(tf, edits, ""); err != nil {
+	if err := Write(tf, edits, opts...); err != nil {
 		return err
 	}
 	return browser.OpenFile(tf.Name())
@@ -46,7 +48,7 @@ func OpenFile(edits []seed.Edit) error {
 // browser doesn't have direct filesystem access (e.g. the server is running in a
 // Chrome OS VM), and I think that a fixed host:port may be needed in order to
 // permanently tell Chrome to avoid blocking popups.
-func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
+func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit, opts ...Option) error {
 	// Bind to the port first.
 	ls, err := net.Listen("tcp", addr)
 	if err != nil {
@@ -61,8 +63,9 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 	// If there are seed.Info edits with file:// URLs, rewrite them to point at the web server.
 	filePaths := make(map[string]struct{})
 	for i, ed := range edits {
-		if _, ok := ed.(*seed.Info); ok && strings.HasPrefix(ed.URL(), "file://") {
-			u, err := url.Parse(ed.URL())
+		us := ed.URL("") // don't need server
+		if _, ok := ed.(*seed.Info); ok && strings.HasPrefix(us, "file://") {
+			u, err := url.Parse(us)
 			if err != nil {
 				return err
 			}
@@ -76,7 +79,7 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 	}
 
 	var b bytes.Buffer
-	if err := Write(&b, edits, ""); err != nil {
+	if err := Write(&b, edits, opts...); err != nil {
 		return err
 	}
 
@@ -130,13 +133,13 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit) error {
 }
 
 // Write writes an HTML page containing the supplied edits to w.
-// If version is non-empty, it will be included in the page.
-func Write(w io.Writer, edits []seed.Edit, version string) error {
+func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
+	cfg := getConfig(opts...)
 	tmpl, err := template.New("").Parse(pageTmpl)
 	if err != nil {
 		return err
 	}
-	editInfos, err := NewEditInfos(edits)
+	editInfos, err := NewEditInfos(edits, cfg.server)
 	if err != nil {
 		return err
 	}
@@ -147,13 +150,35 @@ func Write(w io.Writer, edits []seed.Edit, version string) error {
 		Edits    []*EditInfo
 	}{
 		IconSVG: template.HTML(iconSVG),
-		Version: version,
+		Version: cfg.version,
 		TypeInfo: []typeInfo{
 			newTypeInfo(seed.RecordingType),
 			newTypeInfo(seed.ReleaseType),
 		},
 		Edits: editInfos,
 	})
+}
+
+// Option can be passed to configure the page.
+type Option func(*config)
+
+// Server sets the MusicBrainz server hostname, e.g. "musicbrainz.org" or "test.musicbrainz.org".
+func Server(s string) Option { return func(cfg *config) { cfg.server = s } }
+
+// Version sets an optional yambs version to include in the page.
+func Version(v string) Option { return func(cfg *config) { cfg.version = v } }
+
+type config struct {
+	version string // yambs version
+	server  string // MusicBrainz server hostname
+}
+
+func getConfig(opts ...Option) config {
+	cfg := config{server: defaultServer}
+	for _, o := range opts {
+		o(&cfg)
+	}
+	return cfg
 }
 
 //go:embed page.tmpl
@@ -178,7 +203,7 @@ type paramInfo struct {
 }
 
 // NewEditInfo converts a seed.Edit into an EditInfo struct.
-func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
+func NewEditInfo(edit seed.Edit, srv string) (*EditInfo, error) {
 	info := EditInfo{Desc: edit.Description()}
 
 	// Use a different approach depending on whether the edit requires a POST or not.
@@ -186,7 +211,7 @@ func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
 	case "GET":
 		// If we can use GET, construct a URL including any parameters since <form method="GET">
 		// adds an annoying question mark even if there aren't any parameters.
-		u, err := url.Parse(edit.URL())
+		u, err := url.Parse(edit.URL(srv))
 		if err != nil {
 			return nil, err
 		}
@@ -195,7 +220,7 @@ func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
 	case "POST":
 		// If we need to use POST, keep the parameters separate since <form> annoyingly
 		// clears the URL's query string.
-		info.URL = edit.URL()
+		info.URL = edit.URL(srv)
 		for name, vals := range edit.Params() {
 			for _, val := range vals {
 				info.Params = append(info.Params, paramInfo{Name: name, Value: val})
@@ -209,11 +234,11 @@ func NewEditInfo(edit seed.Edit) (*EditInfo, error) {
 }
 
 // NewEditInfos calls NewEditInfo for each of the supplied edits.
-func NewEditInfos(edits []seed.Edit) ([]*EditInfo, error) {
+func NewEditInfos(edits []seed.Edit, srv string) ([]*EditInfo, error) {
 	infos := make([]*EditInfo, len(edits))
 	for i, edit := range edits {
 		var err error
-		if infos[i], err = NewEditInfo(edit); err != nil {
+		if infos[i], err = NewEditInfo(edit, srv); err != nil {
 			return nil, err
 		}
 	}

@@ -37,6 +37,8 @@ const (
 
 	editsDelay       = 3 * time.Second
 	editsRateMapSize = 256
+
+	mbServer = "musicbrainz.org"
 )
 
 var version string
@@ -59,7 +61,7 @@ func main() {
 
 	// Just generate the page once.
 	var b bytes.Buffer
-	if err := page.Write(&b, nil, version); err != nil {
+	if err := page.Write(&b, nil, page.Version(version)); err != nil {
 		log.Fatal("Failed generating page: ", err)
 	}
 	form := b.Bytes()
@@ -218,7 +220,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	default:
 		return nil, httpErrorf(http.StatusBadRequest, "bad source %q", req.FormValue("source"))
 	}
-	return page.NewEditInfos(edits)
+	return page.NewEditInfos(edits, mbServer)
 }
 
 // clientAddr returns the client's address (which may be either "ip" or "ip:port").

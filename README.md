@@ -50,6 +50,8 @@ Seeds MusicBrainz edits.
     	Format for text input (csv, keyval, tsv) (default tsv)
   -list-fields
     	Print available fields for -type and exit
+  -server string
+    	MusicBrainz server hostname (default "musicbrainz.org")
   -set value
     	Set a field for all entities (e.g. "edit_note=from https://www.example.org")
   -type value

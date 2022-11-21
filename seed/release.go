@@ -90,7 +90,9 @@ func (rel *Release) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (rel *Release) URL() string { return "https://musicbrainz.org/release/add" }
+func (rel *Release) URL(srv string) string {
+	return "https://" + srv + "/release/add"
+}
 
 func (rel *Release) Params() url.Values {
 	vals := make(url.Values)
