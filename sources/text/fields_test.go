@@ -9,15 +9,21 @@ import (
 )
 
 func TestParseDate(t *testing.T) {
-	for _, tc := range []struct{ in, want string }{
-		{"2022-05-04", "2022-05-04"},
-		{"2022-05", "2022-05-01"},
-		{"2022", "2022-01-01"},
+	for _, tc := range []struct {
+		in      string
+		y, m, d int
+	}{
+		{"2022-05-04", 2022, 5, 4},
+		{"2022-05", 2022, 5, 0},
+		{"2022", 2022, 0, 0},
+		{"2022-5-4", 2022, 5, 4},
+		{"2022-5", 2022, 5, 0},
 	} {
-		if d, err := parseDate(tc.in); err != nil {
+		if y, m, d, err := parseDate(tc.in); err != nil {
 			t.Errorf("parseDate(%q) failed: %v", tc.in, err)
-		} else if got := d.Format("2006-01-02"); got != tc.want {
-			t.Errorf("parseDate(%q) = %q; want %q", tc.in, got, tc.want)
+		} else if y != tc.y || m != tc.m || d != tc.d {
+			t.Errorf("parseDate(%q) = (%d, %d, %d); want (%d, %d, %d)",
+				tc.in, y, m, d, tc.y, tc.m, tc.d)
 		}
 	}
 }

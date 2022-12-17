@@ -164,17 +164,30 @@ func setDuration(dst *time.Duration, val string) error {
 }
 
 // parseDate parses string dates in a variety of formats.
-func parseDate(s string) (time.Time, error) {
+// Returned fields are 0 if unset.
+func parseDate(s string) (year, month, day int, err error) {
 	for _, layout := range []string{
 		"2006-01-02",
 		"2006-01",
 		"2006",
+		// Allow single-digit months and days too, because why not.
+		"2006-1-2",
+		"2006-1",
 	} {
 		if t, err := time.Parse(layout, s); err == nil {
-			return t, nil
+			switch len(strings.Split(s, "-")) {
+			case 3:
+				return t.Year(), int(t.Month()), t.Day(), nil
+			case 2:
+				return t.Year(), int(t.Month()), 0, nil
+			case 1:
+				return t.Year(), 0, 0, nil
+			default:
+				return 0, 0, 0, errors.New("invalid number of fields") // shouldn't be reached
+			}
 		}
 	}
-	return time.Time{}, errors.New("invalid date")
+	return 0, 0, 0, errors.New("invalid date")
 }
 
 var durationRegexp = regexp.MustCompile(`^` +

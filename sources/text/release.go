@@ -81,17 +81,12 @@ var releaseFields = map[string]fieldInfo{
 		},
 	},
 	"event*_date": {
-		`Date of release event as "YYYY-MM-DD"`,
+		`Date of release event as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
 		func(rel *seed.Release, k, v string) error {
 			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
-				t, err := parseDate(v)
-				if err != nil {
-					return err
-				}
-				ev.Year = t.Year()
-				ev.Month = int(t.Month())
-				ev.Day = t.Day()
-				return nil
+				var err error
+				ev.Year, ev.Month, ev.Day, err = parseDate(v)
+				return err
 			})
 		},
 	},
