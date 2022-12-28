@@ -25,7 +25,7 @@ import (
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/page"
 	"github.com/derat/yambs/seed"
-	"github.com/derat/yambs/sources/bandcamp"
+	"github.com/derat/yambs/sources/online"
 	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 )
@@ -206,14 +206,14 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 
 	var edits []seed.Edit
 	switch src {
-	case "bandcamp":
-		if url, err := bandcamp.CleanURL(req.FormValue("url")); err != nil {
+	case "online":
+		if url, err := online.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
 				code: http.StatusBadRequest,
-				msg:  fmt.Sprint("Server only accepts bandcamp.com album URLs: ", err),
-				err:  fmt.Errorf("%q: %v", req.FormValue("bandcampUrl"), err),
+				msg:  fmt.Sprint("Unsupported URL: ", err),
+				err:  fmt.Errorf("%q: %v", req.FormValue("onlineUrl"), err),
 			}
-		} else if edits, err = bandcamp.Fetch(ctx, url, req.Form["set"], mbdb); err != nil {
+		} else if edits, err = online.Fetch(ctx, url, req.Form["set"], mbdb); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),

@@ -1,7 +1,7 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-// Package bandcamp fetches music information from Bandcamp.
+// Package bandcamp extracts information from Bandcamp pages.
 package bandcamp
 
 import (
@@ -18,48 +18,14 @@ import (
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
-	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 	"golang.org/x/net/html"
 )
 
-// editNote is appended to automatically-generated edit notes.
-const editNote = "\n\n(seeded using https://github.com/derat/yambs)"
-
-// Fetch generates seeded edits from the Bandcamp page at url.
+// Release extracts release information from the supplied Bandcamp page.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]seed.Edit, error) {
-	setCmds, err := text.ParseSetCommands(rawSetCmds, seed.ReleaseType)
-	if err != nil {
-		return nil, err
-	}
-
-	page, err := web.FetchPage(ctx, url)
-	if err != nil {
-		return nil, err
-	}
-	rel, img, err := parsePage(ctx, page, url, db)
-	if err != nil {
-		return nil, err
-	}
-	for _, cmd := range setCmds {
-		if err := text.SetField(rel, cmd[0], cmd[1]); err != nil {
-			return nil, err
-		}
-	}
-	edits := []seed.Edit{rel}
-
-	if img != nil {
-		edits = append(edits, img)
-		rel.RedirectURI = seed.AddCoverArtRedirectURI
-	}
-	return edits, nil
-}
-
-// parsePage extracts release information from the supplied page.
-// It's separate from Fetch to make testing easier.
-func parsePage(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
+func Release(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
 	rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(pageURL, "http://") {
@@ -89,7 +55,6 @@ func parsePage(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
 		Language: "eng",
 		Script:   "Latn",
 		Mediums:  []seed.Medium{seed.Medium{Format: seed.MediumFormat_DigitalMedia}},
-		EditNote: pageURL + editNote,
 	}
 
 	// Add the primary type for the release group.

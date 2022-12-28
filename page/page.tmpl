@@ -238,7 +238,7 @@
         opacity: 0.5;
       }
 
-      #form-bandcamp-url-input {
+      #form-online-url-input {
         max-width: 100%;
         width: 600px;
       }
@@ -313,15 +313,15 @@
         <label for="form-source-select">Source:</label>
         <select id="form-source-select">
           <option value="text">Text</option>
-          <option value="bandcamp">Bandcamp</option>
+          <option value="online">Bandcamp</option>
         </select>
       </div>
 
-      <div id="form-bandcamp-section" class="section">
+      <div id="form-online-section" class="section">
         <div class="form-row">
-          <label for="form-bandcamp-url-input">URL:</label>
+          <label for="form-online-url-input">URL:</label>
           <input
-            id="form-bandcamp-url-input"
+            id="form-online-url-input"
             type="text"
             placeholder="https://example.bandcamp.com/album/some-album"
           />
@@ -455,7 +455,7 @@
   </script>
   <script>
     const formSourceSelect = $('form-source-select');
-    const formBandcampUrlInput = $('form-bandcamp-url-input');
+    const formOnlineUrlInput = $('form-online-url-input');
     const formTextFormatSelect = $('form-text-format-select');
     const formTextTypeSelect = $('form-text-type-select');
     const formTextCsvTsvSection = $('form-text-csv-tsv-section');
@@ -477,7 +477,7 @@
     // Updates the state of form-related elements.
     function updateFormUI() {
       const selSource = formSourceSelect.value;
-      for (const source of ['bandcamp', 'text']) {
+      for (const source of ['online', 'text']) {
         $(`form-${source}-section`).classList.toggle('visible', source === selSource);
       }
 
@@ -511,7 +511,7 @@
 
     // Clears form fields. Select elements are left unchanged.
     function clearFormFields() {
-      formBandcampUrlInput.value = '';
+      formOnlineUrlInput.value = '';
       formTextFieldsInput.value = '';
       formTextSetTextarea.value = '';
       setFormTextInputTextareaValue('');
@@ -572,12 +572,12 @@
 
           break;
 
-        case 'bandcamp':
+        case 'online':
           // TODO: Let the user supply set commands and pass them as a "set" param, maybe.
-          // We'd also need to add a "Show available fields" button in the Bandcamp
+          // We'd also need to add a "Show available fields" button in the Online
           // section that displays the fields for releases.
-          body.set('source', 'bandcamp');
-          body.set('url', formBandcampUrlInput.value.trim());
+          body.set('source', 'online');
+          body.set('url', formOnlineUrlInput.value.trim());
           break;
       }
 

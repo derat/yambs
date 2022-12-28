@@ -21,8 +21,8 @@ import (
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/page"
 	"github.com/derat/yambs/seed"
-	"github.com/derat/yambs/sources/bandcamp"
 	"github.com/derat/yambs/sources/mp3"
+	"github.com/derat/yambs/sources/online"
 	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 )
@@ -128,7 +128,7 @@ func main() {
 		var edits []seed.Edit
 		if srcURL != "" {
 			var err error
-			if edits, err = bandcamp.Fetch(ctx, srcURL, setCmds, db); err != nil {
+			if edits, err = online.Fetch(ctx, srcURL, setCmds, db); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed fetching page:", err)
 				return 1
 			}

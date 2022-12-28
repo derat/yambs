@@ -94,7 +94,6 @@ func TestParsePage(t *testing.T) {
 						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
 					},
 				},
-				EditNote: "https://louiezong.bandcamp.com/album/cartoon-funk" + editNote,
 			},
 			img: "https://f4.bcbits.com/img/a1689585732_0.jpg",
 		},
@@ -132,7 +131,6 @@ func TestParsePage(t *testing.T) {
 						LinkType: seed.LinkType_StreamingMusic_Release_URL,
 					},
 				},
-				EditNote: "https://louiscole.bandcamp.com/album/let-it-happen" + editNote,
 			},
 			img: "https://f4.bcbits.com/img/a3000320182_0.jpg",
 		},
@@ -171,7 +169,6 @@ func TestParsePage(t *testing.T) {
 						LinkType: seed.LinkType_StreamingMusic_Release_URL,
 					},
 				},
-				EditNote: "https://pillarsinthesky.bandcamp.com/track/arcanum" + editNote,
 			},
 			img: "https://f4.bcbits.com/img/a2320496643_0.jpg",
 		},
@@ -215,7 +212,6 @@ func TestParsePage(t *testing.T) {
 						LinkType: seed.LinkType_License_Release_URL,
 					},
 				},
-				EditNote: "https://thelovelymoon.bandcamp.com/album/echoes-of-memories" + editNote,
 			},
 			img: "https://f4.bcbits.com/img/a2393960629_0.jpg",
 		},
@@ -260,7 +256,6 @@ func TestParsePage(t *testing.T) {
 						LinkType: seed.LinkType_StreamingMusic_Release_URL,
 					},
 				},
-				EditNote: "https://volaband.bandcamp.com/album/live-from-the-pool" + editNote,
 			},
 			img: "https://f4.bcbits.com/img/a1079469134_0.jpg",
 		},
@@ -277,7 +272,7 @@ func TestParsePage(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := parsePage(ctx, page, tc.url, db)
+			rel, img, err := Release(ctx, page, tc.url, db)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}
