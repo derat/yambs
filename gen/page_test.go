@@ -1,7 +1,7 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-package page
+package gen
 
 import (
 	"bytes"
