@@ -61,7 +61,7 @@ func TestRelease(t *testing.T) {
 				}},
 				URLs: []seed.URL{
 					{
-						URL:      "https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
+						URL:      "https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
 						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
 					},
 					{
@@ -101,7 +101,7 @@ func TestRelease(t *testing.T) {
 				}},
 				URLs: []seed.URL{
 					{
-						URL:      "https://www.qobuz.com/us-en/album/in-rainbows-radiohead/0634904032432",
+						URL:      "https://www.qobuz.com/album/in-rainbows-radiohead/0634904032432",
 						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
 					},
 					{
@@ -140,7 +140,7 @@ func TestRelease(t *testing.T) {
 				}},
 				URLs: []seed.URL{
 					{
-						URL:      "https://www.qobuz.com/us-en/album/the-dark-side-of-the-moon-pink-floyd/xggxq5w5dmljb",
+						URL:      "https://www.qobuz.com/album/the-dark-side-of-the-moon-pink-floyd/xggxq5w5dmljb",
 						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
 					},
 					{
@@ -208,12 +208,14 @@ func TestCleanURL(t *testing.T) {
 		want string
 		ok   bool // if false, error should be returned
 	}{
-		{"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
-			"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
+		{"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
+			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
+		{"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102/?utm_source=foo#bar",
+			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
 		{"http://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
-			"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
+			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
 		{"https://www.qobuz.com/us-en/album/fearless-taylors-version-taylor-swift/r8361te6k0cic",
-			"https://www.qobuz.com/us-en/album/fearless-taylors-version-taylor-swift/r8361te6k0cic", true},
+			"https://www.qobuz.com/album/fearless-taylors-version-taylor-swift/r8361te6k0cic", true},
 		{"https://www.qobuz.com/us-en/discover", "", false},
 		{"https://example.org/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", "", false},
 	} {

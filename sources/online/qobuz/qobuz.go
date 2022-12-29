@@ -23,7 +23,10 @@ import (
 // Provider implements online.Provider for Qobuz.
 type Provider struct{}
 
-var pathRegexp = regexp.MustCompile(`^/[a-z]{2}-[a-z]{2}/album/.+$`)
+// pathRegexp matches a path like "/album/hyttetur-2-svartepetter/e3qy2e01fbs9a" or
+// "/us-en/album/in-rainbows-radiohead/0634904032432". The first match group drops the
+// path component containing the country and language codes.
+var pathRegexp = regexp.MustCompile(`^(?:/[a-z]{2}-[a-z]{2})?(/album/[^/]+/[^/]+)/?$`)
 
 // CleanURL returns a cleaned version of a Qobuz URL like
 // "https://www.qobuz.com/gb-en/album/album-name/album-id".
@@ -35,8 +38,10 @@ func (p *Provider) CleanURL(orig string) (string, error) {
 	if u.Host != "www.qobuz.com" {
 		return "", errors.New(`host not "www.qobuz.com"`)
 	}
-	if !pathRegexp.MatchString(u.Path) {
-		return "", errors.New(`path not "/<lang>/album/<name>/<id>"`)
+	if ms := pathRegexp.FindStringSubmatch(u.Path); ms == nil {
+		return "", errors.New(`path not "/<locale>/album/<name>/<id>"`)
+	} else {
+		u.Path = ms[1]
 	}
 	u.Scheme = "https"
 	u.User = nil
@@ -145,8 +150,12 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, 
 
 	// Add URL relationships.
 	if page.Query(".album-addtocart__add").Err == nil {
+		cleaned, err := p.CleanURL(pageURL)
+		if err != nil {
+			return nil, nil, err
+		}
 		rel.URLs = append(rel.URLs, seed.URL{
-			URL:      pageURL,
+			URL:      cleaned,
 			LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
 		})
 	}
