@@ -22,10 +22,13 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Provider implements online.Provider for Bandcamp.
+type Provider struct{}
+
 // Release extracts release information from the supplied Bandcamp page.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-func Release(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
+func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
 	rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(pageURL, "http://") {
@@ -287,7 +290,7 @@ func getArtistURL(orig string) string {
 // "https://artist-name.bandcamp.com/album/album-name" or
 // "https://artist-name.bandcamp.com/track/track-name".
 // An error is returned if the URL doesn't match this format.
-func CleanURL(orig string) (string, error) {
+func (p *Provider) CleanURL(orig string) (string, error) {
 	u, err := url.Parse(strings.ToLower(orig))
 	if err != nil {
 		return "", err

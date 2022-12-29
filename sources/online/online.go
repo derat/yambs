@@ -6,10 +6,12 @@ package online
 
 import (
 	"context"
+	"errors"
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/bandcamp"
+	"github.com/derat/yambs/sources/online/qobuz"
 	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 )
@@ -19,9 +21,15 @@ const editNote = "\n\n(seeded using https://github.com/derat/yambs)"
 
 // CleanURL returns a normalized version of the supplied URL.
 // An error is returned if the URL doesn't match a known format (but note that it may still be
-// possible to handle the page, e.g. if it's a Bandcamp album being served from a custom domain).
+// possible to handle the page using Fetch, e.g. if it's a Bandcamp album being served from a custom
+// domain).
 func CleanURL(orig string) (string, error) {
-	return bandcamp.CleanURL(orig)
+	for _, p := range allProviders {
+		if cleaned, err := p.CleanURL(orig); err == nil {
+			return cleaned, nil
+		}
+	}
+	return "", errors.New("unsupported URL")
 }
 
 // Fetch generates seeded edits from the page at url.
@@ -35,7 +43,7 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]s
 	if err != nil {
 		return nil, err
 	}
-	rel, img, err := bandcamp.Release(ctx, page, url, db)
+	rel, img, err := selectProvider(url).Release(ctx, page, url, db)
 	if err != nil {
 		return nil, err
 	}
@@ -53,4 +61,31 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]s
 		rel.RedirectURI = seed.AddCoverArtRedirectURI
 	}
 	return edits, nil
+}
+
+// Provider gets information from an online music provider.
+type Provider interface {
+	// CleanURL returns a normalized version of the supplied URL.
+	// An error is returned if the URL doesn't match a supported format for the provider.
+	CleanURL(orig string) (string, error)
+	// Release extracts release information from the supplied page.
+	// The img return value is nil if a cover image is not found.
+	Release(ctx context.Context, page *web.Page, url string, db *db.DB) (
+		rel *seed.Release, img *seed.Info, err error)
+}
+
+var allProviders = []Provider{
+	&bandcamp.Provider{},
+	&qobuz.Provider{},
+}
+
+// selectProvider chooses the appropriate provider for handling url.
+func selectProvider(url string) Provider {
+	for _, p := range allProviders {
+		if _, err := p.CleanURL(url); err == nil {
+			return p
+		}
+	}
+	// Fall back to Bandcamp to support custom domains.
+	return &bandcamp.Provider{}
 }

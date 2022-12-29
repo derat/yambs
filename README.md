@@ -10,8 +10,8 @@ file describing recordings, `yambs` can open the [Add Standalone Recording] page
 for each with various fields pre-filled.
 
 `yambs` can also read `key=value` lines from text files to seed the [Add
-Release] page, and it can use [Bandcamp] album pages and local MP3 files to seed
-edits too.
+Release] page, and it can use [Bandcamp] and [Qobuz] album pages and local MP3
+files to seed edits too.
 
 There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 
@@ -21,6 +21,7 @@ There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 [Add Standalone Recording]: https://musicbrainz.org/recording/create
 [Add Release]: http://musicbrainz.org/release/add
 [Bandcamp]: https://bandcamp.com/
+[Qobuz]: https://www.qobuz.com/
 
 ## Installation
 
@@ -217,10 +218,14 @@ and maps the third column to `length`.
 
 ---
 
-You can pass Bandcamp album URLs to seed release edits:
+You can pass Bandcamp or Qobuz album URLs to seed release edits:
 
 ```sh
 yambs https://austinwintory.bandcamp.com/album/journey
+```
+
+```sh
+yambs https://www.qobuz.com/us-en/album/the-dark-side-of-the-moon-pink-floyd/xggxq5w5dmljb
 ```
 
 The page that is opened will include a link to the album's highest-resolution

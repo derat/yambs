@@ -18,9 +18,10 @@ import (
 	"golang.org/x/net/html"
 )
 
-func TestParsePage(t *testing.T) {
+func TestRelease(t *testing.T) {
 	ctx := context.Background()
 	db := db.NewDB(db.DisallowQueries)
+	var pr Provider
 
 	// Add canned MBIDs for artists and label lookups.
 	for url, mbid := range map[string]string{
@@ -272,7 +273,7 @@ func TestParsePage(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := Release(ctx, page, tc.url, db)
+			rel, img, err := pr.Release(ctx, page, tc.url, db)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}
@@ -305,6 +306,7 @@ func sec(sec float64) time.Duration {
 }
 
 func TestCleanURL(t *testing.T) {
+	var pr Provider
 	for _, tc := range []struct {
 		in   string
 		want string
@@ -318,7 +320,7 @@ func TestCleanURL(t *testing.T) {
 		{"https://daily.bandcamp.com/best-jazz/the-best-jazz-on-bandcamp-october-2022", "", false},
 		{"https://artist.example.org/album/name", "", false},
 	} {
-		if got, err := CleanURL(tc.in); !tc.ok && err == nil {
+		if got, err := pr.CleanURL(tc.in); !tc.ok && err == nil {
 			t.Errorf("CleanURL(%q) = %q; wanted error", tc.in, got)
 		} else if tc.ok && err != nil {
 			t.Errorf("CleanURL(%q) failed: %v", tc.in, err)

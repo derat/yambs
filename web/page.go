@@ -54,21 +54,24 @@ func FetchPage(ctx context.Context, url string) (*Page, error) {
 	return &Page{root}, nil
 }
 
-// Query returns the first node matched by the supplied CSS selector.
+// Query calls QueryNode using p.Root.
+func (p *Page) Query(query string) QueryResult { return QueryNode(p.Root, query) }
+
+// QueryNode returns the first node matched by the supplied CSS selector.
 // The returned result has a non-nil Err field if no node was matched.
-func (p *Page) Query(query string) QueryResult {
+func QueryNode(root *html.Node, query string) QueryResult {
 	sel, err := cascadia.Parse(query)
 	if err != nil {
 		return QueryResult{nil, err}
 	}
-	node := cascadia.Query(p.Root, sel)
+	node := cascadia.Query(root, sel)
 	if node == nil {
 		return QueryResult{nil, errors.New("node not found")}
 	}
 	return QueryResult{node, nil}
 }
 
-// QueryResult contains the result of a call to Query.
+// QueryResult contains the result of a call to Query or QueryNode.
 type QueryResult struct {
 	Node *html.Node
 	Err  error
@@ -88,17 +91,45 @@ func (res QueryResult) Attr(attr string) (string, error) {
 	return "", errors.New("attribute not found")
 }
 
-// Text recursively concatenates the contens of all child text nodes.
+// Text recursively concatenates the contents of all child text nodes.
 // TODO: Add more control over formatting, e.g. trimming.
 func (res QueryResult) Text(addSpaces bool) (string, error) {
 	if res.Err != nil {
 		return "", res.Err
 	}
-	return getText(res.Node, addSpaces), nil
+	return GetText(res.Node, addSpaces), nil
 }
 
-// getText concatenates all text content in and under n.
-func getText(n *html.Node, addSpaces bool) string {
+// QueryAll returns all nodes matched by the supplied CSS selector.
+// Unlike Query/QueryNode, an error is not returned if no nodes are matched.
+func (p *Page) QueryAll(query string) QueryAllResult {
+	sel, err := cascadia.Parse(query)
+	if err != nil {
+		return QueryAllResult{nil, err}
+	}
+	return QueryAllResult{cascadia.QueryAll(p.Root, sel), nil}
+}
+
+// QueryAllResult contains the result of a call to QueryAll.
+type QueryAllResult struct {
+	Nodes []*html.Node
+	Err   error
+}
+
+// Text returns the contents of all text nodes under res.Nodes.
+func (res QueryAllResult) Text(addSpaces bool) ([]string, error) {
+	if res.Err != nil || len(res.Nodes) == 0 {
+		return nil, res.Err
+	}
+	text := make([]string, len(res.Nodes))
+	for i, n := range res.Nodes {
+		text[i] = GetText(n, addSpaces)
+	}
+	return text, nil
+}
+
+// GetText concatenates all text content in and under n.
+func GetText(n *html.Node, addSpaces bool) string {
 	if n == nil {
 		return ""
 	}
@@ -110,7 +141,7 @@ func getText(n *html.Node, addSpaces bool) string {
 		}
 	}
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		s := getText(c, addSpaces)
+		s := GetText(c, addSpaces)
 		if addSpaces {
 			if s = strings.TrimSpace(s); s != "" {
 				if text != "" {
