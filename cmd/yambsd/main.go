@@ -210,7 +210,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		if url, err := online.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
 				code: http.StatusBadRequest,
-				msg:  fmt.Sprint("Unsupported URL: ", err),
+				msg:  fmt.Sprintf("Unsupported URL (%v)", strings.Join(online.ExampleURLs, ", ")),
 				err:  fmt.Errorf("%q: %v", req.FormValue("onlineUrl"), err),
 			}
 		} else if edits, err = online.Fetch(ctx, url, req.Form["set"], mbdb); err != nil {

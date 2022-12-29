@@ -72,11 +72,22 @@ type Provider interface {
 	// The img return value is nil if a cover image is not found.
 	Release(ctx context.Context, page *web.Page, url string, db *db.DB) (
 		rel *seed.Release, img *seed.Info, err error)
+	// ExampleURL returns an example URL that can be displayed to the user.
+	ExampleURL() string
 }
 
 var allProviders = []Provider{
 	&bandcamp.Provider{},
 	&qobuz.Provider{},
+}
+
+// ExampleURLs holds example URLs that can be displayed to the user.
+var ExampleURLs []string
+
+func init() {
+	for _, p := range allProviders {
+		ExampleURLs = append(ExampleURLs, p.ExampleURL())
+	}
 }
 
 // selectProvider chooses the appropriate provider for handling url.

@@ -307,3 +307,5 @@ func (p *Provider) CleanURL(orig string) (string, error) {
 	u.Fragment = ""
 	return u.String(), nil
 }
+
+func (p *Provider) ExampleURL() string { return "https://artist.bandcamp.com/album/…" }

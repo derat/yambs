@@ -45,6 +45,8 @@ func (p *Provider) CleanURL(orig string) (string, error) {
 	return u.String(), nil
 }
 
+func (p *Provider) ExampleURL() string { return "https://www.qobuz.com/us-en/album/…" }
+
 // Release extracts release information from the supplied Qobuz page.
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
 	rel *seed.Release, img *seed.Info, err error) {
