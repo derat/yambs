@@ -13,3 +13,5 @@ require (
 	golang.org/x/text v0.4.0
 	golang.org/x/time v0.1.0
 )
+
+replace golang.org/x/sys => golang.org/x/sys v0.0.0-20220811171246-fbc7d0a398ab
