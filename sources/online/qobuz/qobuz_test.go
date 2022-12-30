@@ -33,7 +33,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "A Dave Brubeck Christmas",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -77,7 +76,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "In Rainbows",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -117,7 +115,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "The Dark Side of the Moon",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -164,7 +161,7 @@ func TestRelease(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := pr.Release(ctx, page, tc.url, db)
+			rel, img, err := pr.Release(ctx, page, tc.url, db, false /* network */)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}

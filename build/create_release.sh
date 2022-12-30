@@ -24,7 +24,7 @@ fi
 # Strip off the leading 'v' from tag names like 'v0.1'.
 version=${3#v}
 
-go build -ldflags "-X main.version=${version}" ./cmd/yambs
+go build -ldflags "-X main.version=${version}" -tags nogcp ./cmd/yambs
 
 # Copy additional license to the base directory for the archive.
 cp -f seed/COPYING-enums.md .

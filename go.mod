@@ -3,6 +3,7 @@ module github.com/derat/yambs
 go 1.16
 
 require (
+	cloud.google.com/go/translate v1.4.0
 	github.com/andybalholm/cascadia v1.3.1
 	github.com/derat/mpeg v0.0.0-20221111004622-1eb9a3d8515a
 	github.com/derat/taglib-go v0.0.0-20200408183415-49d1875d1328

@@ -6,6 +6,7 @@ package seed
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -140,6 +141,37 @@ func (rel *Release) Params() url.Values {
 func (rel *Release) Method() string { return http.MethodPost }
 
 func (rel *Release) Finish(ctx context.Context, db *db.DB) error { return nil }
+
+// Autofill attempts to automatically fill empty fields in rel.
+// The Language and Script fields are filled based on the release and track titles.
+// If network is true, network requests may be made.
+func (rel *Release) Autofill(ctx context.Context, network bool) {
+	if rel.Language == "" || rel.Script == "" {
+		titles := []string{rel.Title}
+		for _, med := range rel.Mediums {
+			for _, track := range med.Tracks {
+				titles = append(titles, track.Title)
+			}
+		}
+		// Try to determine the language and script via an API call if allowed.
+		if network {
+			if lang, script, err := detectLangNetwork(ctx, titles); err != nil {
+				log.Print("Detecting language via network failed: ", err)
+			} else {
+				if rel.Language == "" {
+					rel.Language = lang
+				}
+				if rel.Script == "" {
+					rel.Script = script
+				}
+			}
+		}
+		// Fall back to detecting the script locally.
+		if rel.Script == "" {
+			rel.Script = detectScriptLocal(titles)
+		}
+	}
+}
 
 // AddCoverArtRedirectURI can be used as a Release's RedirectURI to automatically redirect to the
 // "Add Cover Art" page after the release has been created.

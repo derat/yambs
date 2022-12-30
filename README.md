@@ -32,8 +32,21 @@ following command:
 go install ./cmd/yambs
 ```
 
+If the account that you will use to run the `yambs` executable does not have
+access to the [Google Cloud Translation API] \(used to detect releases'
+languages and scripts), you can supply the `nogcp` build tag to avoid attempting
+to connect to the service:
+
+```sh
+go install -tags nogcp ./cmd/yambs
+```
+
+[Prebuilt executables] are also available.
+
 [yambs executable]: ./cmd/yambs
 [Go]: https://go.dev/
+[Google Cloud Translation API]: https://cloud.google.com/translate
+[Prebuilt executables]: https://github.com/derat/yambs/releases
 
 ## Usage
 

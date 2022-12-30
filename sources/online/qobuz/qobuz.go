@@ -53,8 +53,8 @@ func (p *Provider) CleanURL(orig string) (string, error) {
 func (p *Provider) ExampleURL() string { return "https://www.qobuz.com/us-en/album/…" }
 
 // Release extracts release information from the supplied Qobuz page.
-func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
-	rel *seed.Release, img *seed.Info, err error) {
+func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
+	db *db.DB, network bool) (rel *seed.Release, img *seed.Info, err error) {
 	// The HTML is a mess (e.g. the date format differs depending on the locale),
 	// so get what we can from the structured data.
 	var data structData
@@ -72,8 +72,6 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, 
 		Title:     data.Name,
 		Artists:   []seed.ArtistCredit{{Name: data.Brand.Name}},
 		Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-		Language:  "eng",
-		Script:    "Latn",
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 		Mediums:   []seed.Medium{{Format: seed.MediumFormat_DigitalMedia}},
@@ -165,6 +163,9 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, 
 			LinkType: seed.LinkType_StreamingPaid_Release_URL,
 		})
 	}
+
+	// Fill unset fields where possible.
+	rel.Autofill(ctx, network)
 
 	return rel, img, nil
 }

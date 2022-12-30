@@ -43,7 +43,7 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]s
 	if err != nil {
 		return nil, err
 	}
-	rel, img, err := selectProvider(url).Release(ctx, page, url, db)
+	rel, img, err := selectProvider(url).Release(ctx, page, url, db, true /* network */)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ type Provider interface {
 	CleanURL(orig string) (string, error)
 	// Release extracts release information from the supplied page.
 	// The img return value is nil if a cover image is not found.
-	Release(ctx context.Context, page *web.Page, url string, db *db.DB) (
+	Release(ctx context.Context, page *web.Page, url string, db *db.DB, network bool) (
 		rel *seed.Release, img *seed.Info, err error)
 	// ExampleURL returns an example URL that can be displayed to the user.
 	ExampleURL() string

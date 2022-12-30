@@ -28,8 +28,8 @@ type Provider struct{}
 // Release extracts release information from the supplied Bandcamp page.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
-func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, db *db.DB) (
-	rel *seed.Release, img *seed.Info, err error) {
+func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
+	db *db.DB, network bool) (rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(pageURL, "http://") {
 		pageURL = "https" + pageURL[4:]
@@ -53,11 +53,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, 
 		Artists:   []seed.ArtistCredit{{Name: album.Artist}},
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
-		// The userscript appears to hardcode these too, but it might not be too hard
-		// to at least detect the script.
-		Language: "eng",
-		Script:   "Latn",
-		Mediums:  []seed.Medium{seed.Medium{Format: seed.MediumFormat_DigitalMedia}},
+		Mediums:   []seed.Medium{seed.Medium{Format: seed.MediumFormat_DigitalMedia}},
 	}
 
 	// Add the primary type for the release group.
@@ -188,6 +184,9 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string, 
 	if len(album.Packages) == 0 && album.Current.UPC != "" {
 		rel.Barcode = album.Current.UPC
 	}
+
+	// Fill unset fields where possible.
+	rel.Autofill(ctx, network)
 
 	// Add an informational edit containing the full-resolution cover art to make it easy
 	// for the user to add it in a followup edit.

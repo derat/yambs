@@ -52,7 +52,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Cartoon Funk",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -106,7 +105,6 @@ func TestRelease(t *testing.T) {
 				Title:     "Let it Happen",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
 				Barcode:   "5054429157154",
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -141,7 +139,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Arcanum",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -179,7 +176,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Echoes of Memories",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -222,7 +218,6 @@ func TestRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Live From The Pool",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Language:  "eng",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -273,7 +268,7 @@ func TestRelease(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := pr.Release(ctx, page, tc.url, db)
+			rel, img, err := pr.Release(ctx, page, tc.url, db, false /* network */)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}
