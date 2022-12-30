@@ -2,6 +2,7 @@
 // All rights reserved.
 
 //go:build !nogcp
+// +build !nogcp
 
 package seed
 
