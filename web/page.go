@@ -32,7 +32,16 @@ func FetchPage(ctx context.Context, url string) (*Page, error) {
 		req.Header.Set("User-Agent", userAgent)
 	}
 
-	res, err := http.DefaultClient.Do(req)
+	client := http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			log.Print("Got redirect to ", req.URL)
+			if len(via) >= 10 {
+				return errors.New("stopped after 10 redirects")
+			}
+			return nil
+		},
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
