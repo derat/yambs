@@ -24,13 +24,23 @@ import (
 type Provider struct{}
 
 // pathRegexp matches a path like "/album/hyttetur-2-svartepetter/e3qy2e01fbs9a" or
-// "/us-en/album/in-rainbows-radiohead/0634904032432". The first match group drops the
-// path component containing the country and language codes.
-var pathRegexp = regexp.MustCompile(`^(?:/[a-z]{2}-[a-z]{2})?(/album/[^/]+/[^/]+)/?$`)
+// "/us-en/album/in-rainbows-radiohead/0634904032432". The first match group is the
+// (optional) path component containing the country and language codes. The second
+// match group contains the rest of the path.
+var pathRegexp = regexp.MustCompile(`^(/[a-z]{2}-[a-z]{2})?(/album/[^/]+/[^/]+)/?$`)
 
 // CleanURL returns a cleaned version of a Qobuz URL like
 // "https://www.qobuz.com/gb-en/album/album-name/album-id".
 func (p *Provider) CleanURL(orig string) (string, error) {
+	// Preserve the original locale. If we remove it, Qobuz will redirect to the artist's
+	// discography page if the album isn't available in our country:
+	// https://github.com/derat/yambs/issues/8
+	return cleanURL(orig, false /* removeLocal */)
+}
+
+// cleanURL is a helper function called by CleanURL.
+// If removeLocale is true, the e.g. "/gb-en" path component is dropped.
+func cleanURL(orig string, removeLocale bool) (string, error) {
 	u, err := url.Parse(strings.ToLower(orig))
 	if err != nil {
 		return "", err
@@ -40,8 +50,10 @@ func (p *Provider) CleanURL(orig string) (string, error) {
 	}
 	if ms := pathRegexp.FindStringSubmatch(u.Path); ms == nil {
 		return "", errors.New(`path not "/<locale>/album/<name>/<id>"`)
+	} else if removeLocale {
+		u.Path = ms[2]
 	} else {
-		u.Path = ms[1]
+		u.Path = ms[1] + ms[2]
 	}
 	u.Scheme = "https"
 	u.User = nil
@@ -148,7 +160,10 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 
 	// Add URL relationships.
 	if page.Query(".album-addtocart__add").Err == nil {
-		cleaned, err := p.CleanURL(pageURL)
+		// Remove the locale from the URL. The downside of this is that the locale-less URL may
+		// just redirect to the discography for users in countries where the album isn't available,
+		// but that still seems better than submitting whatever the editor's locale happens to be.
+		cleaned, err := cleanURL(pageURL, true /* removeLocale */)
 		if err != nil {
 			return nil, nil, err
 		}

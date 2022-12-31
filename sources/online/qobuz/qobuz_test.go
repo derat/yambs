@@ -199,29 +199,37 @@ func track(title, dur string) seed.Track {
 }
 
 func TestCleanURL(t *testing.T) {
-	var pr Provider
 	for _, tc := range []struct {
-		in   string
-		want string
-		ok   bool // if false, error should be returned
+		orig         string
+		removeLocale bool
+		want         string
+		ok           bool // if false, error should be returned
 	}{
-		{"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
+		{"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true,
 			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
-		{"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102/?utm_source=foo#bar",
+		{"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", false,
 			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
-		{"http://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102",
+		{"http://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true,
 			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
-		{"https://www.qobuz.com/us-en/album/fearless-taylors-version-taylor-swift/r8361te6k0cic",
+		{"http://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", false,
+			"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
+		{"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102/?utm_source=foo#bar", true,
+			"https://www.qobuz.com/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
+		{"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102/?utm_source=foo#bar", false,
+			"https://www.qobuz.com/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", true},
+		{"https://www.qobuz.com/mx-es/album/fearless-taylors-version-taylor-swift/r8361te6k0cic", true,
 			"https://www.qobuz.com/album/fearless-taylors-version-taylor-swift/r8361te6k0cic", true},
-		{"https://www.qobuz.com/us-en/discover", "", false},
-		{"https://example.org/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", "", false},
+		{"https://www.qobuz.com/mx-es/album/fearless-taylors-version-taylor-swift/r8361te6k0cic", false,
+			"https://www.qobuz.com/mx-es/album/fearless-taylors-version-taylor-swift/r8361te6k0cic", true},
+		{"https://www.qobuz.com/us-en/discover", false, "", false},
+		{"https://example.org/us-en/album/a-dave-brubeck-christmas-dave-brubeck/0008940834102", false, "", false},
 	} {
-		if got, err := pr.CleanURL(tc.in); !tc.ok && err == nil {
-			t.Errorf("CleanURL(%q) = %q; wanted error", tc.in, got)
+		if got, err := cleanURL(tc.orig, tc.removeLocale); !tc.ok && err == nil {
+			t.Errorf("cleanURL(%q, %v) = %q; wanted error", tc.orig, tc.removeLocale, got)
 		} else if tc.ok && err != nil {
-			t.Errorf("CleanURL(%q) failed: %v", tc.in, err)
+			t.Errorf("cleanURL(%q, %v) failed: %v", tc.orig, tc.removeLocale, err)
 		} else if tc.ok && got != tc.want {
-			t.Errorf("CleanURL(%q) = %q; want %q", tc.in, got, tc.want)
+			t.Errorf("cleanURL(%q, %v) = %q; want %q", tc.orig, tc.removeLocale, got, tc.want)
 		}
 	}
 }
