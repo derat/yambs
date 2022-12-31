@@ -59,7 +59,8 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	// so get what we can from the structured data.
 	var data structData
 	if js, err := page.Query(`script[type="application/ld+json"]`).Text(true); err != nil {
-		return nil, nil, fmt.Errorf("structured data: %v", err)
+		title, _ := page.Query("title").Text(true)
+		return nil, nil, fmt.Errorf("structured data (%q): %v", title, err)
 	} else if err := json.Unmarshal([]byte(js), &data); err != nil {
 		return nil, nil, fmt.Errorf("structured data: %v", err)
 	} else if data.Context != "https://schema.org/" {
