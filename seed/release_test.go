@@ -4,14 +4,60 @@
 package seed
 
 import (
+	"context"
 	"fmt"
 	"net/url"
+	"reflect"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 )
+
+func TestRelease_Autofill_Types(t *testing.T) {
+	mkrel := func(title string, tracks ...interface{}) *Release {
+		rel := Release{Title: title, Mediums: []Medium{{}}}
+		for i := 0; i < len(tracks); i += 2 {
+			rel.Mediums[0].Tracks = append(rel.Mediums[0].Tracks, Track{
+				Title:  tracks[i].(string),
+				Length: time.Duration(tracks[i+1].(int)) * time.Second,
+			})
+		}
+		return &rel
+	}
+
+	ctx := context.Background()
+	for i, tc := range []struct {
+		rel  *Release
+		want ReleaseGroupType
+	}{
+		{mkrel("Empty"), ""},
+		{mkrel("Some EP", "First", 200, "Second", 200), ReleaseGroupType_EP},
+		{mkrel("Some EP (Explicit)", "First", 200, "Second", 200), ReleaseGroupType_EP},
+		{mkrel("Some EP [Explicit]", "First", 200, "Second", 200), ReleaseGroupType_EP},
+		{mkrel("Name", "Name", 200), ReleaseGroupType_Single},
+		{mkrel("Name", "Other", 200), ReleaseGroupType_Single},
+		{mkrel("Name 1", "Name 1", 200, "Name 2", 200), ReleaseGroupType_Single},
+		{mkrel("Name 1 [Explicit]", "Name 1", 200, "Name 2", 200), ReleaseGroupType_Single},
+		{mkrel("Name 1", "Name 1 [Explicit]", 200, "Name 2", 200), ReleaseGroupType_Single},
+		{mkrel("Name 1", "Name 2", 200, "Name 3", 200), ""},
+		{mkrel("Long Song", "Long Song", 2700), ReleaseGroupType_Album},
+		{mkrel("Two Tracks", "A", 1800, "B", 1800), ReleaseGroupType_Album},
+		{mkrel("A", "A", 300, "B", 300, "C", 300, "D", 300, "E", 300,
+			"F", 300, "G", 300, "H", 300, "I", 300, "J", 300), ReleaseGroupType_Album},
+	} {
+		var want []ReleaseGroupType
+		if tc.want != "" {
+			want = append(want, tc.want)
+		}
+		rel := tc.rel
+		rel.Autofill(ctx, false /* network */)
+		if !reflect.DeepEqual(rel.Types, want) {
+			t.Errorf("Autofill on %d (%q) set types %q; want %q", i, rel.Title, rel.Types, want)
+		}
+	}
+}
 
 func TestRelease_Params(t *testing.T) {
 	rel := Release{

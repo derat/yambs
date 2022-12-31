@@ -71,7 +71,6 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	rel = &seed.Release{
 		Title:     data.Name,
 		Artists:   []seed.ArtistCredit{{Name: data.Brand.Name}},
-		Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 		Mediums:   []seed.Medium{{Format: seed.MediumFormat_DigitalMedia}},

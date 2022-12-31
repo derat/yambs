@@ -56,18 +56,8 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 		Mediums:   []seed.Medium{seed.Medium{Format: seed.MediumFormat_DigitalMedia}},
 	}
 
-	// Add the primary type for the release group.
-	switch album.Current.Type {
-	case "album":
-		rel.Types = append(rel.Types, seed.ReleaseGroupType_Album)
-	case "track":
-		// Add the track as a single if it isn't part of an album.
-		if embed.AlbumEmbedData.Linkback != "" {
-			return nil, nil, errors.New("track is part of " + embed.AlbumEmbedData.Linkback)
-		}
-		rel.Types = append(rel.Types, seed.ReleaseGroupType_Single)
-	default:
-		return nil, nil, fmt.Errorf("unsupported type %q", album.Current.Type)
+	if album.Current.Type == "track" && embed.AlbumEmbedData.Linkback != "" {
+		return nil, nil, errors.New("track is part of " + embed.AlbumEmbedData.Linkback)
 	}
 
 	// Try to find the artist's MBID from the URL.
@@ -123,13 +113,6 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 	for i := len(med.Tracks); i < metaTracks; i++ {
 		med.Tracks = append(med.Tracks, seed.Track{Title: "[unknown]"})
-	}
-
-	// If there's just one track and its name matches the album name,
-	// treat this as a single rather than a full album.
-	if len(rel.Types) == 1 && rel.Types[0] == seed.ReleaseGroupType_Album &&
-		len(med.Tracks) == 1 && strings.EqualFold(med.Tracks[0].Title, rel.Title) {
-		rel.Types = []seed.ReleaseGroupType{seed.ReleaseGroupType_Single}
 	}
 
 	// Add URLs. This logic is lifted wholesale from the userscript.

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -171,6 +172,59 @@ func (rel *Release) Autofill(ctx context.Context, network bool) {
 			rel.Script = detectScriptLocal(titles)
 		}
 	}
+
+	// Try to guess the release group type if it isn't already set.
+	// See https://musicbrainz.org/doc/Release_Group/Type.
+	if len(rel.Types) == 0 {
+		var numTracks int
+		var totalLen time.Duration
+		relTitle := removeExtraTitleInfo(rel.Title)
+		trackMatchesRelease := false  // a track shares the release's title
+		tracksAllSingleLength := true // all tracks are <= maxSingleTrackLen
+		for _, med := range rel.Mediums {
+			for _, tr := range med.Tracks {
+				numTracks++
+				totalLen += tr.Length
+				if title := removeExtraTitleInfo(tr.Title); title == relTitle {
+					trackMatchesRelease = true
+				}
+				if tr.Length > maxSingleTrackLen {
+					tracksAllSingleLength = false
+				}
+			}
+		}
+
+		switch {
+		case strings.HasSuffix(relTitle, " EP"):
+			// Only classify the release as an EP if its name ends with "EP".
+			rel.Types = append(rel.Types, ReleaseGroupType_EP)
+		case tracksAllSingleLength &&
+			(numTracks == 1 || (numTracks <= maxSingleTracks && trackMatchesRelease)):
+			// Classify the release as a single if none of the tracks are too long and there's
+			// either a single track or a few tracks, one of which has the same name as the release.
+			rel.Types = append(rel.Types, ReleaseGroupType_Single)
+		case totalLen >= minAlbumLen || numTracks >= minAlbumTracks:
+			// Fall back to calling it an album.
+			rel.Types = append(rel.Types, ReleaseGroupType_Album)
+		}
+	}
+}
+
+const (
+	maxSingleTracks   = 4                // max tracks in singles
+	maxSingleTrackLen = 15 * time.Minute // max length for tracks in singles
+	minAlbumLen       = 40 * time.Minute // min total length for release to be an album
+	minAlbumTracks    = 8                // min tracks in album
+)
+
+// extraTitleInfoRegexp matches a trailing string like " (explicit)" or " [explicit]".
+var extraTitleInfoRegexp = regexp.MustCompile(`\s+(\([^)]+\)|\[[^]]+\])$`)
+
+// removeExtraTitleInfo removes a suffix like " (explicit)" or " [explicit]" from title.
+// Note that this may also remove a non-ETI portion of the title,
+// e.g. "Don't You (Forget About Me)".
+func removeExtraTitleInfo(title string) string {
+	return title[:len(title)-len(extraTitleInfoRegexp.FindString(title))]
 }
 
 // AddCoverArtRedirectURI can be used as a Release's RedirectURI to automatically redirect to the
