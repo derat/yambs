@@ -454,6 +454,7 @@
     };
   </script>
   <script>
+    const uiStateKey = 'uiState';
     const formSourceSelect = $('form-source-select');
     const formOnlineUrlInput = $('form-online-url-input');
     const formTextFormatSelect = $('form-text-format-select');
@@ -475,7 +476,7 @@
     let formTextFieldsTableShown = false;
 
     // Updates the state of form-related elements.
-    function updateFormUI() {
+    function updateFormUI(save = true) {
       const selSource = formSourceSelect.value;
       for (const source of ['online', 'text']) {
         $(`form-${source}-section`).classList.toggle('visible', source === selSource);
@@ -507,6 +508,38 @@
       formTextSetExample.title = formSetExamples[selType] || '';
       formTextFieldsExample.title = formFieldsExamples[selType] || '';
       formTextInputExample.title = (formInputExamples[selType] || {})[selFormat] || '';
+
+      // Save the current state to localStorage.
+      if (save) {
+        localStorage.setItem(
+          uiStateKey,
+          JSON.stringify({
+            source: selSource,
+            textFormat: selFormat,
+            textType: selType,
+          })
+        );
+      }
+    }
+
+    // Restores the state of the form UI from localStorage.
+    function restoreFormUI() {
+      const setSelect = (sel, val) => {
+        if (val === undefined) return;
+        sel.value = val;
+        if (sel.selectedIndex < 0) sel.selectedIndex = 0;
+      };
+
+      try {
+        const state = JSON.parse(localStorage.getItem(uiStateKey) || '{}');
+        setSelect(formSourceSelect, state.source);
+        setSelect(formTextFormatSelect, state.textFormat);
+        setSelect(formTextTypeSelect, state.textType);
+      } catch (e) {
+        console.error(`Failed restoring form state: ${e}`);
+      }
+
+      updateFormUI(false /* save */);
     }
 
     // Clears form fields. Select elements are left unchanged.
@@ -592,10 +625,10 @@
 
     // Initialize the form.
     (() => {
+      restoreFormUI();
       formSourceSelect.addEventListener('change', updateFormUI);
       formTextFormatSelect.addEventListener('change', updateFormUI);
       formTextTypeSelect.addEventListener('change', updateFormUI);
-      updateFormUI();
 
       formTextToggleFieldsButton.addEventListener('click', () => {
         formTextFieldsTableShown = !formTextFieldsTableShown;
