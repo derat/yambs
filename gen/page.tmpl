@@ -534,6 +534,7 @@
     function hideFormError() {
       formErrorDiv.classList.remove('visible');
     }
+
     // Sends form data to the server and returns a promise for an array of objects that can be
     // passed to showEdits().
     function generateEdits() {
@@ -622,6 +623,14 @@
           formTextInputFileInput.value = null;
         });
         fr.readAsText(files[0]);
+      });
+
+      // Let the user submit URLs by pressing Enter.
+      formOnlineUrlInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          formGenButton.click();
+          formOnlineUrlInput.blur();
+        }
       });
 
       formGenButton.addEventListener('click', () => {
