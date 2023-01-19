@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,20 +64,33 @@ Third Song	0:45
 
 func TestRead_Recording_All(t *testing.T) {
 	const (
-		artistMBID = "b92d909c-243d-4146-bfd5-2703c9dd1c99"
-		artistID   = 1234
-		artistCred = "The Artist"
-		artistJoin = " & "
-		artistName = "Other Artist"
-		disambig   = "Different from the other one"
-		editNote   = "From https://www.example.org"
-		isrc1      = "UKAAA0500001"
-		isrc2      = "USBBB0400002"
-		recMBID    = "5e1a028f-461d-4ec8-aa10-97c4cb7262dc"
-		recName    = "Recording Name"
-		url        = "https://www.example.org/foo"
-		url2       = "https://www.example.org/bar"
-		linkType   = seed.LinkType_DownloadForFree_Recording_URL
+		artistMBID     = "b92d909c-243d-4146-bfd5-2703c9dd1c99"
+		artistID       = 1234
+		artistCred     = "The Artist"
+		artistJoin     = " & "
+		artistName     = "Other Artist"
+		disambig       = "Different from the other one"
+		editNote       = "From https://www.example.org"
+		isrc1          = "UKAAA0500001"
+		isrc2          = "USBBB0400002"
+		recMBID        = "5e1a028f-461d-4ec8-aa10-97c4cb7262dc"
+		recName        = "Recording Name"
+		relTarget      = "7e84f845-ac16-41fe-9ff8-df12eb32af55"
+		relType        = seed.LinkType_Engineer_Artist_Recording
+		relBeginYear   = 2001
+		relBeginMonth  = 8
+		relBeginDay    = 5
+		relEndYear     = 2005
+		relEndMonth    = 10
+		relEndDay      = 31
+		rel2Target     = "ecbc7c9b-e79d-4ec8-ac77-44e4a7f7f1b8"
+		rel2TypeUUID   = "9efd9ce9-e702-448b-8e76-641515e8fe62"
+		rel2AttrCredit = "some credit"
+		rel2AttrText   = "more text"
+		rel2AttrType   = seed.LinkAttributeType_Vocal
+		url            = "https://www.example.org/foo"
+		url2           = "https://www.example.org/bar"
+		linkType       = seed.LinkType_DownloadForFree_Recording_URL
 	)
 
 	db := db.NewDB(db.DisallowQueries)
@@ -95,6 +109,17 @@ func TestRead_Recording_All(t *testing.T) {
 		recMBID,
 		recName,
 		"true",
+		relTarget,
+		strconv.Itoa(int(relType)),
+		fmt.Sprintf("%04d-%02d-%02d", relBeginYear, relBeginMonth, relBeginDay),
+		fmt.Sprintf("%04d-%02d-%02d", relEndYear, relEndMonth, relEndDay),
+		"true",
+		rel2Target,
+		rel2TypeUUID,
+		"true",
+		rel2AttrCredit,
+		rel2AttrText,
+		strconv.Itoa(int(rel2AttrType)),
 		url,
 		strconv.Itoa(int(linkType)),
 		url2,
@@ -113,6 +138,17 @@ func TestRead_Recording_All(t *testing.T) {
 		"mbid",
 		"name",
 		"video",
+		"rel0_target",
+		"rel0_type",
+		"rel0_begin_date",
+		"rel0_end_date",
+		"rel0_ended",
+		"rel1_target",
+		"rel1_type",
+		"rel1_backward",
+		"rel1_attr0_credited",
+		"rel1_attr0_text",
+		"rel1_attr0_type",
 		"url0_url",
 		"url0_type",
 		"url1_url",
@@ -134,7 +170,30 @@ func TestRead_Recording_All(t *testing.T) {
 			MBID:           recMBID,
 			Name:           recName,
 			Video:          true,
-			URLs:           []seed.URL{{URL: url, LinkType: linkType}, {URL: url2}},
+			Relationships: []seed.Relationship{
+				{
+					Target:     relTarget,
+					Type:       relType,
+					BeginYear:  relBeginYear,
+					BeginMonth: relBeginMonth,
+					BeginDay:   relBeginDay,
+					EndYear:    relEndYear,
+					EndMonth:   relEndMonth,
+					EndDay:     relEndDay,
+					Ended:      true,
+				},
+				{
+					Target:   rel2Target,
+					TypeUUID: rel2TypeUUID,
+					Backward: true,
+					Attributes: []seed.RelationshipAttribute{{
+						CreditedAs: rel2AttrCredit,
+						TextValue:  rel2AttrText,
+						Type:       rel2AttrType,
+					}},
+				},
+			},
+			URLs: []seed.URL{{URL: url, LinkType: linkType}, {URL: url2}},
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {

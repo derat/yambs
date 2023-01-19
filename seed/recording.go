@@ -54,14 +54,11 @@ type Recording struct {
 	//  LinkType_StreamingPaid_Recording_URL ("streaming page")
 	//  LinkType_Crowdfunding_Recording_URL ("crowdfunding page")
 	URLs []URL
+	// Relationships contains (non-URL) relationships between this recording and other entities.
+	Relationships []Relationship
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.
 	EditNote string
-
-	// TODO: Figure out if it's possible to seed non-URL relationships.
-	// The UI is complicated, and it seems like releases have a separate form
-	// for editing relationships so there's unfortunately no documentation at
-	// https://wiki.musicbrainz.org/Development/Release_Editor_Seeding.
 }
 
 func (rec *Recording) Type() Type { return RecordingType }
@@ -115,6 +112,9 @@ func (rec *Recording) Params() url.Values {
 	}
 	for i, u := range rec.URLs {
 		u.setParams(vals, fmt.Sprintf("edit-recording.url.%d.", i), rec.Method())
+	}
+	for i, rel := range rec.Relationships {
+		rel.setParams(vals, fmt.Sprintf("rels.%d.", i))
 	}
 	if rec.EditNote != "" {
 		vals.Set("edit-recording.edit_note", rec.EditNote)

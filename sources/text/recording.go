@@ -4,6 +4,8 @@
 package text
 
 import (
+	"errors"
+
 	"github.com/derat/yambs/seed"
 )
 
@@ -69,6 +71,86 @@ var recordingFields = map[string]fieldInfo{
 		"Recording's name",
 		func(r *seed.Recording, k, v string) error { return setString(&r.Name, v) },
 	},
+	"rel*_backward": {
+		`Whether the relationship direction is reversed ("1" or "true" if true)`,
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationship(r, k, func(rel *seed.Relationship) error { return setBool(&rel.Backward, v) })
+		},
+	},
+	"rel*_begin_date": {
+		`Date when relationship began as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationship(r, k, func(rel *seed.Relationship) error {
+				var err error
+				rel.BeginYear, rel.BeginMonth, rel.BeginDay, err = parseDate(v)
+				return err
+			})
+		},
+	},
+	"rel*_end_date": {
+		`Date when relationship ended as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationship(r, k, func(rel *seed.Relationship) error {
+				var err error
+				rel.EndYear, rel.EndMonth, rel.EndDay, err = parseDate(v)
+				return err
+			})
+		},
+	},
+	"rel*_ended": {
+		`Whether the relationship has ended ("1" or "true" if true)`,
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationship(r, k, func(rel *seed.Relationship) error { return setBool(&rel.Ended, v) })
+		},
+	},
+	"rel*_target": {
+		"MBID or name of entity at other end of relationship",
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationship(r, k, func(rel *seed.Relationship) error { return setString(&rel.Target, v) })
+		},
+	},
+	"rel*_type": {
+		"Integer [link type](" + linkTypeURL + ") or UUID describing the relationship type",
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationship(r, k, func(rel *seed.Relationship) error {
+				if err := setInt((*int)(&rel.Type), v); err != nil {
+					if err := setMBID(&rel.TypeUUID, v); err != nil {
+						return errors.New("not integer or UUID")
+					}
+				}
+				return nil
+			})
+		},
+	},
+	"rel*_attr*_credited": {
+		"Relationship attribute's credited-as text",
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationshipAttribute(r, k, func(attr *seed.RelationshipAttribute) error {
+				return setString(&attr.CreditedAs, v)
+			})
+		},
+	},
+	"rel*_attr*_text": {
+		"Relationship attribute's additional text",
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationshipAttribute(r, k, func(attr *seed.RelationshipAttribute) error {
+				return setString(&attr.TextValue, v)
+			})
+		},
+	},
+	"rel*_attr*_type": {
+		"Integer [link attribute type](" + linkAttrTypeURL + ") or UUID describing the relationship attribute type",
+		func(r *seed.Recording, k, v string) error {
+			return recordingRelationshipAttribute(r, k, func(attr *seed.RelationshipAttribute) error {
+				if err := setInt((*int)(&attr.Type), v); err != nil {
+					if err := setMBID(&attr.TypeUUID, v); err != nil {
+						return errors.New("not integer or UUID")
+					}
+				}
+				return nil
+			})
+		},
+	},
 	"url*_url": {
 		"URL related to recording",
 		func(r *seed.Recording, k, v string) error {
@@ -92,4 +174,12 @@ func recordingArtist(r *seed.Recording, k string, fn func(*seed.ArtistCredit) er
 }
 func recordingURL(r *seed.Recording, k string, fn func(*seed.URL) error) error {
 	return indexedField(&r.URLs, k, "url", fn)
+}
+func recordingRelationship(r *seed.Recording, k string, fn func(*seed.Relationship) error) error {
+	return indexedField(&r.Relationships, k, "rel", fn)
+}
+func recordingRelationshipAttribute(r *seed.Recording, k string, fn func(*seed.RelationshipAttribute) error) error {
+	return recordingRelationship(r, k, func(r *seed.Relationship) error {
+		return indexedField(&r.Attributes, k, `^rel\d*_attr`, fn)
+	})
 }

@@ -51,6 +51,14 @@ type enumValue struct {
 }
 
 func main() {
+	linkAttrTypes := enumType{
+		Name: "LinkAttributeType",
+		Type: "int",
+		Comment: []string{
+			`LinkType is an ID describing an attribute associated with a link between two`,
+			`MusicBrainz entities.`,
+		},
+	}
 	linkTypes := enumType{
 		Name: "LinkType",
 		Type: "int",
@@ -125,7 +133,8 @@ func main() {
 		&releaseStatuses,
 		&releasePackagings,
 		&mediumFormats,
-		&linkTypes, // last because it's super-long
+		&linkTypes, // close to the end because it's super-long
+		&linkAttrTypes,
 	}
 
 	// Support reading from a file to make development easier.
@@ -160,7 +169,14 @@ func main() {
 		ln := sc.Text()
 		ln = strings.ReplaceAll(ln, "''", "’")
 
-		if ms := linkTypeRegexp.FindStringSubmatch(ln); ms != nil {
+		if ms := linkAttrTypeRegexp.FindStringSubmatch(ln); ms != nil {
+			id, name, desc := ms[1], ms[2], ms[3]
+			linkAttrTypes.add(enumValue{
+				Name:    clean(name),
+				Value:   id,
+				Comment: wrap(desc, commentLen),
+			})
+		} else if ms := linkTypeRegexp.FindStringSubmatch(ln); ms != nil {
 			id, type1, type2, name, desc := ms[1], ms[2], ms[3], ms[4], ms[5]
 			switch id {
 			case "184":
@@ -388,6 +404,27 @@ func wrap(orig string, max int) []string {
 
 // TODO: These regular expressions are terrible.
 // I guess I should write a little query parser.
+
+//  CREATE TABLE link_attribute_type ( -- replicate
+//  	id                  SERIAL,
+//  	parent              INTEGER, -- references link_attribute_type.id
+//  	root                INTEGER NOT NULL, -- references link_attribute_type.id
+//  	child_order         INTEGER NOT NULL DEFAULT 0,
+//  	gid                 UUID NOT NULL,
+//  	name                VARCHAR(255) NOT NULL,
+//  	description         TEXT,
+//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+//  );
+var linkAttrTypeRegexp = regexp.MustCompile(
+	`(?i)^\s*INSERT\s+INTO\s+link_attribute_type\s+VALUES\s*\(` +
+		`\s*(\d+)\s*,` + // 'id' (group 1)
+		`[^,]+,` + // 'parent'
+		`[^,]+,` + // 'root'
+		`[^,]+,` + // 'child_order'
+		`[^,]+,` + // 'gid' (MBID)
+		`\s*'([^']*)'\s*,` + // 'name' (group 2)
+		`\s*'([^']*)'\s*,` + // 'description' (group 3)
+		`.*`)
 
 //  CREATE TABLE link_type ( -- replicate
 //  	id                  SERIAL,

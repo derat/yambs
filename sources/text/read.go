@@ -1,7 +1,7 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-// Package text parses entities from textual input (e.g. CSV or TSV).
+// Package text parses entities from textual input like CSV or TSV files.
 package text
 
 import (

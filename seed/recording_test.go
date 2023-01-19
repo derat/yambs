@@ -4,6 +4,7 @@
 package seed
 
 import (
+	"fmt"
 	"net/url"
 	"strconv"
 	"testing"
@@ -37,9 +38,36 @@ func TestRecording_Params(t *testing.T) {
 			{URL: "https://www.example.org/foo", LinkType: LinkType_Crowdfunding_Recording_URL},
 			{URL: "https://www.example.org/bar", LinkType: LinkType_DownloadForFree_Recording_URL},
 		},
+		Relationships: []Relationship{
+			{
+				Target:    "27aff659-aba5-41e5-8d35-9835fc9017d4",
+				Type:      LinkType_Edit_Recording_Recording,
+				BeginYear: 2020,
+				EndYear:   2022,
+				EndMonth:  2,
+				EndDay:    15,
+				Ended:     true,
+				Backward:  true,
+			},
+			{
+				TypeUUID: "93078fc7-6585-40a7-ab7f-6acb9da65b84",
+				Attributes: []RelationshipAttribute{
+					{
+						Type:       LinkAttributeType_LeadVocals,
+						CreditedAs: "some credit",
+					},
+					{
+						TypeUUID:  "1d05bc4b-9884-4c9f-9f69-616f119047f3",
+						TextValue: "some text",
+					},
+				},
+			},
+		},
 		EditNote: "here's the edit note",
 	}
 
+	rel0 := rec.Relationships[0]
+	rel1 := rec.Relationships[1]
 	want := url.Values{
 		"artist": {rec.Artist},
 		"edit-recording.artist_credit.names.0.artist.id":   {strconv.Itoa(int(rec.Artists[0].ID))},
@@ -57,6 +85,17 @@ func TestRecording_Params(t *testing.T) {
 		"edit-recording.url.0.link_type_id":                {strconv.Itoa(int(rec.URLs[0].LinkType))},
 		"edit-recording.url.1.text":                        {rec.URLs[1].URL},
 		"edit-recording.url.1.link_type_id":                {strconv.Itoa(int(rec.URLs[1].LinkType))},
+		"rels.0.target":                                    {rec.Relationships[0].Target},
+		"rels.0.type":                                      {strconv.Itoa(int(rec.Relationships[0].Type))},
+		"rels.0.begin_date":                                {fmt.Sprintf("%04d", rel0.BeginYear)},
+		"rels.0.end_date":                                  {fmt.Sprintf("%04d-%02d-%02d", rel0.EndYear, rel0.EndMonth, rel0.EndDay)},
+		"rels.0.ended":                                     {"1"},
+		"rels.0.backward":                                  {"1"},
+		"rels.1.type":                                      {rel1.TypeUUID},
+		"rels.1.attributes.0.type":                         {strconv.Itoa(int(rel1.Attributes[0].Type))},
+		"rels.1.attributes.0.credited_as":                  {rel1.Attributes[0].CreditedAs},
+		"rels.1.attributes.1.type":                         {rel1.Attributes[1].TypeUUID},
+		"rels.1.attributes.1.text_value":                   {rel1.Attributes[1].TextValue},
 	}
 	if diff := cmp.Diff(want, rec.Params()); diff != "" {
 		t.Error("Incorrect query params:\n" + diff)
