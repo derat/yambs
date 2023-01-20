@@ -6,6 +6,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -14,6 +15,7 @@ import (
 	"os/exec"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -164,22 +166,73 @@ func main() {
 	// Process the SQL statements.
 	sc := bufio.NewScanner(r)
 	for sc.Scan() {
-		// Super-cheesy: change SQL-escaped apostrophes (which appear in some descriptions)
-		// to smart apostrophes so they won't confuse my dumb regular expressions.
 		ln := sc.Text()
-		ln = strings.ReplaceAll(ln, "''", "’")
+		if !insertStartRegexp.MatchString(ln) {
+			continue
+		}
 
-		if ms := linkAttrTypeRegexp.FindStringSubmatch(ln); ms != nil {
-			id, name, desc := ms[1], ms[2], ms[3]
+		table, vals, err := parseInsert(ln)
+		if err != nil {
+			log.Fatalf("Failed parsing %q: %v", ln, err)
+		}
+
+		stringVal := func(i int) string {
+			if i > len(vals) {
+				log.Fatalf("Can't get value %d from %q", i, ln)
+			}
+			switch v := vals[i].(type) {
+			case string:
+				return v
+			case nil:
+				return ""
+			default:
+				log.Fatalf("Non-string type %T at %d in %q", v, i, ln)
+				return ""
+			}
+		}
+
+		// The below schema definitions come from
+		// https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/admin/sql/CreateTables.sql.
+		switch table {
+		case "link_attribute_type":
+			//  CREATE TABLE link_attribute_type ( -- replicate
+			//  	id                  SERIAL,
+			//  	parent              INTEGER, -- references link_attribute_type.id
+			//  	root                INTEGER NOT NULL, -- references link_attribute_type.id
+			//  	child_order         INTEGER NOT NULL DEFAULT 0,
+			//  	gid                 UUID NOT NULL,
+			//  	name                VARCHAR(255) NOT NULL,
+			//  	description         TEXT,
+			//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+			//  );
 			linkAttrTypes.add(enumValue{
-				Name:    clean(name),
-				Value:   id,
-				Comment: wrap(desc, commentLen),
+				Name:    clean(stringVal(5)),
+				Value:   strconv.Itoa(vals[0].(int)),
+				Comment: wrap(stringVal(6), commentLen),
 			})
-		} else if ms := linkTypeRegexp.FindStringSubmatch(ln); ms != nil {
-			id, type1, type2, name, desc := ms[1], ms[2], ms[3], ms[4], ms[5]
+		case "link_type":
+			//  CREATE TABLE link_type ( -- replicate
+			//  	id                  SERIAL,
+			//  	parent              INTEGER, -- references link_type.id
+			//  	child_order         INTEGER NOT NULL DEFAULT 0,
+			//  	gid                 UUID NOT NULL,
+			//  	entity_type0        VARCHAR(50) NOT NULL,
+			//  	entity_type1        VARCHAR(50) NOT NULL,
+			//  	name                VARCHAR(255) NOT NULL,
+			//  	description         TEXT,
+			//  	link_phrase         VARCHAR(255) NOT NULL,
+			//  	reverse_link_phrase VARCHAR(255) NOT NULL,
+			//  	long_link_phrase    VARCHAR(255) NOT NULL,
+			//  	priority            INTEGER NOT NULL DEFAULT 0,
+			//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+			//  	is_deprecated       BOOLEAN NOT NULL DEFAULT false,
+			//  	has_dates           BOOLEAN NOT NULL DEFAULT true,
+			//  	entity0_cardinality SMALLINT NOT NULL DEFAULT 0,
+			//  	entity1_cardinality SMALLINT NOT NULL DEFAULT 0
+			//  );
+			id, name := vals[0].(int), stringVal(6)
 			switch id {
-			case "184":
+			case 184:
 				// 171 and 184 are both named "discography" and map from Artists to URLs.
 				// 184 lists 171 as its parent, and some of the translations call it
 				// "discography page", so rename it to that to prevent a conflict.
@@ -187,41 +240,79 @@ func main() {
 			}
 			linkTypes.add(enumValue{
 				// If this format is changed, the hardcoded entries in linkTypes need to be updated.
-				Name:    fmt.Sprintf("%s_%s_%s", clean(name), clean(type1), clean(type2)),
-				Value:   id,
-				Comment: wrap(desc, commentLen),
+				Name:    fmt.Sprintf("%s_%s_%s", clean(name), clean(stringVal(4)), clean(stringVal(5))),
+				Value:   strconv.Itoa(id),
+				Comment: wrap(stringVal(7), commentLen),
 			})
-		} else if ms := mediumFormatsRegexp.FindStringSubmatch(ln); ms != nil {
-			name, desc := ms[1], ms[2]
+		case "medium_format":
+			//  CREATE TABLE medium_format ( -- replicate
+			//  	id                  SERIAL,
+			//  	name                VARCHAR(100) NOT NULL,
+			//  	parent              INTEGER, -- references medium_format.id
+			//  	child_order         INTEGER NOT NULL DEFAULT 0,
+			//  	year                SMALLINT,
+			//  	has_discids         BOOLEAN NOT NULL DEFAULT FALSE,
+			//  	description         TEXT,
+			//  	gid                 uuid NOT NULL
+			//  );
 			mediumFormats.add(enumValue{
-				Name:    clean(name),
-				Value:   fmt.Sprintf("%q", name),
-				Comment: wrap(desc, commentLen),
+				Name:    clean(stringVal(1)),
+				Value:   fmt.Sprintf("%q", stringVal(1)),
+				Comment: wrap(stringVal(6), commentLen),
 			})
-		} else if ms := releaseGroupTypeRegexp.FindStringSubmatch(ln); ms != nil {
-			typ, name := ms[1], ms[2]
-			eol := "secondary"
-			if typ == "primary" {
-				eol = "primary"
+		case "release_group_primary_type", "release_group_secondary_type":
+			//  CREATE TABLE release_group_primary_type ( -- replicate
+			//      id                  SERIAL,
+			//      name                VARCHAR(255) NOT NULL,
+			//      parent              INTEGER, -- references release_group_primary_type.id
+			//      child_order         INTEGER NOT NULL DEFAULT 0,
+			//      description         TEXT,
+			//      gid                 uuid NOT NULL
+			//  );
+			//  CREATE TABLE release_group_secondary_type ( -- replicate
+			//      id                  SERIAL NOT NULL, -- PK
+			//      name                TEXT NOT NULL,
+			//      parent              INTEGER, -- references release_group_secondary_type.id
+			//      child_order         INTEGER NOT NULL DEFAULT 0,
+			//      description         TEXT,
+			//      gid                 uuid NOT NULL
+			//  );
+			eol := "primary"
+			if table == "release_group_secondary_type" {
+				eol = "secondary"
 			}
 			releaseGroupTypes.add(enumValue{
-				Name:  clean(name),
-				Value: fmt.Sprintf("%q", name),
+				Name:  clean(stringVal(1)),
+				Value: fmt.Sprintf("%q", stringVal(1)),
 				EOL:   eol,
 			})
-		} else if ms := releaseStatusRegexp.FindStringSubmatch(ln); ms != nil {
-			name, desc := ms[1], ms[2]
-			releaseStatuses.add(enumValue{
-				Name:    clean(name),
-				Value:   fmt.Sprintf("%q", name),
-				Comment: wrap(desc, commentLen),
-			})
-		} else if ms := releasePackagingRegexp.FindStringSubmatch(ln); ms != nil {
-			name, desc := ms[1], ms[2]
+		case "release_packaging":
+			//  CREATE TABLE release_packaging ( -- replicate
+			//  	id                  SERIAL,
+			//  	name                VARCHAR(255) NOT NULL,
+			//  	parent              INTEGER, -- references release_packaging.id
+			//  	child_order         INTEGER NOT NULL DEFAULT 0,
+			//  	description         TEXT,
+			//  	gid                 uuid NOT NULL
+			//  );
 			releasePackagings.add(enumValue{
-				Name:    clean(name),
-				Value:   fmt.Sprintf("%q", name),
-				Comment: wrap(desc, commentLen),
+				Name:    clean(stringVal(1)),
+				Value:   fmt.Sprintf("%q", stringVal(1)),
+				Comment: wrap(stringVal(4), commentLen),
+			})
+		case "release_status":
+			//  CREATE TABLE release_status ( -- replicate
+			//  	id                  SERIAL,
+			//  	name                VARCHAR(255) NOT NULL,
+			//  	parent              INTEGER, -- references release_status.id
+			//  	child_order         INTEGER NOT NULL DEFAULT 0,
+			//  	description         TEXT,
+			//  	gid                 uuid NOT NULL
+			//  );
+			releaseStatuses.add(enumValue{
+				Name:    clean(stringVal(1)),
+				Value:   fmt.Sprintf("%q", stringVal(1)),
+				Comment: wrap(stringVal(4), commentLen),
 			})
 		}
 	}
@@ -379,157 +470,152 @@ const spaceChars = " \t"
 // wrap attempts to wrap orig to lines with the supplied maximum length.
 func wrap(orig string, max int) []string {
 	var lines []string
-	rest := strings.TrimSpace(orig)
-	for rest != "" {
-		if len(rest) <= max {
-			lines = append(lines, rest)
-			break
-		}
-		if idx := strings.LastIndexAny(rest[:max+1], spaceChars); idx >= 0 {
-			lines = append(lines, strings.TrimSpace(rest[:idx]))
-			rest = strings.TrimSpace(rest[idx:])
-		} else if idx := strings.IndexAny(rest[max:], spaceChars); idx >= 0 {
-			lines = append(lines, rest[:max+idx])
-			rest = strings.TrimSpace(rest[max+idx:])
-		} else {
-			lines = append(lines, rest)
-			break
+	for _, rest := range strings.Split(strings.TrimSpace(orig), "\n") {
+		rest = strings.TrimSpace(rest)
+		for rest != "" {
+			if len(rest) <= max {
+				lines = append(lines, rest)
+				break
+			}
+			if idx := strings.LastIndexAny(rest[:max+1], spaceChars); idx >= 0 {
+				lines = append(lines, strings.TrimSpace(rest[:idx]))
+				rest = strings.TrimSpace(rest[idx:])
+			} else if idx := strings.IndexAny(rest[max:], spaceChars); idx >= 0 {
+				lines = append(lines, rest[:max+idx])
+				rest = strings.TrimSpace(rest[max+idx:])
+			} else {
+				lines = append(lines, rest)
+				break
+			}
 		}
 	}
 	return lines
 }
 
-// The below schema definitions come from
-// https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/admin/sql/CreateTables.sql.
+// insertStartRegexp is just used to identify lines that contain SQL INSERT statements.
+var insertStartRegexp = regexp.MustCompile(`^\s*INSERT\s+INTO\s+[_a-z]+\s+VALUES`)
 
-// TODO: These regular expressions are terrible.
-// I guess I should write a little query parser.
+// parseInsert parses a SQL INSERT statement into its table name and inserted values.
+//
+// PostgreSQL's grammar is quite complex:
+//  https://www.postgresql.org/docs/current/sql-insert.html
+//  https://www.postgresql.org/docs/current/sql-syntax-lexical.html
+//  etc.
+//
+// This function only understands enough of it to process
+// https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/t/sql/initial.sql.
+func parseInsert(stmt string) (table string, vals []interface{}, err error) {
+	ms := insertRegexp.FindStringSubmatch(stmt)
+	if ms == nil {
+		return "", nil, errors.New("failed parsing statement")
+	}
+	table = ms[1]
+	list := strings.TrimSpace(ms[2])
 
-//  CREATE TABLE link_attribute_type ( -- replicate
-//  	id                  SERIAL,
-//  	parent              INTEGER, -- references link_attribute_type.id
-//  	root                INTEGER NOT NULL, -- references link_attribute_type.id
-//  	child_order         INTEGER NOT NULL DEFAULT 0,
-//  	gid                 UUID NOT NULL,
-//  	name                VARCHAR(255) NOT NULL,
-//  	description         TEXT,
-//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-//  );
-var linkAttrTypeRegexp = regexp.MustCompile(
-	`(?i)^\s*INSERT\s+INTO\s+link_attribute_type\s+VALUES\s*\(` +
-		`\s*(\d+)\s*,` + // 'id' (group 1)
-		`[^,]+,` + // 'parent'
-		`[^,]+,` + // 'root'
-		`[^,]+,` + // 'child_order'
-		`[^,]+,` + // 'gid' (MBID)
-		`\s*'([^']*)'\s*,` + // 'name' (group 2)
-		`\s*'([^']*)'\s*,` + // 'description' (group 3)
-		`.*`)
+	for list != "" {
+		ch := list[0]
+		switch {
+		case ch == '\'' || ch == 'E' || ch == 'e':
+			if v, n, err := readString(list, ch != '\''); err != nil {
+				return table, vals, err
+			} else {
+				vals = append(vals, v)
+				list = list[n:]
+			}
+		case numRegexp.MatchString(list):
+			s := numRegexp.FindString(list)
+			if strings.Index(s, ".") != -1 {
+				if v, err := strconv.ParseFloat(s, 64); err != nil {
+					return table, vals, err
+				} else {
+					vals = append(vals, v)
+				}
+			} else {
+				if v, err := strconv.ParseInt(s, 10, 64); err != nil {
+					return table, vals, err
+				} else {
+					vals = append(vals, int(v))
+				}
+			}
+			list = list[len(s):]
+		case strings.HasPrefix(list, "NULL"):
+			vals = append(vals, nil)
+			list = list[4:]
+		case strings.HasPrefix(list, "true"):
+			vals = append(vals, true)
+			list = list[4:]
+		case strings.HasPrefix(list, "false"):
+			vals = append(vals, false)
+			list = list[5:]
+		default:
+			return table, vals, fmt.Errorf("unhandled value at start of %q", list)
+		}
 
-//  CREATE TABLE link_type ( -- replicate
-//  	id                  SERIAL,
-//  	parent              INTEGER, -- references link_type.id
-//  	child_order         INTEGER NOT NULL DEFAULT 0,
-//  	gid                 UUID NOT NULL,
-//  	entity_type0        VARCHAR(50) NOT NULL,
-//  	entity_type1        VARCHAR(50) NOT NULL,
-//  	name                VARCHAR(255) NOT NULL,
-//  	description         TEXT,
-//  	link_phrase         VARCHAR(255) NOT NULL,
-//  	reverse_link_phrase VARCHAR(255) NOT NULL,
-//  	long_link_phrase    VARCHAR(255) NOT NULL,
-//  	priority            INTEGER NOT NULL DEFAULT 0,
-//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-//  	is_deprecated       BOOLEAN NOT NULL DEFAULT false,
-//  	has_dates           BOOLEAN NOT NULL DEFAULT true,
-//  	entity0_cardinality SMALLINT NOT NULL DEFAULT 0,
-//  	entity1_cardinality SMALLINT NOT NULL DEFAULT 0
-//  );
-var linkTypeRegexp = regexp.MustCompile(
-	`(?i)^\s*INSERT\s+INTO\s+link_type\s+VALUES\s*\(` +
-		`\s*(\d+)\s*,` + // 'id' (group 1)
-		`[^,]+,` + // 'parent'
-		`[^,]+,` + // 'child_order'
-		`[^,]+,` + // 'gid' (MBID)
-		`\s*'([^']*)'\s*,` + // 'entity_type0' (group 2)
-		`\s*'([^']*)'\s*,` + // 'entity_type1' (group 3)
-		`\s*'([^']*)'\s*,` + // 'name' (group 4)
-		`\s*'([^']*)'\s*,` + // 'description' (group 5)
-		`.*`)
+		list = strings.TrimSpace(list)
+		list = strings.TrimPrefix(list, ",")
+		list = strings.TrimSpace(list)
+	}
 
-//  CREATE TABLE medium_format ( -- replicate
-//  	id                  SERIAL,
-//  	name                VARCHAR(100) NOT NULL,
-//  	parent              INTEGER, -- references medium_format.id
-//  	child_order         INTEGER NOT NULL DEFAULT 0,
-//  	year                SMALLINT,
-//  	has_discids         BOOLEAN NOT NULL DEFAULT FALSE,
-//  	description         TEXT,
-//  	gid                 uuid NOT NULL
-//  );
-var mediumFormatsRegexp = regexp.MustCompile(
-	`(?i)^\s*INSERT\s+INTO\s+medium_format\s+VALUES\s*\(` +
-		`\s*\d+\s*,*` + // 'id'
-		`\s*'([^']+)'\s*,` + // 'name' (group 1)
-		`[^,]+,` + // 'parent'
-		`[^,]+,` + // 'child_order'
-		`[^,]+,` + // 'year'
-		`[^,]+,` + // 'has_discids'
-		`(?:\s*'([^']+)'\s*,)?` + // 'description' (group 2)
-		`.*`)
+	return table, vals, nil
+}
 
-//  CREATE TABLE release_group_primary_type ( -- replicate
-//      id                  SERIAL,
-//      name                VARCHAR(255) NOT NULL,
-//      parent              INTEGER, -- references release_group_primary_type.id
-//      child_order         INTEGER NOT NULL DEFAULT 0,
-//      description         TEXT,
-//      gid                 uuid NOT NULL
-//  );
-//  CREATE TABLE release_group_secondary_type ( -- replicate
-//      id                  SERIAL NOT NULL, -- PK
-//      name                TEXT NOT NULL,
-//      parent              INTEGER, -- references release_group_secondary_type.id
-//      child_order         INTEGER NOT NULL DEFAULT 0,
-//      description         TEXT,
-//      gid                 uuid NOT NULL
-//  );
-var releaseGroupTypeRegexp = regexp.MustCompile(
-	`(?i)^\s*INSERT\s+INTO\s+release_group_(primary|secondary)_type\s+VALUES\s*\(` + // (group 1)
-		`\s*\d+\s*,*` + // 'id'
-		`\s*'([^']+)'\s*,` + // 'name' (group 2)
-		`.*`)
+// insertRegexp (poorly) matches a SQL INSERT statement of the form
+// "INSERT INTO table_name VALUES (...);". The first match group contains
+// the table name and the second match group contains the values list.
+var insertRegexp = regexp.MustCompile(`^\s*INSERT\s+INTO\s+([^\s]+)\s+VALUES\s*\((.*)\)\s*` +
+	`(?:ON\s+CONFLICT\s*\([^)]+\)\s*DO\s+NOTHING\s*)?;\s*$`)
 
-//  CREATE TABLE release_status ( -- replicate
-//  	id                  SERIAL,
-//  	name                VARCHAR(255) NOT NULL,
-//  	parent              INTEGER, -- references release_status.id
-//  	child_order         INTEGER NOT NULL DEFAULT 0,
-//  	description         TEXT,
-//  	gid                 uuid NOT NULL
-//  );
-var releaseStatusRegexp = regexp.MustCompile(
-	`(?i)^\s*INSERT\s+INTO\s+release_status\s+VALUES\s*\(` +
-		`\s*\d+\s*,*` + // 'id'
-		`\s*'([^']+)'\s*,` + // 'name' (group 1)
-		`[^,]+,` + // 'parent'
-		`[^,]+,` + // 'child_order'
-		`\s*'([^']+)'\s*,` + // 'description' (group 2)
-		`.*`)
+// numRegexp matches a subset of the numeric constant forms listed at
+// https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS-NUMERIC.
+// It doesn't include the 'e' exponent marker, and it additional matches leading '-' or '+'
+// characters even though in PostreSQL, "any leading plus or minus sign is not actually considered
+// part of the constant; it is an operator applied to the constant."
+var numRegexp = regexp.MustCompile(`^[-+]?(\d+|\d+\.\d*|\d*\.\d+)`)
 
-//  CREATE TABLE release_packaging ( -- replicate
-//  	id                  SERIAL,
-//  	name                VARCHAR(255) NOT NULL,
-//  	parent              INTEGER, -- references release_packaging.id
-//  	child_order         INTEGER NOT NULL DEFAULT 0,
-//  	description         TEXT,
-//  	gid                 uuid NOT NULL
-//  );
-var releasePackagingRegexp = regexp.MustCompile(
-	`(?i)^\s*INSERT\s+INTO\s+release_packaging\s+VALUES\s*\(` +
-		`\s*\d+\s*,*` + // 'id'
-		`\s*'([^']+)'\s*,` + // 'name' (group 1)
-		`[^,]+,` + // 'parent'
-		`[^,]+,` + // 'child_order'
-		`(?:\s*'([^']+)'\s*,)?` + // 'description' (group 2)
-		`.*`)
+// readString reads a quoted string (including surrounding single-quotes) at the beginning of in.
+// It returns the unquoted string and the number of characters consumed.
+func readString(in string, bsEsc bool) (string, int, error) {
+	var v strings.Builder
+	var inEscape bool
+	for i := 0; i < len(in); i++ {
+		ch := in[i]
+		switch {
+		case (!bsEsc && i == 0) || (bsEsc && i == 1):
+			if ch != '\'' {
+				return "", 0, errors.New("no starting quote")
+			}
+		case bsEsc && i == 0:
+			if ch != 'E' && ch != 'e' {
+				return "", 0, errors.New("no starting 'e' or 'E'")
+			}
+		case inEscape:
+			if bsEsc {
+				switch ch {
+				case 'n':
+					v.WriteRune('\n')
+				case 'r':
+					v.WriteRune('\r')
+				case 't':
+					v.WriteRune('\t')
+				default:
+					v.WriteByte(ch)
+				}
+			} else {
+				v.WriteByte(ch)
+			}
+			inEscape = false
+		case ch == '\'':
+			if i < len(in)-1 && in[i+1] == '\'' {
+				inEscape = true
+			} else {
+				return v.String(), i + 1, nil
+			}
+		case ch == '\\' && bsEsc:
+			inEscape = true
+		default:
+			// Add this as a byte rather than a rune to avoid messing up multibyte chars.
+			v.WriteByte(ch)
+		}
+	}
+	return "", 0, errors.New("no ending quote")
+}
