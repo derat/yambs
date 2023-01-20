@@ -1,6 +1,7 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
+// Package main implements a command-line program for generating seeded edits.
 package main
 
 import (
