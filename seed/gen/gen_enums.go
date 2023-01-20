@@ -57,8 +57,8 @@ func main() {
 		Name: "LinkAttributeType",
 		Type: "int",
 		Comment: []string{
-			`LinkType is an ID describing an attribute associated with a link between two`,
-			`MusicBrainz entities.`,
+			`LinkAttributeType is an ID describing an attribute associated with a link`,
+			`between two MusicBrainz entities.`,
 		},
 	}
 	linkTypes := enumType{
@@ -131,12 +131,12 @@ func main() {
 	}
 
 	allEnums := []*enumType{
-		&releaseGroupTypes,
-		&releaseStatuses,
-		&releasePackagings,
-		&mediumFormats,
-		&linkTypes, // close to the end because it's super-long
 		&linkAttrTypes,
+		&linkTypes,
+		&mediumFormats,
+		&releaseGroupTypes,
+		&releasePackagings,
+		&releaseStatuses,
 	}
 
 	// Support reading from a file to make development easier.
@@ -321,6 +321,7 @@ func main() {
 	}
 
 	// Sort values if requested.
+	sort.Slice(allEnums, func(i, j int) bool { return allEnums[i].Name < allEnums[j].Name })
 	for _, et := range allEnums {
 		if et.sort {
 			sort.Slice(et.Values, func(i, j int) bool { return et.Values[i].Name < et.Values[j].Name })
