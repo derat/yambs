@@ -19,7 +19,7 @@ import (
 // ListFields returns a map from the names of fields that can be passed
 // to Read for typ to human-readable descriptions.
 // If html is true, links in descriptions are rewritten to HTML links.
-func ListFields(typ seed.Type, html bool) map[string]string {
+func ListFields(typ seed.Entity, html bool) map[string]string {
 	m, ok := typeFields[typ]
 	if !ok {
 		return nil
@@ -52,9 +52,9 @@ type fieldInfo struct {
 	Fn   interface{}
 }
 
-var typeFields = map[seed.Type]map[string]fieldInfo{
-	seed.RecordingType: recordingFields,
-	seed.ReleaseType:   releaseFields,
+var typeFields = map[seed.Entity]map[string]fieldInfo{
+	seed.RecordingEntity: recordingFields,
+	seed.ReleaseEntity:   releaseFields,
 }
 
 // SetField sets the named field in edit.
@@ -62,7 +62,7 @@ var typeFields = map[seed.Type]map[string]fieldInfo{
 func SetField(edit seed.Edit, field, val string) error {
 	// TODO: Maybe try to rewrite all of this code to use generics at some point.
 	// The function casts below will panic if a function has the wrong signature.
-	fn, err := findFieldFunc(edit.Type(), field)
+	fn, err := findFieldFunc(edit.Entity(), field)
 	if err != nil {
 		return err
 	}
@@ -72,13 +72,13 @@ func SetField(edit seed.Edit, field, val string) error {
 	case *seed.Release:
 		return fn.(func(*seed.Release, string, string) error)(tedit, field, val)
 	default:
-		return fmt.Errorf("unsupported edit type %q", edit.Type())
+		return fmt.Errorf("unsupported edit type %q", edit.Entity())
 	}
 }
 
 // findFieldFunc looks for a function in typeFields corresponding to the supplied field name.
 // It returns an error if the field name is invalid or ambiguous.
-func findFieldFunc(typ seed.Type, field string) (interface{}, error) {
+func findFieldFunc(typ seed.Entity, field string) (interface{}, error) {
 	m, ok := typeFields[typ]
 	if !ok {
 		return nil, fmt.Errorf("unsupported edit type %q", typ)
@@ -299,13 +299,13 @@ func indexedField(items interface{}, field, prefix string, fn interface{}) error
 
 // ParseSetCommands parses "field=val" commands into pairs and validates that
 // they can be used to set fields on a seed.Edit of the supplied type.
-func ParseSetCommands(cmds []string, typ seed.Type) ([][2]string, error) {
+func ParseSetCommands(cmds []string, typ seed.Entity) ([][2]string, error) {
 	// This is a bit hokey: create a throwaway edit to use to test the commands.
 	var edit seed.Edit
 	switch typ {
-	case seed.RecordingType:
+	case seed.RecordingEntity:
 		edit = &seed.Recording{}
-	case seed.ReleaseType:
+	case seed.ReleaseEntity:
 		edit = &seed.Release{}
 	default:
 		return nil, fmt.Errorf("unsupported edit type %q", typ)

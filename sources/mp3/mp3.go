@@ -18,7 +18,7 @@ import (
 // ReadFile reads the passed-in MP3 file and returns an edit of the requested type
 // (i.e. either a standalone recording or a "single" release) and additional
 // informational edits for any embedded images.
-func ReadFile(f *os.File, typ seed.Type, rawSetCmds []string) ([]seed.Edit, error) {
+func ReadFile(f *os.File, typ seed.Entity, rawSetCmds []string) ([]seed.Edit, error) {
 	setCmds, err := text.ParseSetCommands(rawSetCmds, typ)
 	if err != nil {
 		return nil, err
@@ -131,16 +131,16 @@ func readSongInfo(f *os.File) (*songInfo, error) {
 var mp3RelDate = time.Date(1991, 12, 6, 0, 0, 0, 0, time.UTC)
 
 // createSongEdit creates a seed.Edit of the requested type based on the supplied song.
-func createSongEdit(song *songInfo, typ seed.Type) (seed.Edit, error) {
+func createSongEdit(song *songInfo, typ seed.Entity) (seed.Edit, error) {
 	switch typ {
-	case seed.RecordingType:
+	case seed.RecordingEntity:
 		return &seed.Recording{
 			Name:    song.title,
 			Artists: []seed.ArtistCredit{{NameAsCredited: song.artist}},
 			Length:  song.length,
 		}, nil
 
-	case seed.ReleaseType:
+	case seed.ReleaseEntity:
 		rel := seed.Release{
 			Title: song.title,
 			Types: []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},

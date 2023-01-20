@@ -80,7 +80,7 @@ type Release struct {
 	RedirectURI string
 }
 
-func (rel *Release) Type() Type { return ReleaseType }
+func (rel *Release) Entity() Entity { return ReleaseEntity }
 
 func (rel *Release) Description() string {
 	var parts []string

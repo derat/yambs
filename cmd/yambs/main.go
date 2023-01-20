@@ -42,9 +42,9 @@ func main() {
 		val:     defaultAction(),
 		allowed: []string{actionOpen, actionPrint, actionServe, actionWrite},
 	}
-	editType := enumFlag{
+	entity := enumFlag{
 		val:     "", // empty default
-		allowed: []string{string(seed.RecordingType), string(seed.ReleaseType)},
+		allowed: []string{string(seed.RecordingEntity), string(seed.ReleaseEntity)},
 	}
 	format := enumFlag{
 		val:     string(text.TSV),
@@ -64,7 +64,7 @@ func main() {
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	server := flag.String("server", "musicbrainz.org", "MusicBrainz server hostname")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "edit_note=from https://www.example.org")`)
-	flag.Var(&editType, "type", fmt.Sprintf("Entity type for text or MP3 input (%v)", editType.allowedList()))
+	flag.Var(&entity, "type", fmt.Sprintf("Entity type for text or MP3 input (%v)", entity.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	printVersion := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
@@ -78,13 +78,13 @@ func main() {
 		}
 
 		if *listFields {
-			if editType.val == "" {
+			if entity.val == "" {
 				fmt.Fprintln(os.Stderr, "Must specify entity type via -type")
 				return 2
 			}
 			var list [][2]string // name, desc
 			var max int
-			for name, desc := range text.ListFields(seed.Type(editType.val), false /* html */) {
+			for name, desc := range text.ListFields(seed.Entity(entity.val), false /* html */) {
 				list = append(list, [2]string{name, desc})
 				if len(name) > max {
 					max = len(name)
@@ -134,18 +134,18 @@ func main() {
 				return 1
 			}
 		} else {
-			if editType.val == "" {
+			if entity.val == "" {
 				fmt.Fprintln(os.Stderr, "Must specify entity type via -type")
 				return 2
 			}
 			var err error
 			if f, ok := r.(*os.File); ok && strings.HasSuffix(strings.ToLower(f.Name()), ".mp3") {
-				if edits, err = mp3.ReadFile(f, seed.Type(editType.val), setCmds); err != nil {
+				if edits, err = mp3.ReadFile(f, seed.Entity(entity.val), setCmds); err != nil {
 					fmt.Fprintln(os.Stderr, "Failed reading MP3 file:", err)
 					return 1
 				}
 			} else {
-				if edits, err = text.Read(ctx, r, text.Format(format.val), seed.Type(editType.val),
+				if edits, err = text.Read(ctx, r, text.Format(format.val), seed.Entity(entity.val),
 					strings.Split(*fields, ","), setCmds, db); err != nil {
 					fmt.Fprintln(os.Stderr, "Failed reading edits:", err)
 					return 1
@@ -168,7 +168,7 @@ func main() {
 			for _, ed := range edits {
 				if ed.Method() != http.MethodGet {
 					fmt.Fprintf(os.Stderr, "Can't print bare URL; %s edit requires %s request\n",
-						ed.Type(), ed.Method())
+						ed.Entity(), ed.Method())
 					return 1
 				}
 				u, err := url.Parse(ed.URL(*server))

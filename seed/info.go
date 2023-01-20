@@ -27,7 +27,7 @@ func NewInfo(desc, rawURL string) (*Info, error) {
 	return &Info{desc: desc, url: u.String(), params: params}, nil
 }
 
-func (in *Info) Type() Type                                  { return InfoType }
+func (in *Info) Entity() Entity                              { return InfoEntity }
 func (in *Info) Description() string                         { return in.desc }
 func (in *Info) URL(srv string) string                       { return in.url }
 func (in *Info) Params() url.Values                          { return in.params }

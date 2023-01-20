@@ -14,7 +14,7 @@ import (
 
 func TestReadFile_ID3v24(t *testing.T) {
 	const mbid = "7e84f845-ac16-41fe-9ff8-df12eb32af55"
-	got, err := getEdits("testdata/id3v24.mp3", seed.ReleaseType, []string{
+	got, err := getEdits("testdata/id3v24.mp3", seed.ReleaseEntity, []string{
 		"artist0_mbid=" + mbid,
 		"event0_country=XW",
 	})
@@ -46,7 +46,7 @@ func TestReadFile_ID3v24(t *testing.T) {
 
 func TestReadFile_ID3v1(t *testing.T) {
 	const editNote = "here's the edit note"
-	got, err := getEdits("testdata/id3v1.mp3", seed.RecordingType,
+	got, err := getEdits("testdata/id3v1.mp3", seed.RecordingEntity,
 		[]string{"edit_note=" + editNote})
 	if err != nil {
 		t.Fatal("Failed creating edits:", err)
@@ -63,7 +63,7 @@ func TestReadFile_ID3v1(t *testing.T) {
 	}
 }
 
-func getEdits(p string, typ seed.Type, rawSetCmds []string) ([]seed.Edit, error) {
+func getEdits(p string, typ seed.Entity, rawSetCmds []string) ([]seed.Edit, error) {
 	f, err := os.Open(p)
 	if err != nil {
 		return nil, err

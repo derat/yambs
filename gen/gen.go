@@ -152,8 +152,8 @@ func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
 		IconSVG: template.HTML(iconSVG),
 		Version: cfg.version,
 		TypeInfo: []typeInfo{
-			newTypeInfo(seed.RecordingType),
-			newTypeInfo(seed.ReleaseType),
+			newTypeInfo(seed.RecordingEntity),
+			newTypeInfo(seed.ReleaseEntity),
 		},
 		Edits: editInfos,
 	})
@@ -248,7 +248,7 @@ func NewEditInfos(edits []seed.Edit, srv string) ([]*EditInfo, error) {
 // typeInfo describes the fields that can be set for a given type.
 // It's passed to pageTmpl.
 type typeInfo struct {
-	Type   string      // seed.Type
+	Type   string      // seed.Entity
 	Fields []fieldInfo // fields that can be set for the type
 
 	SetExample    string            // e.g. "field1=val\nfield2=val"
@@ -263,7 +263,7 @@ type fieldInfo struct {
 }
 
 // newTypeInfo creates a typeInfo for typ.
-func newTypeInfo(typ seed.Type) typeInfo {
+func newTypeInfo(typ seed.Entity) typeInfo {
 	var fields []fieldInfo
 	for field, desc := range text.ListFields(typ, true /* html */) {
 		fields = append(fields, fieldInfo{

@@ -12,39 +12,39 @@ import (
 )
 
 // SetExample returns an example value for the web interface's "set" textarea.
-func SetExample(typ seed.Type) string {
+func SetExample(typ seed.Entity) string {
 	const editNote = "edit_note=https://www.example.org/"
 	switch typ {
-	case seed.RecordingType:
+	case seed.RecordingEntity:
 		return "artist=7e84f845-ac16-41fe-9ff8-df12eb32af55\n" + editNote
-	case seed.ReleaseType:
+	case seed.ReleaseEntity:
 		return "language=Eng\nscript=Latn\n" + editNote
 	}
 	return ""
 }
 
 // FieldsExample returns an example value for the web interface's "fields" input.
-func FieldsExample(typ seed.Type) string {
+func FieldsExample(typ seed.Entity) string {
 	switch typ {
-	case seed.RecordingType:
+	case seed.RecordingEntity:
 		return "name,length"
-	case seed.ReleaseType:
+	case seed.ReleaseEntity:
 		return "artist0_name,title,status"
 	}
 	return ""
 }
 
 // InputExample returns an example value for the web interface's "input" textarea.
-func InputExample(typ seed.Type, format Format) string {
+func InputExample(typ seed.Entity, format Format) string {
 	if format == KeyVal {
 		switch typ {
-		case seed.RecordingType:
+		case seed.RecordingEntity:
 			return strings.TrimLeft(`
 name=Recording Name
 artist0_name=Artist Name
 length=3:45.04
 edit_note=https://www.example.org/`, "\n")
-		case seed.ReleaseType:
+		case seed.ReleaseEntity:
 			return strings.TrimLeft(`
 title=Album Title
 artist0_name=Artist Name
@@ -70,12 +70,12 @@ edit_note=https://www.example.org/`, "\n")
 
 	var rows [][]string
 	switch typ {
-	case seed.RecordingType:
+	case seed.RecordingEntity:
 		rows = [][]string{
 			{"Recording Name", "4:35.16"},
 			{"Another One", "134500"},
 		}
-	case seed.ReleaseType:
+	case seed.ReleaseEntity:
 		rows = [][]string{
 			{"Artist Name", "Album Title", "Official,Soundtrack"},
 			{"Another Artist", "Another Album", "Bootleg"},

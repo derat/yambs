@@ -42,7 +42,7 @@ type config struct {
 // Multiple fields can be associated with a single column by separating their names with
 // slashes, and empty field names indicate that the column should be ignored.
 // rawSets contains "field=value" directives describing values to set for all edits.
-func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
+func Read(ctx context.Context, r io.Reader, format Format, typ seed.Entity,
 	fields []string, rawSetCmds []string, db *db.DB, opts ...Option) ([]seed.Edit, error) {
 	var cfg config
 	for _, o := range opts {
@@ -85,9 +85,9 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Type,
 
 		var edit seed.Edit
 		switch typ {
-		case seed.RecordingType:
+		case seed.RecordingEntity:
 			edit = &seed.Recording{}
-		case seed.ReleaseType:
+		case seed.ReleaseEntity:
 			edit = &seed.Release{}
 		default:
 			return nil, fmt.Errorf("unknown edit type %q", typ)

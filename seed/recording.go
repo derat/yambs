@@ -61,7 +61,7 @@ type Recording struct {
 	EditNote string
 }
 
-func (rec *Recording) Type() Type { return RecordingType }
+func (rec *Recording) Entity() Entity { return RecordingEntity }
 
 func (rec *Recording) Description() string {
 	var parts []string

@@ -34,7 +34,7 @@ func CleanURL(orig string) (string, error) {
 
 // Fetch generates seeded edits from the page at url.
 func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]seed.Edit, error) {
-	setCmds, err := text.ParseSetCommands(rawSetCmds, seed.ReleaseType)
+	setCmds, err := text.ParseSetCommands(rawSetCmds, seed.ReleaseEntity)
 	if err != nil {
 		return nil, err
 	}
