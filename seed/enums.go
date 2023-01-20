@@ -5,7 +5,7 @@
 package seed
 
 // This file was automatically generated from the following files,
-// downloaded at 2023-01-21 11:35:27 UTC:
+// downloaded at 2023-01-21 11:58:17 UTC:
 //  https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/po/attributes.pot
 //  https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/po/languages.pot
 //  https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/t/sql/initial.sql
@@ -2207,4 +2207,111 @@ const (
 	WorkAttributeType_TalaHindustani      WorkAttributeType = 31  // Tāla (Hindustani)
 	WorkAttributeType_UsulOttomanTurkish  WorkAttributeType = 17  // Usul (Ottoman, Turkish)
 	WorkAttributeType_ZAiKS_ID            WorkAttributeType = 30  // ZAiKS ID
+)
+
+// WorkType describes a work's type.
+type WorkType int
+
+const (
+	// An aria is a self-contained piece for one voice usually with orchestral
+	// accompaniment. They are most common inside operas, but also appear in
+	// cantatas, oratorios and even on their own (concert arias).
+	WorkType_Aria WorkType = 1
+	// An audio drama is a dramatized, purely acoustic performance, broadcast on
+	// radio or published on an audio medium (tape, CD, etc.).
+	WorkType_AudioDrama WorkType = 25
+	// A ballet is music composed to be used, together with a choreography, for a
+	// ballet dance production.
+	WorkType_Ballet WorkType = 2
+	// Beijing opera is a form of traditional Chinese theatre which combines music,
+	// vocal performance, mime, dance, and acrobatics.
+	WorkType_BeijingOpera WorkType = 26
+	// A cantata is a vocal (often choral) composition with an instrumental
+	// (usually orchestral) accompaniment, typically in several movements.
+	WorkType_Cantata WorkType = 3
+	// A concerto is a musical work for soloist(s) accompanied by an orchestra.
+	WorkType_Concerto WorkType = 4
+	// An étude is an instrumental musical composition, most commonly of
+	// considerable difficulty, usually designed to provide practice material for
+	// perfecting a particular technical skill.
+	WorkType_Etude WorkType = 20
+	// Incidental music is music written as background for (usually) a theatre
+	// play.
+	WorkType_IncidentalMusic WorkType = 30
+	// The madrigal is a type of secular vocal music composition. In its original
+	// form, it had no instrumental accompaniment, although accompaniment is much
+	// more common in later madrigals.
+	WorkType_Madrigal WorkType = 7
+	// A mass is a choral composition that sets the invariable portions of the
+	// Christian Eucharistic liturgy (Kyrie - Gloria - Credo - Sanctus - Benedictus
+	// - Agnus Dei, with other portions sometimes added) to music.
+	WorkType_Mass WorkType = 8
+	// "Motet" is a term that applies to different types of (usually unaccompanied)
+	// choral works. What exactly is a motet depends quite a bit on the period.
+	WorkType_Motet WorkType = 9
+	// Musical theatre is a form of theatrical performance that combines songs,
+	// spoken dialogue, acting, and dance.
+	WorkType_Musical WorkType = 29
+	// An opera is a dramatised work (text + musical score) for singers and
+	// orchestra/ensemble. In true operas all dialog is sung, through arias and
+	// recitatives, but some styles of opera include spoken dialogue.
+	WorkType_Opera WorkType = 10
+	// The operetta is a genre of light opera, in terms both of music and subject
+	// matter. Operettas are generally short and include spoken parts.
+	WorkType_Operetta WorkType = 24
+	// An oratorio is a large (usually sacred) musical composition including an
+	// orchestra, a choir, and soloists. While it has characters and a plot, it is
+	// usually not performed theatrically (it lacks costumes, props and strong
+	// character interaction).
+	WorkType_Oratorio WorkType = 11
+	// An overture is, generally, the instrumental introduction to an opera.
+	// Independent ("concert") overtures also exist, which are generally
+	// programmatic works shorter than a symphonic poem.
+	WorkType_Overture WorkType = 12
+	// A partita is an instrumental piece composed of a series of variations, and
+	// it's by its current definition very similar to a suite.
+	WorkType_Partita WorkType = 13
+	// A play is a form of literature usually consisting of scripted dialogue
+	// between characters, and intended for theatrical performance rather than just
+	// reading.
+	WorkType_Play WorkType = 28
+	// A poem is a literary piece, generally short and in verse, where words are
+	// usually chosen for their sound and for the images and ideas they suggest.
+	WorkType_Poem WorkType = 21
+	// This represents literary works written in prose, that is, written in
+	// relatively ordinary language without metrical structure (e.g. novels, short
+	// stories, essays...).
+	WorkType_Prose WorkType = 23
+	// A quartet is a musical composition scored for four voices or instruments.
+	WorkType_Quartet WorkType = 14
+	// "Sonata" is a general term used to describe small scale (very often solo or
+	// solo + keyboard) instrumental works, initially in baroque music.
+	WorkType_Sonata WorkType = 5
+	// A song is in its origin (and still in most cases) a composition for voice,
+	// with or without instruments, performed by singing. This is the most common
+	// form by far in folk and popular music, but also fairly common in a classical
+	// context ("art songs").
+	WorkType_Song WorkType = 17
+	// A song cycle is a group of songs designed to be performed in a sequence as a
+	// single entity. In most cases, all of the songs are by the same composer, and
+	// often use words from the same poet or lyricist.
+	WorkType_SongCycle WorkType = 15
+	// A soundtrack is the music that accompanies a film, TV program, videogame, or
+	// even book.
+	WorkType_Soundtrack WorkType = 22
+	// A suite is an ordered set of instrumental or orchestral pieces normally
+	// performed in a concert setting. They may be extracts from a ballet or opera,
+	// or entirely original movements.
+	WorkType_Suite WorkType = 6
+	// A symphonic poem is a piece of programmatic orchestral music, usually in a
+	// single movement, that evokes a painting, a landscape, the content of a poem,
+	// a story or novel, or other non-musical source.
+	WorkType_SymphonicPoem WorkType = 18
+	// A symphony is an extended composition, almost always scored for orchestra
+	// without soloists.
+	WorkType_Symphony WorkType = 16
+	// A zarzuela is a Spanish lyric-dramatic work that alternates between spoken
+	// and sung scenes, the latter incorporating operatic and popular song, as well
+	// as dance.
+	WorkType_Zarzuela WorkType = 19
 )

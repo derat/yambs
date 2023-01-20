@@ -19,6 +19,8 @@ func SetExample(typ seed.Entity) string {
 		return "artist=7e84f845-ac16-41fe-9ff8-df12eb32af55\n" + editNote
 	case seed.ReleaseEntity:
 		return "language=Eng\nscript=Latn\n" + editNote
+	case seed.WorkEntity:
+		return "languages=120,1739\n" + editNote
 	}
 	return ""
 }
@@ -30,6 +32,8 @@ func FieldsExample(typ seed.Entity) string {
 		return "name,length"
 	case seed.ReleaseEntity:
 		return "artist0_name,title,status"
+	case seed.WorkEntity:
+		return "name,type"
 	}
 	return ""
 }
@@ -64,6 +68,12 @@ medium1_track0_title=First Track on Second Disc
 url0_url=https://www.example.org/
 url0_type=75
 edit_note=https://www.example.org/`, "\n")
+		case seed.WorkEntity:
+			return strings.TrimLeft(`
+name=A Musical
+type=29
+iswcs=T-123.456.789-0,T-987.654.321-0
+edit_note=https://www.example.org/`, "\n")
 		}
 		return ""
 	}
@@ -79,6 +89,11 @@ edit_note=https://www.example.org/`, "\n")
 		rows = [][]string{
 			{"Artist Name", "Album Title", "Official,Soundtrack"},
 			{"Another Artist", "Another Album", "Bootleg"},
+		}
+	case seed.WorkEntity:
+		rows = [][]string{
+			{"A Musical", "29"},
+			{"An Opera", "10"},
 		}
 	}
 

@@ -254,6 +254,12 @@ func readSQL(r io.Reader, enums *enumTypes) error {
 		Type:    "string",
 		Comment: wrap("ReleaseStatus describes a release's status.", commentLen),
 	})
+	workTypes := enums.add(&enumType{
+		Name:    "WorkType",
+		Type:    "int",
+		Comment: wrap("WorkType describes a work's type.", commentLen),
+		sort:    true,
+	})
 
 	// Process the SQL statements.
 	var stringErr error
@@ -409,6 +415,20 @@ func readSQL(r io.Reader, enums *enumTypes) error {
 			releaseStatuses.add(enumValue{
 				Name:    clean(stringVal(1)),
 				Value:   fmt.Sprintf("%q", stringVal(1)),
+				Comment: wrap(stringVal(4), commentLen),
+			})
+		case "work_type":
+			//  CREATE TABLE work_type ( -- replicate
+			//      id                  SERIAL,
+			//      name                VARCHAR(255) NOT NULL,
+			//      parent              INTEGER, -- references work_type.id
+			//      child_order         INTEGER NOT NULL DEFAULT 0,
+			//      description         TEXT,
+			//      gid                 uuid NOT NULL
+			//  );
+			workTypes.add(enumValue{
+				Name:    clean(stringVal(1)),
+				Value:   strconv.Itoa(vals[0].(int)),
 				Comment: wrap(stringVal(4), commentLen),
 			})
 		}

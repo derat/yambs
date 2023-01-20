@@ -89,6 +89,8 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Entity,
 			edit = &seed.Recording{}
 		case seed.ReleaseEntity:
 			edit = &seed.Release{}
+		case seed.WorkEntity:
+			edit = &seed.Work{}
 		default:
 			return nil, fmt.Errorf("unknown edit type %q", typ)
 		}

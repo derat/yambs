@@ -24,6 +24,7 @@ type Entity string
 const (
 	RecordingEntity Entity = "recording"
 	ReleaseEntity   Entity = "release"
+	WorkEntity      Entity = "work"
 	InfoEntity      Entity = "info" // informational edit; not a true entity
 )
 

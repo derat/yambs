@@ -107,14 +107,13 @@ type RelationshipAttribute struct {
 	// CreditedAs is used to fill the "credited as" field (e.g. describing how an instrument was credited).
 	CreditedAs string
 	// TextValue holds an additional text value associated with the relationship.
-	// TODO: Document what this is used for. It obviously ends up in the link_attribute_text_value
-	// table, but I haven't found details anywhere. I suspect that it might be used for things like
-	// LinkAttributeType_Time.
+	// This is used for e.g. holding the actual number when a LinkAttributeType_Number
+	// attribute is added to a LinkType_PartOf_Recording_Series relationship.
 	TextValue string
 }
 
 // setParams sets query parameters in vals corresponding to non-empty fields in attr.
-// The supplied prefix (e.g. "rels.0.attributes.0") is prepended before each parameter name.
+// The supplied prefix (e.g. "rels.0.attributes.0.") is prepended before each parameter name.
 func (attr *RelationshipAttribute) setParams(vals url.Values, prefix string) {
 	if attr.Type != 0 {
 		vals.Set(prefix+"type", strconv.Itoa(int(attr.Type)))

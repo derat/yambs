@@ -154,6 +154,7 @@ func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
 		TypeInfo: []typeInfo{
 			newTypeInfo(seed.RecordingEntity),
 			newTypeInfo(seed.ReleaseEntity),
+			newTypeInfo(seed.WorkEntity),
 		},
 		Edits: editInfos,
 	})

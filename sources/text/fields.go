@@ -48,13 +48,14 @@ var mdLinkRegexp = regexp.MustCompile(`\[([^]]+)\]\(([^)]+)\)`)
 // If struct fields are renamed, the code that accesses them via reflection
 // must also be updated.
 type fieldInfo struct {
-	Desc string
-	Fn   interface{}
+	Desc string      // human-readable field description
+	Fn   interface{} // func(entity *Type, k, v string) error
 }
 
 var typeFields = map[seed.Entity]map[string]fieldInfo{
 	seed.RecordingEntity: recordingFields,
 	seed.ReleaseEntity:   releaseFields,
+	seed.WorkEntity:      workFields,
 }
 
 // SetField sets the named field in edit.
@@ -71,6 +72,8 @@ func SetField(edit seed.Edit, field, val string) error {
 		return fn.(func(*seed.Recording, string, string) error)(tedit, field, val)
 	case *seed.Release:
 		return fn.(func(*seed.Release, string, string) error)(tedit, field, val)
+	case *seed.Work:
+		return fn.(func(*seed.Work, string, string) error)(tedit, field, val)
 	default:
 		return fmt.Errorf("unsupported edit type %q", edit.Entity())
 	}
@@ -307,6 +310,8 @@ func ParseSetCommands(cmds []string, typ seed.Entity) ([][2]string, error) {
 		edit = &seed.Recording{}
 	case seed.ReleaseEntity:
 		edit = &seed.Release{}
+	case seed.WorkEntity:
+		edit = &seed.Work{}
 	default:
 		return nil, fmt.Errorf("unsupported edit type %q", typ)
 	}
