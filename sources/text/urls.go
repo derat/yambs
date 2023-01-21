@@ -10,7 +10,7 @@ const (
 	linkTypeURL     = godocURL + "#LinkType"
 	packagingURL    = godocURL + "#ReleasePackaging"
 	statusURL       = godocURL + "#ReleaseStatus"
-	typesURL        = godocURL + "#ReleaseGroupType"
+	rgTypeURL       = godocURL + "#ReleaseGroupType"
 
 	countryURL = "https://wikipedia.org/wiki/ISO_3166-1_alpha-2"
 	langURL    = "https://wikipedia.org/wiki/List_of_ISO_639-3_codes"

@@ -18,7 +18,7 @@ var releaseFields = map[string]fieldInfo{
 		func(r *seed.Release, k, v string) error { return setMBID(&r.ReleaseGroup, v) },
 	},
 	"types": {
-		`Comma-separated [types](` + typesURL + `) for new release group (e.g. "Single,Soundtrack")`,
+		`Comma-separated [types](` + rgTypeURL + `) for new release group (e.g. "Single,Soundtrack")`,
 		func(r *seed.Release, k, v string) error {
 			var vals []string
 			setStringSlice(&vals, v, ",")
@@ -122,38 +122,6 @@ var releaseFields = map[string]fieldInfo{
 			})
 		},
 	},
-	"artist*_mbid": {
-		"Release artist's MBID",
-		func(rel *seed.Release, k, v string) error {
-			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setMBID(&ac.MBID, v)
-			})
-		},
-	},
-	"artist*_name": {
-		"Release artist's name for DB search",
-		func(rel *seed.Release, k, v string) error {
-			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.Name, v)
-			})
-		},
-	},
-	"artist*_credited": {
-		"Release artist's name as credited",
-		func(rel *seed.Release, k, v string) error {
-			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.NameAsCredited, v)
-			})
-		},
-	},
-	"artist*_join": {
-		`Join phrase separating release artist and next artist (e.g. " & ")`,
-		func(rel *seed.Release, k, v string) error {
-			return releaseArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.JoinPhrase, v)
-			})
-		},
-	},
 	"medium*_format": {
 		`[Medium format](` + formatURL + `) (e.g. "CD", "Digital Media")`,
 		func(rel *seed.Release, k, v string) error {
@@ -202,54 +170,35 @@ var releaseFields = map[string]fieldInfo{
 			})
 		},
 	},
-	"medium*_track*_artist*_mbid": {
-		"Track artist's MBID",
-		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setMBID(&ac.MBID, v)
-			})
-		},
-	},
-	"medium*_track*_artist*_name": {
-		"Track artist's name for database search",
-		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.Name, v)
-			})
-		},
-	},
-	"medium*_track*_artist*_credited": {
-		"Track artist's name as credited",
-		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.NameAsCredited, v)
-			})
-		},
-	},
-	"medium*_track*_artist*_join": {
-		`Join phrase separating track artist and next artist (e.g. " & ")`,
-		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrackArtist(rel, k, func(ac *seed.ArtistCredit) error {
-				return setString(&ac.JoinPhrase, v)
-			})
-		},
-	},
-	"url*_url": {
-		"URL related to release",
-		func(rel *seed.Release, k, v string) error {
-			return releaseURL(rel, k, func(u *seed.URL) error { return setString(&u.URL, v) })
-		},
-	},
-	"url*_type": {
-		"Integer [link type](" + linkTypeURL + ") describing how URL is related to release",
-		func(rel *seed.Release, k, v string) error {
-			return releaseURL(rel, k, func(u *seed.URL) error { return setInt((*int)(&u.LinkType), v) })
-		},
-	},
 	"edit_note": {
 		"Note attached to edit",
 		func(r *seed.Release, k, v string) error { return setString(&r.EditNote, v) },
 	},
+}
+
+func init() {
+	// Add common fields.
+	addArtistCreditFields(releaseFields, "",
+		func(fn artistFunc) interface{} {
+			return func(r *seed.Release, k, v string) error {
+				return indexedField(&r.Artists, k, "artist",
+					func(ac *seed.ArtistCredit) error { return fn(ac, v) })
+			}
+		})
+	addURLFields(releaseFields,
+		func(fn urlFunc) interface{} {
+			return func(r *seed.Release, k, v string) error {
+				return indexedField(&r.URLs, k, "url",
+					func(url *seed.URL) error { return fn(url, v) })
+			}
+		})
+	addArtistCreditFields(releaseFields, "medium*_track*_",
+		func(fn artistFunc) interface{} {
+			return func(r *seed.Release, k, v string) error {
+				return releaseMediumTrackArtist(r, k,
+					func(ac *seed.ArtistCredit) error { return fn(ac, v) })
+			}
+		})
 }
 
 // Helper functions to make code for setting indexed fields slightly less horrendous.
@@ -258,9 +207,6 @@ func releaseEvent(r *seed.Release, k string, fn func(*seed.ReleaseEvent) error) 
 }
 func releaseLabel(r *seed.Release, k string, fn func(*seed.ReleaseLabel) error) error {
 	return indexedField(&r.Labels, k, "label", fn)
-}
-func releaseArtist(r *seed.Release, k string, fn func(*seed.ArtistCredit) error) error {
-	return indexedField(&r.Artists, k, "artist", fn)
 }
 func releaseMedium(r *seed.Release, k string, fn func(*seed.Medium) error) error {
 	return indexedField(&r.Mediums, k, "medium", fn)
@@ -274,7 +220,4 @@ func releaseMediumTrackArtist(r *seed.Release, k string, fn func(*seed.ArtistCre
 	return releaseMediumTrack(r, k, func(t *seed.Track) error {
 		return indexedField(&t.Artists, k, `^medium\d*_track\d*_artist`, fn)
 	})
-}
-func releaseURL(r *seed.Release, k string, fn func(*seed.URL) error) error {
-	return indexedField(&r.URLs, k, "url", fn)
 }
