@@ -92,6 +92,7 @@ func main() {
 	}{
 		{"t/sql/initial.sql", readSQL},
 		{"po/languages.pot", readLangs},
+		{"po/attributes.pot", readAttrs},
 	} {
 		if r, err := open(src.path); err != nil {
 			log.Fatalf("Failed opening %v: %v", src.path, err)
@@ -178,7 +179,7 @@ const (
 {{end}}
 `
 
-// readSQL adds new enum types from the passed-in initial.sql file.
+// readSQL adds enums from the passed-in initial.sql file.
 func readSQL(r io.Reader, enums *enumTypes) error {
 	linkAttrTypes := enums.add(&enumType{
 		Name: "LinkAttributeType",
@@ -444,6 +445,7 @@ var wordMap = map[string]string{
 	"imslp":        "IMSLP",
 	"laserdisc":    "LaserDisc",
 	"minidisc":     "MiniDisc",
+	"prs":          "PRS",
 	"releasegroup": "ReleaseGroup",
 	"sacd":         "SACD",
 	"shm":          "SHM",
@@ -461,28 +463,30 @@ var wordMap = map[string]string{
 	"youtube":      "YouTube",
 }
 
-var nonAlnumRegexp = regexp.MustCompile("[^a-z0-9]+")
+var nonAlnumRegexp = regexp.MustCompile("[^a-zA-Z0-9]+")
 var splitRegexp = regexp.MustCompile("[-+ /]+")
 
 // https://go.dev/blog/normalization#performing-magic
 var normalizer = transform.Chain(norm.NFKD, runes.Remove(runes.In(unicode.Mn)))
+
+// normalize normalizes characters using NFKD form.
+// Unicode characters are decomposed (runes are broken into their components) and replaced for
+// compatibility equivalence (characters that represent the same characters but have different
+// visual representations, e.g. '9' and '⁹', are equal). Characters are also de-accented.
+func normalize(orig string) string {
+	b := make([]byte, len(orig))
+	if _, _, err := normalizer.Transform(b, []byte(orig), true); err != nil {
+		return orig
+	}
+	return string(bytes.TrimRight(b, "\x00"))
+}
 
 // clean attempts to transform orig into a string that can be used in an identifier.
 // Each word is capitalized.
 func clean(orig string) string {
 	var s string
 	for _, w := range splitRegexp.Split(orig, -1) {
-		// Normalize characters using NFKD form. Unicode characters are decomposed (runes are broken
-		// into their components) and replaced for compatibility equivalence (characters that
-		// represent the same characters but have different visual representations, e.g. '9' and
-		// '⁹', are equal). Characters are also de-accented.
-		b := make([]byte, len(w))
-		if _, _, err := normalizer.Transform(b, []byte(w), true); err == nil {
-			b = bytes.TrimRight(b, "\x00")
-			w = string(b)
-		}
-		w = strings.ToLower(w)
-
+		w = strings.ToLower(normalize(w))
 		w = nonAlnumRegexp.ReplaceAllString(strings.ToLower(w), "")
 		if dst, ok := wordMap[w]; ok {
 			w = dst
@@ -649,7 +653,7 @@ func readString(in string, bsEsc bool) (string, int, error) {
 	return "", 0, errors.New("no ending quote")
 }
 
-// readSQL adds a new enum type from the passed-in languages.pot file.
+// readLangs adds enums from the passed-in languages.pot file.
 func readLangs(r io.Reader, enums *enumTypes) error {
 	langs := enums.add(&enumType{
 		Name: "Language",
@@ -661,29 +665,86 @@ func readLangs(r io.Reader, enums *enumTypes) error {
 		sort: true,
 	})
 
+	entries, err := readPOFile(r)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.ref == "DB:language/name" {
+			langs.add(enumValue{
+				Name:  clean(langCleanRegexp.ReplaceAllString(entry.msg, "")),
+				Value: entry.id,
+				EOL:   entry.msg,
+			})
+		}
+	}
+	return nil
+}
+
+var langCleanRegexp = regexp.MustCompile(`\s*\([^)]*\d[^)]*\)$`) // trailing parentheticals containing numbers
+
+// readAttrs adds enums from the passed-in attributes.pot file.
+func readAttrs(r io.Reader, enums *enumTypes) error {
+	workAttrTypes := enums.add(&enumType{
+		Name:    "WorkAttributeType",
+		Type:    "int",
+		Comment: wrap(`WorkAttributeType describes an attribute attached to a work.`, commentLen),
+		sort:    true,
+	})
+
+	entries, err := readPOFile(r)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		if entry.ref == "DB:work_attribute_type/name" {
+			// Most names are full of acronyms like "AGADU ID" or "AKKA/LAA ID".
+			// Preserve these in names ending in " ID".
+			name := entry.msg
+			if strings.HasSuffix(name, " ID") {
+				name = normalize(name) // needed for "MÜST ID"
+				name = nonAlnumRegexp.ReplaceAllString(name, "_")
+			} else {
+				name = clean(name)
+			}
+			workAttrTypes.add(enumValue{
+				Name:  name,
+				Value: entry.id,
+				EOL:   entry.msg,
+			})
+		}
+	}
+	return nil
+}
+
+// readPOFile reads the passed-in PO file.
+// See https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html.
+func readPOFile(r io.Reader) ([]poEntry, error) {
+	var entries []poEntry
 	sc := bufio.NewScanner(r)
-	var id string
+	var ref, id string
 	for sc.Scan() {
 		ln := sc.Text()
-		if ms := langIDRegexp.FindStringSubmatch(ln); ms != nil {
-			id = ms[1]
-		} else if ms := msgIDRegexp.FindStringSubmatch(ln); ms != nil {
+		if ms := poRefRegexp.FindStringSubmatch(ln); ms != nil {
+			ref, id = ms[1], ms[2]
+		} else if ms := poMsgIDRegexp.FindStringSubmatch(ln); ms != nil {
 			if id == "" {
-				return fmt.Errorf("no ID for msgid %q", ms[1])
+				return entries, fmt.Errorf("no ID for msgid %q", ms[1])
 			}
-			langs.add(enumValue{
-				Name:  clean(langCleanRegexp.ReplaceAllString(ms[1], "")),
-				Value: id,
-				EOL:   ms[1],
-			})
+			entries = append(entries, poEntry{ref, id, ms[1]})
+			ref = ""
 			id = ""
 		}
 	}
-	return sc.Err()
+	return entries, sc.Err()
 }
 
-var (
-	langIDRegexp    = regexp.MustCompile(`^#: DB:language/name:(\d+)$`)
-	langCleanRegexp = regexp.MustCompile(`\s*\([^)]*\d[^)]*\)$`) // trailing parentheticals containing numbers
-	msgIDRegexp     = regexp.MustCompile(`^msgid "(.+)"$`)
-)
+// poEntry describes an entry from a PO translation file.
+type poEntry struct {
+	ref string // e.g. "DB:language/name" or "DB:work_attribute_type/name"
+	id  string // e.g. "123"
+	msg string // untranslated string
+}
+
+var poRefRegexp = regexp.MustCompile(`^#: (.+):(.+)$`)
+var poMsgIDRegexp = regexp.MustCompile(`^msgid "(.+)"$`)
