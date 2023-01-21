@@ -31,7 +31,6 @@ import (
 
 const (
 	repoURL     = "https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/"
-	sqlPath     = "t/sql/initial.sql"
 	dstPath     = "enums.go" // called from parent dir
 	licensePath = "COPYING-enums.md"
 	commentLen  = 80 - 4 // account for "\t// "
@@ -87,12 +86,20 @@ func main() {
 		return resp.Body, nil
 	}
 
-	if r, err := open(sqlPath); err != nil {
-		log.Fatal("Failed opening SQL file: ", err)
-	} else {
-		defer r.Close()
-		if err := readSQLFile(r, &enums); err != nil {
-			log.Fatal("Failed reading SQL file: ", err)
+	for _, src := range []struct {
+		path string
+		fn   func(io.Reader, *enumTypes) error
+	}{
+		{"t/sql/initial.sql", readSQL},
+		{"po/languages.pot", readLangs},
+	} {
+		if r, err := open(src.path); err != nil {
+			log.Fatalf("Failed opening %v: %v", src.path, err)
+		} else {
+			defer r.Close()
+			if err := src.fn(r, &enums); err != nil {
+				log.Fatalf("Failed reading %v: %v", src.path, err)
+			}
 		}
 	}
 
@@ -105,6 +112,7 @@ func main() {
 			sort.Slice(et.Values, func(i, j int) bool { return et.Values[i].Name < et.Values[j].Name })
 		}
 	}
+	sort.Strings(urls)
 
 	// Write the file.
 	tmpl, err := template.New("").Parse(fileTemplate)
@@ -170,8 +178,8 @@ const (
 {{end}}
 `
 
-// readSQLFile adds new enum types from the passed-in initial.sql file.
-func readSQLFile(r io.Reader, enums *enumTypes) error {
+// readSQL adds new enum types from the passed-in initial.sql file.
+func readSQL(r io.Reader, enums *enumTypes) error {
 	linkAttrTypes := enums.add(&enumType{
 		Name: "LinkAttributeType",
 		Type: "int",
@@ -640,3 +648,42 @@ func readString(in string, bsEsc bool) (string, int, error) {
 	}
 	return "", 0, errors.New("no ending quote")
 }
+
+// readSQL adds a new enum type from the passed-in languages.pot file.
+func readLangs(r io.Reader, enums *enumTypes) error {
+	langs := enums.add(&enumType{
+		Name: "Language",
+		Type: "int",
+		Comment: wrap(`Language represents a human language. `+
+			`These values correspond to integer IDs in the database; `+
+			`note that some fields (most notably Release.Language) `+
+			`confusingly use ISO 639-3 codes instead.`, commentLen),
+		sort: true,
+	})
+
+	sc := bufio.NewScanner(r)
+	var id string
+	for sc.Scan() {
+		ln := sc.Text()
+		if ms := langIDRegexp.FindStringSubmatch(ln); ms != nil {
+			id = ms[1]
+		} else if ms := msgIDRegexp.FindStringSubmatch(ln); ms != nil {
+			if id == "" {
+				return fmt.Errorf("no ID for msgid %q", ms[1])
+			}
+			langs.add(enumValue{
+				Name:  clean(langCleanRegexp.ReplaceAllString(ms[1], "")),
+				Value: id,
+				EOL:   ms[1],
+			})
+			id = ""
+		}
+	}
+	return sc.Err()
+}
+
+var (
+	langIDRegexp    = regexp.MustCompile(`^#: DB:language/name:(\d+)$`)
+	langCleanRegexp = regexp.MustCompile(`\s*\([^)]*\d[^)]*\)$`) // trailing parentheticals containing numbers
+	msgIDRegexp     = regexp.MustCompile(`^msgid "(.+)"$`)
+)
