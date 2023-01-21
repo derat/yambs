@@ -4,7 +4,7 @@
 package text
 
 const (
-	godocURL        = "https://pkg.go.dev/github.com/derat/yambs/seed"
+	godocURL        = "https://pkg.go.dev/github.com/derat/yambs/seed@main"
 	formatURL       = godocURL + "#MediumFormat"
 	langIDURL       = godocURL + "#Language"
 	linkAttrTypeURL = godocURL + "#LinkAttributeType"
