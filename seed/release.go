@@ -64,12 +64,12 @@ type Release struct {
 	//  LinkType_PurchaseForDownload_Release_URL ("purchase for download")
 	//  LinkType_DownloadForFree_Release_URL ("download for free")
 	//  LinkType_PurchaseForMailOrder_Release_URL ("purchase for mail-order")
-	//  LinkType_StreamingMusic_Release_URL ("stream for free")
+	//  LinkType_FreeStreaming_Release_URL ("stream for free")
 	//  LinkType_DiscographyEntry_Release_URL ("discography entry")
 	//  LinkType_License_Release_URL ("license")
 	//  LinkType_ShowNotes_Release_URL ("show notes")
 	//  LinkType_Crowdfunding_Release_URL ("crowdfunding page")
-	//  LinkType_StreamingPaid_Release_URL ("streaming page")
+	//  LinkType_Streaming_Release_URL ("streaming page")
 	URLs []URL
 	// EditNote contains the note attached to the edit.
 	// See https://musicbrainz.org/doc/Edit_Note.

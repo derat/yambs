@@ -65,7 +65,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://open.qobuz.com/album/0008940834102",
-						LinkType: seed.LinkType_StreamingPaid_Release_URL,
+						LinkType: seed.LinkType_Streaming_Release_URL,
 					},
 				},
 			},
@@ -104,7 +104,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://open.qobuz.com/album/0634904032432",
-						LinkType: seed.LinkType_StreamingPaid_Release_URL,
+						LinkType: seed.LinkType_Streaming_Release_URL,
 					},
 				},
 			},
@@ -142,7 +142,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://open.qobuz.com/album/xggxq5w5dmljb",
-						LinkType: seed.LinkType_StreamingPaid_Release_URL,
+						LinkType: seed.LinkType_Streaming_Release_URL,
 					},
 				},
 			},

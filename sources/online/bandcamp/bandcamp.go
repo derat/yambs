@@ -132,7 +132,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	if numTracks := len(med.Tracks); album.HasAudio && numTracks > 0 &&
 		numTracks >= metaTracks && // no hidden tracks
 		numTracks == streamableTracks {
-		addURL(pageURL, seed.LinkType_StreamingMusic_Release_URL)
+		addURL(pageURL, seed.LinkType_FreeStreaming_Release_URL)
 	}
 	// Check if the page has a Creative Commons license.
 	if lu, err := page.Query("div#license a.cc-icons").Attr("href"); err == nil {

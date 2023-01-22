@@ -127,7 +127,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://louiscole.bandcamp.com/album/let-it-happen",
-						LinkType: seed.LinkType_StreamingMusic_Release_URL,
+						LinkType: seed.LinkType_FreeStreaming_Release_URL,
 					},
 				},
 			},
@@ -164,7 +164,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
-						LinkType: seed.LinkType_StreamingMusic_Release_URL,
+						LinkType: seed.LinkType_FreeStreaming_Release_URL,
 					},
 				},
 			},
@@ -202,7 +202,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
-						LinkType: seed.LinkType_StreamingMusic_Release_URL,
+						LinkType: seed.LinkType_FreeStreaming_Release_URL,
 					},
 					{
 						URL:      "http://creativecommons.org/licenses/by-nc-sa/3.0/",
@@ -249,7 +249,7 @@ func TestRelease(t *testing.T) {
 					},
 					{
 						URL:      "https://volaband.bandcamp.com/album/live-from-the-pool",
-						LinkType: seed.LinkType_StreamingMusic_Release_URL,
+						LinkType: seed.LinkType_FreeStreaming_Release_URL,
 					},
 				},
 			},

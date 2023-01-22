@@ -175,7 +175,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	if data.SKU != "" {
 		rel.URLs = append(rel.URLs, seed.URL{
 			URL:      "https://open.qobuz.com/album/" + data.SKU,
-			LinkType: seed.LinkType_StreamingPaid_Release_URL,
+			LinkType: seed.LinkType_Streaming_Release_URL,
 		})
 	}
 

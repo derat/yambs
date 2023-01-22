@@ -6,20 +6,16 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"text/template"
-	"time"
 	"unicode"
 
 	"golang.org/x/text/cases"
@@ -30,10 +26,15 @@ import (
 )
 
 const (
-	repoURL     = "https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/"
-	dstPath     = "enums.go" // called from parent dir
-	licensePath = "COPYING-enums.md"
-	commentLen  = 80 - 4 // account for "\t// "
+	dumpVar    = "MBDUMP_SAMPLE" // env var pointing at extracted dump
+	dumpURL    = "https://data.metabrainz.org/pub/musicbrainz/data/sample/"
+	dstPath    = "enums.go" // this program is run from 'seed' dir
+	mdPath     = "full_enums.md"
+	mdURL      = "https://github.com/derat/yambs/blob/main/seed/" + mdPath
+	commentLen = 80 - 4 // account for "\t// "
+
+	instLinkAttrTypeID       = "14" // ID for root "instrument" link attribute type
+	minInstLinkAttrTypeCount = 10   // minimum count for instrument to be included
 )
 
 type enumTypes struct {
@@ -45,10 +46,21 @@ func (ets *enumTypes) add(et *enumType) *enumType {
 	return et
 }
 
+func (ets *enumTypes) finish() {
+	sort.Slice(ets.types, func(i, j int) bool { return ets.types[i].Name < ets.types[j].Name })
+	for _, et := range ets.types {
+		if et.sort {
+			sort.Slice(et.Values, func(i, j int) bool {
+				return strings.ToLower(et.Values[i].Name) < strings.ToLower(et.Values[j].Name)
+			})
+		}
+	}
+}
+
 type enumType struct {
-	Name    string   // enum type name
-	Type    string   // Go type
-	Comment []string // multiline comment before declaration
+	Name    string // enum type name
+	Type    string // Go type
+	Comment string // comment before declaration
 	Values  []enumValue
 	sort    bool // sort values by name
 }
@@ -56,84 +68,237 @@ type enumType struct {
 func (et *enumType) add(ev enumValue) { et.Values = append(et.Values, ev) }
 
 type enumValue struct {
-	Name    string   // enumType.name and underscore will be prepended
-	Value   string   // literal value, i.e. quoted if string
-	Comment []string // multiline comment before declaration
-	EOL     string   // end-of-line comment
+	Name    string // enumType.name and underscore will be prepended
+	Value   string // literal value, i.e. quoted if string
+	Comment string // comment before declaration
+	EOL     string // end-of-line comment
 }
 
 func main() {
-	now := time.Now().UTC()
+	if os.Getenv(dumpVar) == "" {
+		fmt.Fprintf(os.Stderr, "Set %v to extracted dump from %v\n", dumpVar, dumpURL)
+		os.Exit(2)
+	}
+
+	tf := openFile("TIMESTAMP")
+	defer tf.Close()
+	ts, err := io.ReadAll(tf)
+	if err != nil {
+		log.Fatal("Failed reading timestamp: ", err)
+	}
+
 	var enums enumTypes
-	var urls []string
+	var fullEnums enumTypes // unabridged versions of large enums
 
-	open := func(p string) (io.ReadCloser, error) {
-		url := repoURL + p
-		urls = append(urls, url)
-
-		// Support reading from a file to make development easier.
-		if len(os.Args) == 2 {
-			return os.Open(filepath.Join(os.Args[1], p))
-		}
-		resp, err := http.Get(url)
-		if err != nil {
-			return nil, err
-		}
-		if resp.StatusCode != 200 {
-			resp.Body.Close()
-			return nil, fmt.Errorf("got %v for %v: %v", resp.StatusCode, url, resp.Status)
-		}
-		return resp.Body, nil
-	}
-
-	for _, src := range []struct {
-		path string
-		fn   func(io.Reader, *enumTypes) error
-	}{
-		{"t/sql/initial.sql", readSQL},
-		{"po/languages.pot", readLangs},
-		{"po/attributes.pot", readAttrs},
-	} {
-		if r, err := open(src.path); err != nil {
-			log.Fatalf("Failed opening %v: %v", src.path, err)
-		} else {
-			defer r.Close()
-			if err := src.fn(r, &enums); err != nil {
-				log.Fatalf("Failed reading %v: %v", src.path, err)
-			}
-		}
-	}
-
-	// Sort enums by name and then values if requested.
-	sort.Slice(enums.types, func(i, j int) bool {
-		return enums.types[i].Name < enums.types[j].Name
+	langs := enums.add(&enumType{
+		Name: "Language",
+		Type: "int",
+		Comment: `Language represents a human language. ` +
+			`These values correspond to integer IDs in the database; ` +
+			`note that some fields (most notably Release.Language) ` +
+			`confusingly use ISO 639-3 codes instead. Roughly 7400 ` +
+			`languages marked as being low-frequency are excluded, ` +
+			`but all languages are listed in ` + mdURL + `.`,
+		sort: true,
 	})
-	for _, et := range enums.types {
-		if et.sort {
-			sort.Slice(et.Values, func(i, j int) bool { return et.Values[i].Name < et.Values[j].Name })
+	fullLangs := fullEnums.add(&enumType{
+		Name: "Language",
+		sort: true,
+	})
+	readTable("language", func(row []string) {
+		id, name, freq := row[0], row[4], row[5]
+		if freq != "0" {
+			langs.add(enumValue{
+				Name:  clean(langCleanRegexp.ReplaceAllString(name, "")),
+				Value: id,
+				EOL:   name,
+			})
 		}
-	}
-	sort.Strings(urls)
+		fullLangs.add(enumValue{Name: name, Value: id})
+	})
+
+	// Count the frequency of different link attribute types in the sample.
+	linkAttrTypeCounts := make(map[string]int)
+	readTable("link_attribute", func(row []string) { linkAttrTypeCounts[row[1]]++ })
+
+	linkAttrTypes := enums.add(&enumType{
+		Name: "LinkAttributeType",
+		Type: "int",
+		Comment: `LinkAttributeType is an ID describing an attribute ` +
+			`associated with a link between two MusicBrainz entities. ` +
+			`Roughly 700 infrequently-appearing musical instruments ` +
+			`are excluded, but all types are listed in ` + mdURL + `.`,
+		sort: true,
+	})
+	fullLinkAttrTypes := fullEnums.add(&enumType{
+		Name: "LinkAttributeType",
+		sort: true,
+	})
+	readTable("link_attribute_type", func(row []string) {
+		id, root, name, desc := row[0], row[2], row[5], row[6]
+		// There are a bit over a thousand types corresponding to instruments, so only include ones
+		// that show up fairly often in the sample. This seems sub-optimal if the included
+		// instruments change across dumps, but I'm not sure what else to do.
+		if root != instLinkAttrTypeID || linkAttrTypeCounts[id] >= minInstLinkAttrTypeCount {
+			cleaned := clean(name)
+			if v, ok := linkAttrTypeMappings[id]; ok {
+				cleaned = clean(v)
+			}
+			linkAttrTypes.add(enumValue{
+				Name:    cleaned,
+				Value:   id,
+				Comment: desc,
+				EOL:     name,
+			})
+		}
+		fullLinkAttrTypes.add(enumValue{
+			Name:    name,
+			Value:   id,
+			Comment: desc,
+		})
+	})
+
+	linkTypes := enums.add(&enumType{
+		Name: "LinkType",
+		Type: "int",
+		Comment: `LinkType is an ID describing a link between two MusicBrainz entities. ` +
+			`Only link types relating to entity types that can be seeded by yambs are included.`,
+		sort: true,
+	})
+	readTable("link_type", func(row []string) {
+		id, type0, type1, name, desc := row[0], row[4], row[5], row[6], row[7]
+		if seedEntityTypes[type0] || seedEntityTypes[type1] {
+			linkTypes.add(enumValue{
+				Name:    fmt.Sprintf("%s_%s_%s", clean(name), clean(type0), clean(type1)),
+				Value:   id,
+				Comment: desc,
+			})
+		}
+	})
+
+	mediumFormats := enums.add(&enumType{
+		Name:    "MediumFormat",
+		Type:    "string",
+		Comment: `MediumFormat describes a medium's format (e.g. CD, cassette, digital media).`,
+	})
+	readTable("medium_format", func(row []string) {
+		name, desc := row[1], row[6]
+		mediumFormats.add(enumValue{
+			Name:    clean(name),
+			Value:   fmt.Sprintf("%q", name),
+			Comment: desc,
+		})
+	})
+
+	releaseGroupTypes := enums.add(&enumType{
+		Name: "ReleaseGroupType",
+		Type: "string",
+		Comment: `ReleaseGroupType describes a release group. ` +
+			`A release group can be assigned a single primary type and multiple secondary types.`,
+	})
+	readTable("release_group_primary_type", func(row []string) {
+		name := row[1]
+		releaseGroupTypes.add(enumValue{
+			Name:  clean(name),
+			Value: fmt.Sprintf("%q", name),
+			EOL:   "primary",
+		})
+	})
+	readTable("release_group_secondary_type", func(row []string) {
+		name := row[1]
+		releaseGroupTypes.add(enumValue{
+			Name:  clean(name),
+			Value: fmt.Sprintf("%q", name),
+			EOL:   "secondary",
+		})
+	})
+
+	releasePackagings := enums.add(&enumType{
+		Name:    "ReleasePackaging",
+		Type:    "string",
+		Comment: "ReleasePackaging describes a release's packaging.",
+	})
+	readTable("release_packaging", func(row []string) {
+		name, desc := row[1], row[4]
+		releasePackagings.add(enumValue{
+			Name:    clean(name),
+			Value:   fmt.Sprintf("%q", name),
+			Comment: desc,
+		})
+	})
+
+	releaseStatuses := enums.add(&enumType{
+		Name:    "ReleaseStatus",
+		Type:    "string",
+		Comment: "ReleaseStatus describes a release's status.",
+	})
+	readTable("release_status", func(row []string) {
+		name, desc := row[1], row[4]
+		releaseStatuses.add(enumValue{
+			Name:    clean(name),
+			Value:   fmt.Sprintf("%q", name),
+			Comment: desc,
+		})
+	})
+
+	workAttrTypes := enums.add(&enumType{
+		Name:    "WorkAttributeType",
+		Type:    "int",
+		Comment: `WorkAttributeType describes an attribute attached to a work.`,
+		sort:    true,
+	})
+	readTable("work_attribute_type", func(row []string) {
+		id, orig, desc := row[0], row[1], row[6]
+		// Most names are full of acronyms like "AGADU ID" or "AKKA/LAA ID".
+		// Preserve these in names ending in " ID".
+		var name string
+		if strings.HasSuffix(orig, " ID") {
+			name = normalize(orig) // needed for "MÜST ID"
+			name = nonAlnumRegexp.ReplaceAllString(name, "_")
+		} else {
+			name = clean(orig)
+		}
+		workAttrTypes.add(enumValue{
+			Name:    name,
+			Value:   id,
+			Comment: desc,
+			EOL:     orig,
+		})
+	})
+
+	workTypes := enums.add(&enumType{
+		Name:    "WorkType",
+		Type:    "int",
+		Comment: "WorkType describes a work's type.",
+		sort:    true,
+	})
+	readTable("work_type", func(row []string) {
+		id, name, desc := row[0], row[1], row[4]
+		workTypes.add(enumValue{
+			Name:    clean(name),
+			Value:   id,
+			Comment: desc,
+		})
+	})
+
+	enums.finish()
+	fullEnums.finish()
 
 	// Write the file.
-	tmpl, err := template.New("").Parse(fileTemplate)
-	if err != nil {
-		log.Fatal(err)
+	funcMap := map[string]interface{}{
+		"wrap": func(s string) []string { return wrap(s, commentLen) },
 	}
+	tmpl := template.Must(template.New("").Funcs(funcMap).Parse(fileTemplate))
 	f, err := os.Create(dstPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	if err := tmpl.Execute(f, struct {
-		License string
-		Time    string
-		URLs    []string
-		Enums   []*enumType
+		Time  string
+		Enums []*enumType
 	}{
-		License: licensePath,
-		Time:    now.Format("2006-01-02 15:04:05 MST"),
-		URLs:    urls,
-		Enums:   enums.types,
+		Time:  strings.TrimSpace(string(ts)),
+		Enums: enums.types,
 	}); err != nil {
 		f.Close()
 		log.Fatal(err)
@@ -144,33 +309,81 @@ func main() {
 
 	// Format the file.
 	if err := exec.Command("gofmt", "-w", dstPath).Run(); err != nil {
+		log.Fatalf("gofmt failed on %v: %v", dstPath, err)
+	}
+
+	// Also write the MarkDown file with full definitions.
+	mdTmpl := template.Must(template.New("").Funcs(funcMap).Parse(mdTemplate))
+	mf, err := os.Create(mdPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if err := mdTmpl.Execute(mf, struct{ Enums []*enumType }{Enums: fullEnums.types}); err != nil {
+		mf.Close()
+		log.Fatal(err)
+	}
+	if err := mf.Close(); err != nil {
 		log.Fatal(err)
 	}
 }
 
-const fileTemplate = `
-// This file is derived from https://github.com/metabrainz/musicbrainz-server,
-// which is licensed under GNU General Public License (GPL) Version 2 or later.
-// This license is located at {{.License}}.
+// openFile opens the named relative path under the dump directory.
+// It crashes if an error is encountered.
+func openFile(rel string) *os.File {
+	p := filepath.Join(os.Getenv(dumpVar), rel)
+	f, err := os.Open(p)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return f
+}
 
+// readTable opens the named table from the dump and passes each row to fn.
+func readTable(table string, fn func([]string)) {
+	f := openFile(filepath.Join("mbdump", table))
+	defer f.Close()
+
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		row := strings.Split(sc.Text(), "\t")
+		for i, v := range row {
+			if v == `\N` {
+				row[i] = ""
+			} else {
+				v = strings.ReplaceAll(v, `\r\n`, " ")
+				v = strings.ReplaceAll(v, `<br/>`, " ")
+				row[i] = strings.Join(strings.Fields(strings.TrimSpace(v)), " ")
+			}
+		}
+		fn(row)
+	}
+	if err := sc.Err(); err != nil {
+		log.Fatalf("Failed reading %v: %v", table, err)
+	}
+}
+
+// fileTemplate is used to generate dstPath.
+const fileTemplate = `
 package seed
 
-// This file was automatically generated from the following files,
-// downloaded at {{.Time}}:
-{{range .URLs -}}
-//  {{.}}
-{{end -}}
-// It can be regenerated by running "go generate".
+// This file was generated from a dump of the MusicBrainz database
+// (https://musicbrainz.org/doc/MusicBrainz_Database/Download)
+// initiated at {{.Time}}.
+//
+// MusicBrainz database dumps are distributed under the CC0 license:
+// https://creativecommons.org/publicdomain/zero/1.0/
+//
+// This file can be regenerated by running "go generate".
 
 {{range .Enums}}
-{{range .Comment -}}
+{{range wrap .Comment -}}
 // {{.}}
 {{end -}}
 type {{.Name}} {{.Type}}
 
 const (
 {{$en := .Name}}{{range .Values -}}
-{{range .Comment -}}
+{{range wrap .Comment -}}
 // {{.}}
 {{end -}}
 {{$en}}_{{.Name}} {{$en}} = {{.Value}}{{if .EOL}} // {{.EOL}}{{end}}
@@ -179,264 +392,46 @@ const (
 {{end}}
 `
 
-// readSQL adds enums from the passed-in initial.sql file.
-func readSQL(r io.Reader, enums *enumTypes) error {
-	linkAttrTypes := enums.add(&enumType{
-		Name: "LinkAttributeType",
-		Type: "int",
-		Comment: wrap(
-			`LinkAttributeType is an ID describing an attribute associated with a link `+
-				`between two MusicBrainz entities.`, commentLen),
-	})
-	linkTypes := enums.add(&enumType{
-		Name: "LinkType",
-		Type: "int",
-		Comment: wrap(
-			`LinkType is an ID describing a link between two MusicBrainz entities. `+
-				`It sadly doesn't appear to enumerate all possible values. There are 170-ish `+
-				`additional link types with translations in po/relationships.pot, many of `+
-				`which don't appear to be referenced anywhere else in the server repo.`, commentLen),
-		Values: []enumValue{
-			// These IDs are listed in https://musicbrainz.org/recording/create and
-			// https://musicbrainz.org/release/add, so presumably they're being used.
-			// Comments are from po/relationships.pot.
-			{
-				Name:  "Crowdfunding_Recording_URL",
-				Value: "905",
-				Comment: wrap(
-					"This links a recording to the relevant crowdfunding project at a "+
-						"crowdfunding site like Kickstarter or Indiegogo.", commentLen),
-			},
-			{
-				Name:  "Crowdfunding_Release_URL",
-				Value: "906",
-				Comment: wrap(
-					"This links a release to the relevant crowdfunding project at a crowdfunding "+
-						"site like Kickstarter or Indiegogo.", commentLen),
-			},
-			{
-				Name:  "StreamingPaid_Recording_URL",
-				Value: "979",
-				Comment: wrap(
-					"This relationship type is used to link a track to a site where the track can "+
-						"be legally streamed for a subscription fee, e.g. Tidal. "+
-						"If the site allows free streaming, use \"free streaming\" instead.", commentLen),
-			},
-			{
-				Name:  "StreamingPaid_Release_URL",
-				Value: "980",
-				Comment: wrap(
-					"This relationship type is used to link a release to a site where the tracks "+
-						"can be legally streamed for a subscription fee, e.g. Tidal.", commentLen),
-			},
-		},
-		sort: true,
-	})
-	mediumFormats := enums.add(&enumType{
-		Name:    "MediumFormat",
-		Type:    "string",
-		Comment: wrap(`MediumFormat describes a medium's format (e.g. CD, cassette, digital media).`, commentLen),
-	})
-	releaseGroupTypes := enums.add(&enumType{
-		Name: "ReleaseGroupType",
-		Type: "string",
-		Comment: wrap(
-			`ReleaseGroupType describes a release group. `+
-				`A release group can be assigned a single primary type and multiple secondary types.`, commentLen),
-	})
-	releasePackagings := enums.add(&enumType{
-		Name:    "ReleasePackaging",
-		Type:    "string",
-		Comment: wrap("ReleasePackaging describes a release's packaging.", commentLen),
-	})
-	releaseStatuses := enums.add(&enumType{
-		Name:    "ReleaseStatus",
-		Type:    "string",
-		Comment: wrap("ReleaseStatus describes a release's status.", commentLen),
-	})
-	workTypes := enums.add(&enumType{
-		Name:    "WorkType",
-		Type:    "int",
-		Comment: wrap("WorkType describes a work's type.", commentLen),
-		sort:    true,
-	})
+// mdTemplate is used to generate mdPath.
+const mdTemplate = `# Full MusicBrainz enums
 
-	// Process the SQL statements.
-	var stringErr error
-	sc := bufio.NewScanner(r)
-	for sc.Scan() {
-		ln := sc.Text()
-		if !insertStartRegexp.MatchString(ln) {
-			continue
-		}
+This file contains full definitions of large MusicBrainz enums
+that are abridged in [enums.go](./enums.go).
 
-		table, vals, err := parseInsert(ln)
-		if err != nil {
-			return fmt.Errorf("%q: %v", ln, err)
-		}
+MusicBrainz database dumps are distributed under the CC0 license:
+https://creativecommons.org/publicdomain/zero/1.0/
 
-		stringVal := func(i int) string {
-			if stringErr != nil {
-				return ""
-			}
-			if i > len(vals) {
-				stringErr = fmt.Errorf("bad value index %d from %q", i, ln)
-				return ""
-			}
-			switch v := vals[i].(type) {
-			case string:
-				return v
-			case nil:
-				return ""
-			default:
-				stringErr = fmt.Errorf("non-string type %T at %d in %q", v, i, ln)
-				return ""
-			}
-		}
+{{range .Enums -}}
+## {{.Name}}
 
-		// The below schema definitions come from
-		// https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/admin/sql/CreateTables.sql.
-		switch table {
-		case "link_attribute_type":
-			//  CREATE TABLE link_attribute_type ( -- replicate
-			//  	id                  SERIAL,
-			//  	parent              INTEGER, -- references link_attribute_type.id
-			//  	root                INTEGER NOT NULL, -- references link_attribute_type.id
-			//  	child_order         INTEGER NOT NULL DEFAULT 0,
-			//  	gid                 UUID NOT NULL,
-			//  	name                VARCHAR(255) NOT NULL,
-			//  	description         TEXT,
-			//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-			//  );
-			linkAttrTypes.add(enumValue{
-				Name:    clean(stringVal(5)),
-				Value:   strconv.Itoa(vals[0].(int)),
-				Comment: wrap(stringVal(6), commentLen),
-			})
-		case "link_type":
-			//  CREATE TABLE link_type ( -- replicate
-			//  	id                  SERIAL,
-			//  	parent              INTEGER, -- references link_type.id
-			//  	child_order         INTEGER NOT NULL DEFAULT 0,
-			//  	gid                 UUID NOT NULL,
-			//  	entity_type0        VARCHAR(50) NOT NULL,
-			//  	entity_type1        VARCHAR(50) NOT NULL,
-			//  	name                VARCHAR(255) NOT NULL,
-			//  	description         TEXT,
-			//  	link_phrase         VARCHAR(255) NOT NULL,
-			//  	reverse_link_phrase VARCHAR(255) NOT NULL,
-			//  	long_link_phrase    VARCHAR(255) NOT NULL,
-			//  	priority            INTEGER NOT NULL DEFAULT 0,
-			//  	last_updated        TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-			//  	is_deprecated       BOOLEAN NOT NULL DEFAULT false,
-			//  	has_dates           BOOLEAN NOT NULL DEFAULT true,
-			//  	entity0_cardinality SMALLINT NOT NULL DEFAULT 0,
-			//  	entity1_cardinality SMALLINT NOT NULL DEFAULT 0
-			//  );
-			id, name := vals[0].(int), stringVal(6)
-			switch id {
-			case 184:
-				// 171 and 184 are both named "discography" and map from Artists to URLs.
-				// 184 lists 171 as its parent, and some of the translations call it
-				// "discography page", so rename it to that to prevent a conflict.
-				name = "discography page"
-			}
-			linkTypes.add(enumValue{
-				// If this format is changed, the hardcoded entries in linkTypes need to be updated.
-				Name:    fmt.Sprintf("%s_%s_%s", clean(name), clean(stringVal(4)), clean(stringVal(5))),
-				Value:   strconv.Itoa(id),
-				Comment: wrap(stringVal(7), commentLen),
-			})
-		case "medium_format":
-			//  CREATE TABLE medium_format ( -- replicate
-			//  	id                  SERIAL,
-			//  	name                VARCHAR(100) NOT NULL,
-			//  	parent              INTEGER, -- references medium_format.id
-			//  	child_order         INTEGER NOT NULL DEFAULT 0,
-			//  	year                SMALLINT,
-			//  	has_discids         BOOLEAN NOT NULL DEFAULT FALSE,
-			//  	description         TEXT,
-			//  	gid                 uuid NOT NULL
-			//  );
-			mediumFormats.add(enumValue{
-				Name:    clean(stringVal(1)),
-				Value:   fmt.Sprintf("%q", stringVal(1)),
-				Comment: wrap(stringVal(6), commentLen),
-			})
-		case "release_group_primary_type", "release_group_secondary_type":
-			//  CREATE TABLE release_group_primary_type ( -- replicate
-			//      id                  SERIAL,
-			//      name                VARCHAR(255) NOT NULL,
-			//      parent              INTEGER, -- references release_group_primary_type.id
-			//      child_order         INTEGER NOT NULL DEFAULT 0,
-			//      description         TEXT,
-			//      gid                 uuid NOT NULL
-			//  );
-			//  CREATE TABLE release_group_secondary_type ( -- replicate
-			//      id                  SERIAL NOT NULL, -- PK
-			//      name                TEXT NOT NULL,
-			//      parent              INTEGER, -- references release_group_secondary_type.id
-			//      child_order         INTEGER NOT NULL DEFAULT 0,
-			//      description         TEXT,
-			//      gid                 uuid NOT NULL
-			//  );
-			eol := "primary"
-			if table == "release_group_secondary_type" {
-				eol = "secondary"
-			}
-			releaseGroupTypes.add(enumValue{
-				Name:  clean(stringVal(1)),
-				Value: fmt.Sprintf("%q", stringVal(1)),
-				EOL:   eol,
-			})
-		case "release_packaging":
-			//  CREATE TABLE release_packaging ( -- replicate
-			//  	id                  SERIAL,
-			//  	name                VARCHAR(255) NOT NULL,
-			//  	parent              INTEGER, -- references release_packaging.id
-			//  	child_order         INTEGER NOT NULL DEFAULT 0,
-			//  	description         TEXT,
-			//  	gid                 uuid NOT NULL
-			//  );
-			releasePackagings.add(enumValue{
-				Name:    clean(stringVal(1)),
-				Value:   fmt.Sprintf("%q", stringVal(1)),
-				Comment: wrap(stringVal(4), commentLen),
-			})
-		case "release_status":
-			//  CREATE TABLE release_status ( -- replicate
-			//  	id                  SERIAL,
-			//  	name                VARCHAR(255) NOT NULL,
-			//  	parent              INTEGER, -- references release_status.id
-			//  	child_order         INTEGER NOT NULL DEFAULT 0,
-			//  	description         TEXT,
-			//  	gid                 uuid NOT NULL
-			//  );
-			releaseStatuses.add(enumValue{
-				Name:    clean(stringVal(1)),
-				Value:   fmt.Sprintf("%q", stringVal(1)),
-				Comment: wrap(stringVal(4), commentLen),
-			})
-		case "work_type":
-			//  CREATE TABLE work_type ( -- replicate
-			//      id                  SERIAL,
-			//      name                VARCHAR(255) NOT NULL,
-			//      parent              INTEGER, -- references work_type.id
-			//      child_order         INTEGER NOT NULL DEFAULT 0,
-			//      description         TEXT,
-			//      gid                 uuid NOT NULL
-			//  );
-			workTypes.add(enumValue{
-				Name:    clean(stringVal(1)),
-				Value:   strconv.Itoa(vals[0].(int)),
-				Comment: wrap(stringVal(4), commentLen),
-			})
-		}
-	}
-	if err := sc.Err(); err != nil {
-		return err
-	}
-	return stringErr
+| Name | Value |
+| :--  | :--   |
+{{range .Values -}}
+| {{.Name}} | {{.Value}} |
+{{end}}
+{{end -}}
+`
+
+// Matches trailing parentheticals containing numbers.
+var langCleanRegexp = regexp.MustCompile(`\s*\([^)]*\d[^)]*\)$`)
+
+// linkAttrTypeMappings remaps duplicate names in the link_attribute_type table.
+var linkAttrTypeMappings = map[string]string{
+	"560":  "tar lute",      // "tar", conflicts with 752
+	"752":  "tar drum",      // "tar", conflicts with 560
+	"1032": "number opera",  // "number", conflicts with 788
+	"1128": "other subject", // "other", conflicts with 1225
+	"1225": "other level",   // "other", conflicts with 1128
+}
+
+// seedEntityTypes contains entity types that can be seeded by yambs.
+// This is used to prune the link_type table based on its entity_type0 and
+// entity_type1 columns.
+var seedEntityTypes = map[string]bool{
+	"recording":     true,
+	"release":       true,
+	"release_group": true,
+	"work":          true,
 }
 
 // wordMap contains words with specialized capitalization.
@@ -448,6 +443,7 @@ var wordMap = map[string]string{
 	"cd":           "CD",
 	"cdv":          "CDV",
 	"ced":          "CED",
+	"dataplay":     "DataPlay",
 	"dat":          "DAT",
 	"dcc":          "DCC",
 	"dj":           "DJ",
@@ -460,16 +456,21 @@ var wordMap = map[string]string{
 	"ep":           "EP",
 	"hdcd":         "HDCD",
 	"hd":           "HD",
+	"hipac":        "HiPac",
 	"hqcd":         "HQCD",
 	"imdb":         "IMDB",
 	"imslp":        "IMSLP",
 	"laserdisc":    "LaserDisc",
 	"minidisc":     "MiniDisc",
+	"playtape":     "PlayTape",
 	"prs":          "PRS",
 	"releasegroup": "ReleaseGroup",
 	"sacd":         "SACD",
+	"sd":           "SD",
 	"shm":          "SHM",
 	"slotmusic":    "slotMusic",
+	"snappack":     "SnapPack",
+	"sp":           "SP",
 	"svcd":         "SVCD",
 	"umd":          "UMD",
 	"url":          "URL",
@@ -544,227 +545,3 @@ func wrap(orig string, max int) []string {
 	}
 	return lines
 }
-
-// insertStartRegexp is just used to identify lines that contain SQL INSERT statements.
-var insertStartRegexp = regexp.MustCompile(`^\s*INSERT\s+INTO\s+[_a-z]+\s+VALUES`)
-
-// parseInsert parses a SQL INSERT statement into its table name and inserted values.
-//
-// PostgreSQL's grammar is quite complex:
-//  https://www.postgresql.org/docs/current/sql-insert.html
-//  https://www.postgresql.org/docs/current/sql-syntax-lexical.html
-//  etc.
-//
-// This function only understands enough of it to process
-// https://raw.githubusercontent.com/metabrainz/musicbrainz-server/master/t/sql/initial.sql.
-func parseInsert(stmt string) (table string, vals []interface{}, err error) {
-	ms := insertRegexp.FindStringSubmatch(stmt)
-	if ms == nil {
-		return "", nil, errors.New("failed parsing statement")
-	}
-	table = ms[1]
-	list := strings.TrimSpace(ms[2])
-
-	for list != "" {
-		ch := list[0]
-		switch {
-		case ch == '\'' || ch == 'E' || ch == 'e':
-			if v, n, err := readString(list, ch != '\''); err != nil {
-				return table, vals, err
-			} else {
-				vals = append(vals, v)
-				list = list[n:]
-			}
-		case numRegexp.MatchString(list):
-			s := numRegexp.FindString(list)
-			if strings.Index(s, ".") != -1 {
-				if v, err := strconv.ParseFloat(s, 64); err != nil {
-					return table, vals, err
-				} else {
-					vals = append(vals, v)
-				}
-			} else {
-				if v, err := strconv.ParseInt(s, 10, 64); err != nil {
-					return table, vals, err
-				} else {
-					vals = append(vals, int(v))
-				}
-			}
-			list = list[len(s):]
-		case strings.HasPrefix(list, "NULL"):
-			vals = append(vals, nil)
-			list = list[4:]
-		case strings.HasPrefix(list, "true"):
-			vals = append(vals, true)
-			list = list[4:]
-		case strings.HasPrefix(list, "false"):
-			vals = append(vals, false)
-			list = list[5:]
-		default:
-			return table, vals, fmt.Errorf("unhandled value at start of %q", list)
-		}
-
-		list = strings.TrimSpace(list)
-		list = strings.TrimPrefix(list, ",")
-		list = strings.TrimSpace(list)
-	}
-
-	return table, vals, nil
-}
-
-// insertRegexp (poorly) matches a SQL INSERT statement of the form
-// "INSERT INTO table_name VALUES (...);". The first match group contains
-// the table name and the second match group contains the values list.
-var insertRegexp = regexp.MustCompile(`^\s*INSERT\s+INTO\s+([^\s]+)\s+VALUES\s*\((.*)\)\s*` +
-	`(?:ON\s+CONFLICT\s*\([^)]+\)\s*DO\s+NOTHING\s*)?;\s*$`)
-
-// numRegexp matches a subset of the numeric constant forms listed at
-// https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-CONSTANTS-NUMERIC.
-// It doesn't include the 'e' exponent marker, and it additional matches leading '-' or '+'
-// characters even though in PostreSQL, "any leading plus or minus sign is not actually considered
-// part of the constant; it is an operator applied to the constant."
-var numRegexp = regexp.MustCompile(`^[-+]?(\d+|\d+\.\d*|\d*\.\d+)`)
-
-// readString reads a quoted string (including surrounding single-quotes) at the beginning of in.
-// It returns the unquoted string and the number of characters consumed.
-func readString(in string, bsEsc bool) (string, int, error) {
-	var v strings.Builder
-	var inEscape bool
-	for i := 0; i < len(in); i++ {
-		ch := in[i]
-		switch {
-		case (!bsEsc && i == 0) || (bsEsc && i == 1):
-			if ch != '\'' {
-				return "", 0, errors.New("no starting quote")
-			}
-		case bsEsc && i == 0:
-			if ch != 'E' && ch != 'e' {
-				return "", 0, errors.New("no starting 'e' or 'E'")
-			}
-		case inEscape:
-			if bsEsc {
-				switch ch {
-				case 'n':
-					v.WriteRune('\n')
-				case 'r':
-					v.WriteRune('\r')
-				case 't':
-					v.WriteRune('\t')
-				default:
-					v.WriteByte(ch)
-				}
-			} else {
-				v.WriteByte(ch)
-			}
-			inEscape = false
-		case ch == '\'':
-			if i < len(in)-1 && in[i+1] == '\'' {
-				inEscape = true
-			} else {
-				return v.String(), i + 1, nil
-			}
-		case ch == '\\' && bsEsc:
-			inEscape = true
-		default:
-			// Add this as a byte rather than a rune to avoid messing up multibyte chars.
-			v.WriteByte(ch)
-		}
-	}
-	return "", 0, errors.New("no ending quote")
-}
-
-// readLangs adds enums from the passed-in languages.pot file.
-func readLangs(r io.Reader, enums *enumTypes) error {
-	langs := enums.add(&enumType{
-		Name: "Language",
-		Type: "int",
-		Comment: wrap(`Language represents a human language. `+
-			`These values correspond to integer IDs in the database; `+
-			`note that some fields (most notably Release.Language) `+
-			`confusingly use ISO 639-3 codes instead.`, commentLen),
-		sort: true,
-	})
-
-	entries, err := readPOFile(r)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.ref == "DB:language/name" {
-			langs.add(enumValue{
-				Name:  clean(langCleanRegexp.ReplaceAllString(entry.msg, "")),
-				Value: entry.id,
-				EOL:   entry.msg,
-			})
-		}
-	}
-	return nil
-}
-
-var langCleanRegexp = regexp.MustCompile(`\s*\([^)]*\d[^)]*\)$`) // trailing parentheticals containing numbers
-
-// readAttrs adds enums from the passed-in attributes.pot file.
-func readAttrs(r io.Reader, enums *enumTypes) error {
-	workAttrTypes := enums.add(&enumType{
-		Name:    "WorkAttributeType",
-		Type:    "int",
-		Comment: wrap(`WorkAttributeType describes an attribute attached to a work.`, commentLen),
-		sort:    true,
-	})
-
-	entries, err := readPOFile(r)
-	if err != nil {
-		return err
-	}
-	for _, entry := range entries {
-		if entry.ref == "DB:work_attribute_type/name" {
-			// Most names are full of acronyms like "AGADU ID" or "AKKA/LAA ID".
-			// Preserve these in names ending in " ID".
-			name := entry.msg
-			if strings.HasSuffix(name, " ID") {
-				name = normalize(name) // needed for "MÜST ID"
-				name = nonAlnumRegexp.ReplaceAllString(name, "_")
-			} else {
-				name = clean(name)
-			}
-			workAttrTypes.add(enumValue{
-				Name:  name,
-				Value: entry.id,
-				EOL:   entry.msg,
-			})
-		}
-	}
-	return nil
-}
-
-// readPOFile reads the passed-in PO file.
-// See https://www.gnu.org/software/gettext/manual/html_node/PO-Files.html.
-func readPOFile(r io.Reader) ([]poEntry, error) {
-	var entries []poEntry
-	sc := bufio.NewScanner(r)
-	var ref, id string
-	for sc.Scan() {
-		ln := sc.Text()
-		if ms := poRefRegexp.FindStringSubmatch(ln); ms != nil {
-			ref, id = ms[1], ms[2]
-		} else if ms := poMsgIDRegexp.FindStringSubmatch(ln); ms != nil {
-			if id == "" {
-				return entries, fmt.Errorf("no ID for msgid %q", ms[1])
-			}
-			entries = append(entries, poEntry{ref, id, ms[1]})
-			ref = ""
-			id = ""
-		}
-	}
-	return entries, sc.Err()
-}
-
-// poEntry describes an entry from a PO translation file.
-type poEntry struct {
-	ref string // e.g. "DB:language/name" or "DB:work_attribute_type/name"
-	id  string // e.g. "123"
-	msg string // untranslated string
-}
-
-var poRefRegexp = regexp.MustCompile(`^#: (.+):(.+)$`)
-var poMsgIDRegexp = regexp.MustCompile(`^msgid "(.+)"$`)
