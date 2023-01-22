@@ -95,6 +95,7 @@
       }
 
       .button-row {
+        align-items: baseline;
         display: flex;
         gap: var(--margin);
         margin-bottom: var(--margin);
@@ -261,8 +262,8 @@
       }
       #form-text-input-textarea {
         display: block;
-        max-width: 100%;
         height: 300px;
+        max-width: 100%;
         width: 800px;
       }
       #form-text-input-file-input {
@@ -275,6 +276,12 @@
       }
       #form-text-input-file-button.hidden {
         display: none;
+      }
+
+      #form-permalink {
+        margin-left: var(--margin);
+        opacity: 0.8;
+        text-decoration: underline dotted;
       }
 
       #form-error-div {
@@ -390,6 +397,9 @@
       <div class="button-row">
         <button id="form-generate-button">Generate edits</button>
         <button id="form-clear-button">Clear</button>
+        <a id="form-permalink" title="Bookmark to autofill fields with current values" href="#">
+          Permalink
+        </a>
       </div>
       <div id="form-error-div"></div>
     </div>
@@ -473,6 +483,7 @@
     const formTextInputFileButton = $('form-text-input-file-button');
     const formGenButton = $('form-generate-button');
     const formClearButton = $('form-clear-button');
+    const formPermalink = $('form-permalink');
     const formErrorDiv = $('form-error-div');
     let formTextFieldsTableShown = false;
 
@@ -521,24 +532,57 @@
           })
         );
       }
+      updatePermalink();
     }
 
-    // Restores the state of the form UI from localStorage.
+    // Updates the permalink's URL to reflect the UI's current state.
+    function updatePermalink() {
+      // These property names need to match the ones in updateFormUI() and restoreFormUI().
+      const state = { source: formSourceSelect.value };
+
+      // Only include text-related state in the permalink if the text source is used.
+      if (formSourceSelect.value === 'text') {
+        state.textFormat = formTextFormatSelect.value;
+        state.textType = formTextTypeSelect.value;
+        const save = (k, v) => v !== '' && (state[k] = v);
+        save('textSet', formTextSetTextarea.value);
+        save('textFields', formTextFieldsInput.value);
+      }
+
+      formPermalink.href = '#' + new URLSearchParams(state).toString();
+    }
+
+    // Restores the state of the form UI from localStorage and the URL hash.
     function restoreFormUI() {
+      const state = {};
+      try {
+        Object.assign(state, JSON.parse(localStorage.getItem(uiStateKey) || '{}'));
+      } catch (e) {
+        console.error(`Failed loading UI state from localStorage: ${e}`);
+      }
+
+      // Layer the state from the URL hash on top of localStorage.
+      const hash = window.location.hash.slice(1); // remove '#'
+      Object.assign(state, Object.fromEntries([...new URLSearchParams(hash)]));
+
+      // Remove the hash from the URL: I don't want to display a stale hash after the user modifies
+      // the fields, but I also think it'll be distracting and annoying if the hash is dynamically
+      // updated as the user types. Setting window.location.hash to an empty string leaves '#'
+      // hanging around, so use the history API instead.
+      history.replaceState('', document.title, window.location.pathname + window.location.search);
+
       const setSelect = (sel, val) => {
         if (val === undefined) return;
         sel.value = val;
         if (sel.selectedIndex < 0) sel.selectedIndex = 0;
       };
+      setSelect(formSourceSelect, state.source);
+      setSelect(formTextFormatSelect, state.textFormat);
+      setSelect(formTextTypeSelect, state.textType);
 
-      try {
-        const state = JSON.parse(localStorage.getItem(uiStateKey) || '{}');
-        setSelect(formSourceSelect, state.source);
-        setSelect(formTextFormatSelect, state.textFormat);
-        setSelect(formTextTypeSelect, state.textType);
-      } catch (e) {
-        console.error(`Failed restoring form state: ${e}`);
-      }
+      const setText = (el, val) => val !== undefined && (el.value = val);
+      setText(formTextSetTextarea, state.textSet);
+      setText(formTextFieldsInput, state.textFields);
 
       updateFormUI(false /* save */);
     }
@@ -549,6 +593,7 @@
       formTextFieldsInput.value = '';
       formTextSetTextarea.value = '';
       setFormTextInputTextareaValue('');
+      updatePermalink();
     }
 
     // Sets |formTextInputFileInput|'s value.
@@ -630,6 +675,12 @@
       formSourceSelect.addEventListener('change', updateFormUI);
       formTextFormatSelect.addEventListener('change', updateFormUI);
       formTextTypeSelect.addEventListener('change', updateFormUI);
+
+      // TODO: It'd be nicer to not update the permalink on each keystroke,
+      // but 'change' only fires on blur, so we might end up with a stale URL
+      // if the user types and then immediately moves the pointer to the link.
+      formTextSetTextarea.addEventListener('input', updatePermalink);
+      formTextFieldsInput.addEventListener('input', updatePermalink);
 
       formTextToggleFieldsButton.addEventListener('click', () => {
         formTextFieldsTableShown = !formTextFieldsTableShown;
