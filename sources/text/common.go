@@ -10,10 +10,9 @@ import (
 )
 
 // These functions update the supplied structs with the supplied values.
-type artistFunc func(*seed.ArtistCredit, string) error
-type relFunc func(*seed.Relationship, string) error
-type relAttrFunc func(*seed.RelationshipAttribute, string) error
-type urlFunc func(*seed.URL, string) error
+type artistFunc func(ac *seed.ArtistCredit, v string) error
+type relFunc func(rel *seed.Relationship, k, v string) error
+type urlFunc func(url *seed.URL, v string) error
 
 // addArtistCreditFields adds "artist*_"-prefixed fields for seed.ArtistCredit.
 // prefix is prepended to the field names.
@@ -42,15 +41,15 @@ func addArtistCreditFields(fields map[string]fieldInfo, prefix string, fn func(a
 
 // addRelationshipFields adds "rel*_"-prefixed fields for seed.Relationship.
 // fn should return an appropriately-typed fieldInfo.Fn that invokes the relFunc
-// with the seed.Relationship and user-supplied value.
+// with the seed.Relationship and user-supplied key and value.
 func addRelationshipFields(fields map[string]fieldInfo, fn func(relFunc) interface{}) {
 	fields["rel*_backward"] = fieldInfo{
 		`Whether the relationship direction is reversed ("1" or "true" if true)`,
-		fn(func(rel *seed.Relationship, v string) error { return setBool(&rel.Backward, v) }),
+		fn(func(rel *seed.Relationship, k, v string) error { return setBool(&rel.Backward, v) }),
 	}
 	fields["rel*_begin_date"] = fieldInfo{
 		`Date when relationship began as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
-		fn(func(rel *seed.Relationship, v string) error {
+		fn(func(rel *seed.Relationship, k, v string) error {
 			var err error
 			rel.BeginYear, rel.BeginMonth, rel.BeginDay, err = parseDate(v)
 			return err
@@ -58,7 +57,7 @@ func addRelationshipFields(fields map[string]fieldInfo, fn func(relFunc) interfa
 	}
 	fields["rel*_end_date"] = fieldInfo{
 		`Date when relationship ended as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
-		fn(func(rel *seed.Relationship, v string) error {
+		fn(func(rel *seed.Relationship, k, v string) error {
 			var err error
 			rel.EndYear, rel.EndMonth, rel.EndDay, err = parseDate(v)
 			return err
@@ -66,15 +65,15 @@ func addRelationshipFields(fields map[string]fieldInfo, fn func(relFunc) interfa
 	}
 	fields["rel*_ended"] = fieldInfo{
 		`Whether the relationship has ended ("1" or "true" if true)`,
-		fn(func(rel *seed.Relationship, v string) error { return setBool(&rel.Ended, v) }),
+		fn(func(rel *seed.Relationship, k, v string) error { return setBool(&rel.Ended, v) }),
 	}
 	fields["rel*_target"] = fieldInfo{
 		"MBID or name of entity at other end of relationship",
-		fn(func(rel *seed.Relationship, v string) error { return setString(&rel.Target, v) }),
+		fn(func(rel *seed.Relationship, k, v string) error { return setString(&rel.Target, v) }),
 	}
 	fields["rel*_type"] = fieldInfo{
 		"Integer [link type](" + linkTypeURL + ") or UUID describing the relationship type",
-		fn(func(rel *seed.Relationship, v string) error {
+		fn(func(rel *seed.Relationship, k, v string) error {
 			if err := setInt((*int)(&rel.Type), v); err != nil {
 				if err := setMBID(&rel.TypeUUID, v); err != nil {
 					return errors.New("not integer or UUID")
@@ -83,23 +82,28 @@ func addRelationshipFields(fields map[string]fieldInfo, fn func(relFunc) interfa
 			return nil
 		}),
 	}
-}
 
-// addRelationshipAttributeFields adds "rel*_attr*_"-prefixed fields for seed.Relationship.
-// fn should return an appropriately-typed fieldInfo.Fn that invokes the relAttrFunc
-// with the seed.Relationship and user-supplied value.
-func addRelationshipAttributeFields(fields map[string]fieldInfo, fn func(relAttrFunc) interface{}) {
+	// attrFn is an adapted version of fn that returns a fieldInfo.Fn that invokes afn
+	// with a RelationshipAttribute. Thank goodness for type-checking, since there's
+	// no way that I'd get this mess right otherwise.
+	attrFn := func(afn func(*seed.RelationshipAttribute, string) error) interface{} {
+		return fn(func(r *seed.Relationship, k, v string) error {
+			return indexedField(&r.Attributes, k, `^rel\d*_attr`,
+				func(attr *seed.RelationshipAttribute) error { return afn(attr, v) })
+		})
+	}
+
 	fields["rel*_attr*_credited"] = fieldInfo{
 		"Relationship attribute's credited-as text",
-		fn(func(attr *seed.RelationshipAttribute, v string) error { return setString(&attr.CreditedAs, v) }),
+		attrFn(func(attr *seed.RelationshipAttribute, v string) error { return setString(&attr.CreditedAs, v) }),
 	}
 	fields["rel*_attr*_text"] = fieldInfo{
 		"Relationship attribute's additional text",
-		fn(func(attr *seed.RelationshipAttribute, v string) error { return setString(&attr.TextValue, v) }),
+		attrFn(func(attr *seed.RelationshipAttribute, v string) error { return setString(&attr.TextValue, v) }),
 	}
 	fields["rel*_attr*_type"] = fieldInfo{
 		"Integer [link attribute type](" + linkAttrTypeURL + ") or UUID describing the relationship attribute type",
-		fn(func(attr *seed.RelationshipAttribute, v string) error {
+		attrFn(func(attr *seed.RelationshipAttribute, v string) error {
 			if err := setInt((*int)(&attr.Type), v); err != nil {
 				if err := setMBID(&attr.TypeUUID, v); err != nil {
 					return errors.New("not integer or UUID")

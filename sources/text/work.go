@@ -68,17 +68,8 @@ func init() {
 	addRelationshipFields(workFields,
 		func(fn relFunc) interface{} {
 			return func(w *seed.Work, k, v string) error {
-				return workRelationship(w, k, func(rel *seed.Relationship) error {
-					return fn(rel, v)
-				})
-			}
-		})
-	addRelationshipAttributeFields(workFields,
-		func(fn relAttrFunc) interface{} {
-			return func(w *seed.Work, k, v string) error {
-				return workRelationshipAttribute(w, k, func(attr *seed.RelationshipAttribute) error {
-					return fn(attr, v)
-				})
+				return indexedField(&w.Relationships, k, "rel",
+					func(rel *seed.Relationship) error { return fn(rel, k, v) })
 			}
 		})
 	addURLFields(workFields,
@@ -90,15 +81,7 @@ func init() {
 		})
 }
 
-// Helper functions to make code for setting indexed fields slightly less horrendous.
+// Helper function to make code for setting indexed fields slightly less horrendous.
 func workAttribute(w *seed.Work, k string, fn func(*seed.WorkAttribute) error) error {
 	return indexedField(&w.Attributes, k, "attr", fn)
-}
-func workRelationship(w *seed.Work, k string, fn func(*seed.Relationship) error) error {
-	return indexedField(&w.Relationships, k, "rel", fn)
-}
-func workRelationshipAttribute(w *seed.Work, k string, fn func(*seed.RelationshipAttribute) error) error {
-	return workRelationship(w, k, func(r *seed.Relationship) error {
-		return indexedField(&r.Attributes, k, `^rel\d*_attr`, fn)
-	})
 }

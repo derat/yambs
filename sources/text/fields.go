@@ -287,8 +287,11 @@ func indexedField(items interface{}, field, prefix string, fn interface{}) error
 	}
 
 	args := []reflect.Value{slice.Index(idx).Addr()}
-	if fv := reflect.ValueOf(fn); fv.Kind() != reflect.Func {
-		return fmt.Errorf("got %s instead of function", fv.Type())
+	fv := reflect.ValueOf(fn)
+	if ft := fv.Type(); ft.Kind() != reflect.Func {
+		return fmt.Errorf("got %s instead of function", ft)
+	} else if ft.NumIn() != len(args) {
+		return fmt.Errorf("function wants %d arg(s) but calling with %d", ft.NumIn(), len(args))
 	} else if out := fv.Call(args); len(out) != 1 {
 		return fmt.Errorf("function returned %d values instead of 1", len(out))
 	} else if out[0].IsNil() {

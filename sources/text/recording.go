@@ -55,16 +55,8 @@ func init() {
 	addRelationshipFields(recordingFields,
 		func(fn relFunc) interface{} {
 			return func(r *seed.Recording, k, v string) error {
-				return recordingRelationship(r, k, func(rel *seed.Relationship) error {
-					return fn(rel, v)
-				})
-			}
-		})
-	addRelationshipAttributeFields(recordingFields,
-		func(fn relAttrFunc) interface{} {
-			return func(r *seed.Recording, k, v string) error {
-				return recordingRelationshipAttribute(r, k,
-					func(attr *seed.RelationshipAttribute) error { return fn(attr, v) })
+				return indexedField(&r.Relationships, k, "rel",
+					func(rel *seed.Relationship) error { return fn(rel, k, v) })
 			}
 		})
 	addURLFields(recordingFields,
@@ -74,13 +66,4 @@ func init() {
 					func(url *seed.URL) error { return fn(url, v) })
 			}
 		})
-}
-
-func recordingRelationship(r *seed.Recording, k string, fn func(*seed.Relationship) error) error {
-	return indexedField(&r.Relationships, k, "rel", fn)
-}
-func recordingRelationshipAttribute(r *seed.Recording, k string, fn func(*seed.RelationshipAttribute) error) error {
-	return recordingRelationship(r, k, func(r *seed.Relationship) error {
-		return indexedField(&r.Attributes, k, `^rel\d*_attr`, fn)
-	})
 }
