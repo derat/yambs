@@ -16,6 +16,7 @@ import (
 
 func TestRead_Release_All(t *testing.T) {
 	const input = `
+mbid=d98928e8-6757-4196-a945-e7145d94d9e4
 title=Release Title
 release_group=4b52bddc-0587-4bcf-9e05-5c9fca260a21
 types=Single,Soundtrack
@@ -63,6 +64,7 @@ edit_note=https://www.example.org/
 	}
 	want := []seed.Edit{
 		&seed.Release{
+			MBID:         "d98928e8-6757-4196-a945-e7145d94d9e4",
 			Title:        "Release Title",
 			ReleaseGroup: "4b52bddc-0587-4bcf-9e05-5c9fca260a21",
 			Types: []seed.ReleaseGroupType{

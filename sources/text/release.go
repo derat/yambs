@@ -122,6 +122,10 @@ var releaseFields = map[string]fieldInfo{
 			})
 		},
 	},
+	"mbid": {
+		"MBID of existing release to edit (if empty, create release)",
+		func(rel *seed.Release, k, v string) error { return setMBID(&rel.MBID, v) },
+	},
 	"medium*_format": {
 		`[Medium format](` + formatURL + `) (e.g. "CD", "Digital Media")`,
 		func(rel *seed.Release, k, v string) error {

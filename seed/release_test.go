@@ -59,6 +59,19 @@ func TestRelease_Autofill_Types(t *testing.T) {
 	}
 }
 
+func TestRelease_URL(t *testing.T) {
+	const srv = "test.musicbrainz.org"
+	for _, tc := range []struct{ mbid, want string }{
+		{"", "https://" + srv + "/release/add"},
+		{"d98928e8-6757-4196-a945-e7145d94d9e4", "https://" + srv + "/release/d98928e8-6757-4196-a945-e7145d94d9e4/edit"},
+	} {
+		rel := Release{MBID: tc.mbid}
+		if got := rel.URL(srv); got != tc.want {
+			t.Errorf("MBID %q yielded URL %q; want %q", tc.mbid, got, tc.want)
+		}
+	}
+}
+
 func TestRelease_Params(t *testing.T) {
 	rel := Release{
 		Title:        "Not of This Earth",

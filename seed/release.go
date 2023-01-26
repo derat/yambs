@@ -22,6 +22,8 @@ import (
 // https://wiki.musicbrainz.org/Development/Release_Editor_Seeding for information about seeding
 // this form.
 type Release struct {
+	// MBID contains the release's MBID (for editing an existing release rather than creating a new one).
+	MBID string
 	// Title contains the release's title.
 	Title string
 	// ReleaseGroup the MBID of an existing release group.
@@ -97,6 +99,9 @@ func (rel *Release) Description() string {
 }
 
 func (rel *Release) URL(srv string) string {
+	if rel.MBID != "" {
+		return "https://" + srv + "/release/" + rel.MBID + "/edit"
+	}
 	return "https://" + srv + "/release/add"
 }
 
