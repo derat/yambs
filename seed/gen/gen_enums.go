@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"text/template"
 	"unicode"
@@ -49,9 +50,16 @@ func (ets *enumTypes) add(et *enumType) *enumType {
 func (ets *enumTypes) finish() {
 	sort.Slice(ets.types, func(i, j int) bool { return ets.types[i].Name < ets.types[j].Name })
 	for _, et := range ets.types {
-		if et.sort {
+		switch et.sort {
+		case sortName:
 			sort.Slice(et.Values, func(i, j int) bool {
 				return strings.ToLower(et.Values[i].Name) < strings.ToLower(et.Values[j].Name)
+			})
+		case sortValue:
+			sort.Slice(et.Values, func(i, j int) bool {
+				ni, _ := strconv.Atoi(et.Values[i].Value)
+				nj, _ := strconv.Atoi(et.Values[j].Value)
+				return ni < nj
 			})
 		}
 	}
@@ -62,7 +70,7 @@ type enumType struct {
 	Type    string // Go type
 	Comment string // comment before declaration
 	Values  []enumValue
-	sort    bool // sort values by name
+	sort    sortType // how to sort Values
 }
 
 func (et *enumType) add(ev enumValue) { et.Values = append(et.Values, ev) }
@@ -73,6 +81,14 @@ type enumValue struct {
 	Comment string // comment before declaration
 	EOL     string // end-of-line comment
 }
+
+type sortType int // sortType describes how enumType.Values should be sorted
+
+const (
+	sortNone  sortType = iota // don't sort values
+	sortName                  // sort by Name
+	sortValue                 // sort by Value as integer
+)
 
 func main() {
 	if os.Getenv(dumpVar) == "" {
@@ -90,6 +106,16 @@ func main() {
 	var enums enumTypes
 	var fullEnums enumTypes // unabridged versions of large enums
 
+	labelTypes := enums.add(&enumType{
+		Name:    "LabelType",
+		Type:    "int",
+		Comment: `LabelType describes a label's main activity.`,
+		sort:    sortValue,
+	})
+	readTable("label_type", func(row []string) {
+		labelTypes.add(enumValue{Name: clean(row[1]), Value: row[0]})
+	})
+
 	langs := enums.add(&enumType{
 		Name: "Language",
 		Type: "int",
@@ -99,11 +125,11 @@ func main() {
 			`confusingly use ISO 639-3 codes instead. Roughly 7400 ` +
 			`languages marked as being low-frequency are excluded, ` +
 			`but all languages are listed in ` + mdURL + `.`,
-		sort: true,
+		sort: sortName,
 	})
 	fullLangs := fullEnums.add(&enumType{
 		Name: "Language",
-		sort: true,
+		sort: sortName,
 	})
 	readTable("language", func(row []string) {
 		id, name, freq := row[0], row[4], row[5]
@@ -128,11 +154,11 @@ func main() {
 			`associated with a link between two MusicBrainz entities. ` +
 			`Roughly 700 infrequently-appearing musical instruments ` +
 			`are excluded, but all types are listed in ` + mdURL + `.`,
-		sort: true,
+		sort: sortName,
 	})
 	fullLinkAttrTypes := fullEnums.add(&enumType{
 		Name: "LinkAttributeType",
-		sort: true,
+		sort: sortName,
 	})
 	readTable("link_attribute_type", func(row []string) {
 		id, root, name, desc := row[0], row[2], row[5], row[6]
@@ -163,7 +189,7 @@ func main() {
 		Type: "int",
 		Comment: `LinkType is an ID describing a link between two MusicBrainz entities. ` +
 			`Only link types relating to entity types that can be seeded by yambs are included.`,
-		sort: true,
+		sort: sortName,
 	})
 	readTable("link_type", func(row []string) {
 		id, type0, type1, name, desc := row[0], row[4], row[5], row[6], row[7]
@@ -245,7 +271,7 @@ func main() {
 		Name:    "WorkAttributeType",
 		Type:    "int",
 		Comment: `WorkAttributeType describes an attribute attached to a work.`,
-		sort:    true,
+		sort:    sortName,
 	})
 	readTable("work_attribute_type", func(row []string) {
 		id, orig, desc := row[0], row[1], row[6]
@@ -270,7 +296,7 @@ func main() {
 		Name:    "WorkType",
 		Type:    "int",
 		Comment: "WorkType describes a work's type.",
-		sort:    true,
+		sort:    sortName,
 	})
 	readTable("work_type", func(row []string) {
 		id, name, desc := row[0], row[1], row[4]
