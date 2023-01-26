@@ -49,19 +49,11 @@ func addRelationshipFields(fields map[string]fieldInfo, fn func(relFunc) interfa
 	}
 	fields["rel*_begin_date"] = fieldInfo{
 		`Date when relationship began as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
-		fn(func(rel *seed.Relationship, k, v string) error {
-			var err error
-			rel.BeginYear, rel.BeginMonth, rel.BeginDay, err = parseDate(v)
-			return err
-		}),
+		fn(func(rel *seed.Relationship, k, v string) error { return setDate(&rel.BeginDate, v) }),
 	}
 	fields["rel*_end_date"] = fieldInfo{
 		`Date when relationship ended as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
-		fn(func(rel *seed.Relationship, k, v string) error {
-			var err error
-			rel.EndYear, rel.EndMonth, rel.EndDay, err = parseDate(v)
-			return err
-		}),
+		fn(func(rel *seed.Relationship, k, v string) error { return setDate(&rel.EndDate, v) }),
 	}
 	fields["rel*_ended"] = fieldInfo{
 		`Whether the relationship has ended ("1" or "true" if true)`,

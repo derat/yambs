@@ -59,67 +59,49 @@ var releaseFields = map[string]fieldInfo{
 	"event*_year": {
 		"Year of release event",
 		func(rel *seed.Release, k, v string) error {
-			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
-				return setInt(&ev.Year, v)
-			})
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error { return setInt(&ev.Date.Year, v) })
 		},
 	},
 	"event*_month": {
 		"Month of release event (1-12)",
 		func(rel *seed.Release, k, v string) error {
-			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
-				return setInt(&ev.Month, v)
-			})
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error { return setInt(&ev.Date.Month, v) })
 		},
 	},
 	"event*_day": {
 		"Day of release event (1-31)",
 		func(rel *seed.Release, k, v string) error {
-			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
-				return setInt(&ev.Day, v)
-			})
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error { return setInt(&ev.Date.Day, v) })
 		},
 	},
 	"event*_date": {
 		`Date of release event as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
 		func(rel *seed.Release, k, v string) error {
-			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
-				var err error
-				ev.Year, ev.Month, ev.Day, err = parseDate(v)
-				return err
-			})
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error { return setDate(&ev.Date, v) })
 		},
 	},
 	"event*_country": {
 		`Country of release event as [ISO 3166-1 alpha-2 code](` + countryURL + `) (e.g. "GB", "US", "FR", "XW")`,
 		func(rel *seed.Release, k, v string) error {
-			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error {
-				return setString(&ev.Country, v)
-			})
+			return releaseEvent(rel, k, func(ev *seed.ReleaseEvent) error { return setString(&ev.Country, v) })
 		},
 	},
 	"label*_mbid": {
 		"MBID of label",
 		func(rel *seed.Release, k, v string) error {
-			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
-				return setMBID(&lab.MBID, v)
-			})
+			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error { return setMBID(&lab.MBID, v) })
 		},
 	},
 	"label*_catalog": {
 		"Catalog number for label",
 		func(rel *seed.Release, k, v string) error {
-			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
-				return setString(&lab.CatalogNumber, v)
-			})
+			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error { return setString(&lab.CatalogNumber, v) })
 		},
 	},
 	"label*_name": {
 		"Name for label (to prefill search if MBID is unknown)",
 		func(rel *seed.Release, k, v string) error {
-			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error {
-				return setString(&lab.Name, v)
-			})
+			return releaseLabel(rel, k, func(lab *seed.ReleaseLabel) error { return setString(&lab.Name, v) })
 		},
 	},
 	"mbid": {
@@ -129,49 +111,37 @@ var releaseFields = map[string]fieldInfo{
 	"medium*_format": {
 		`[Medium format](` + formatURL + `) (e.g. "CD", "Digital Media")`,
 		func(rel *seed.Release, k, v string) error {
-			return releaseMedium(rel, k, func(med *seed.Medium) error {
-				return setString((*string)(&med.Format), v)
-			})
+			return releaseMedium(rel, k, func(med *seed.Medium) error { return setString((*string)(&med.Format), v) })
 		},
 	},
 	"medium*_name": {
 		"Medium name",
 		func(rel *seed.Release, k, v string) error {
-			return releaseMedium(rel, k, func(med *seed.Medium) error {
-				return setString(&med.Name, v)
-			})
+			return releaseMedium(rel, k, func(med *seed.Medium) error { return setString(&med.Name, v) })
 		},
 	},
 	"medium*_track*_title": {
 		"Track title",
 		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
-				return setString(&tr.Title, v)
-			})
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error { return setString(&tr.Title, v) })
 		},
 	},
 	"medium*_track*_number": {
 		"Track number",
 		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
-				return setString(&tr.Number, v)
-			})
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error { return setString(&tr.Number, v) })
 		},
 	},
 	"medium*_track*_recording": {
 		"Track recording MBID",
 		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
-				return setMBID(&tr.Recording, v)
-			})
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error { return setMBID(&tr.Recording, v) })
 		},
 	},
 	"medium*_track*_length": {
 		`Track length as e.g. "3:45.01" or total milliseconds`,
 		func(rel *seed.Release, k, v string) error {
-			return releaseMediumTrack(rel, k, func(tr *seed.Track) error {
-				return setDuration(&tr.Length, v)
-			})
+			return releaseMediumTrack(rel, k, func(tr *seed.Track) error { return setDuration(&tr.Length, v) })
 		},
 	},
 	"edit_note": {

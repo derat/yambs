@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -248,12 +247,8 @@ const AddCoverArtRedirectURI = "https://yambs.erat.org/redirect-add-cover-art"
 
 // ReleaseEvent contains an event corresponding to a release. Unknown fields can be omitted.
 type ReleaseEvent struct {
-	// Year contains the event's year, or 0 if unknown.
-	Year int
-	// Month contains the event's 1-indexed month, or 0 if unknown.
-	Month int
-	// Day contains the event's day, or 0 if unknown.
-	Day int
+	// Date contains the event's date.
+	Date Date
 	// Country contains the event's country as an ISO code (e.g. "GB", "US", "FR").
 	// "XW" corresponds to "[Worldwide]".
 	Country string
@@ -262,15 +257,7 @@ type ReleaseEvent struct {
 // setParams sets query parameters in vals corresponding to non-empty fields in ev.
 // The supplied prefix (e.g. "events.0.") is prepended before each parameter name.
 func (ev *ReleaseEvent) setParams(vals url.Values, prefix string) {
-	if ev.Year > 0 {
-		vals.Set(prefix+"date.year", strconv.Itoa(ev.Year))
-	}
-	if ev.Month > 0 {
-		vals.Set(prefix+"date.month", strconv.Itoa(ev.Month))
-	}
-	if ev.Day > 0 {
-		vals.Set(prefix+"date.day", strconv.Itoa(ev.Day))
-	}
+	ev.Date.setParams(vals, prefix+"date.")
 	if ev.Country != "" {
 		vals.Set(prefix+"country", ev.Country)
 	}

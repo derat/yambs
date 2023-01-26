@@ -42,10 +42,8 @@ func TestRecording_Params(t *testing.T) {
 			{
 				Target:    "27aff659-aba5-41e5-8d35-9835fc9017d4",
 				Type:      LinkType_Edit_Recording_Recording,
-				BeginYear: 2020,
-				EndYear:   2022,
-				EndMonth:  2,
-				EndDay:    15,
+				BeginDate: Date{Year: 2020},
+				EndDate:   Date{2022, 2, 15},
 				Ended:     true,
 				Backward:  true,
 			},
@@ -67,6 +65,8 @@ func TestRecording_Params(t *testing.T) {
 	}
 
 	rel0 := rec.Relationships[0]
+	beginDate := fmt.Sprintf("%04d", rel0.BeginDate.Year)
+	endDate := fmt.Sprintf("%04d-%02d-%02d", rel0.EndDate.Year, rel0.EndDate.Month, rel0.EndDate.Day)
 	rel1 := rec.Relationships[1]
 	want := url.Values{
 		"artist": {rec.Artist},
@@ -87,8 +87,8 @@ func TestRecording_Params(t *testing.T) {
 		"edit-recording.url.1.link_type_id":                {strconv.Itoa(int(rec.URLs[1].LinkType))},
 		"rels.0.target":                                    {rel0.Target},
 		"rels.0.type":                                      {strconv.Itoa(int(rel0.Type))},
-		"rels.0.begin_date":                                {fmt.Sprintf("%04d", rel0.BeginYear)},
-		"rels.0.end_date":                                  {fmt.Sprintf("%04d-%02d-%02d", rel0.EndYear, rel0.EndMonth, rel0.EndDay)},
+		"rels.0.begin_date":                                {beginDate},
+		"rels.0.end_date":                                  {endDate},
 		"rels.0.ended":                                     {"1"},
 		"rels.0.backward":                                  {"1"},
 		"rels.1.type":                                      {rel1.TypeUUID},

@@ -79,9 +79,11 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 	if !date.IsZero() {
 		rel.Events = []seed.ReleaseEvent{{
-			Year:    date.Year(),
-			Month:   int(date.Month()),
-			Day:     date.Day(),
+			Date: seed.Date{
+				Year:  date.Year(),
+				Month: int(date.Month()),
+				Day:   date.Day(),
+			},
 			Country: "XW",
 		}}
 	}

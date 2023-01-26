@@ -25,18 +25,10 @@ type Relationship struct {
 	TypeUUID string
 	// Attributes contains additional attributes associated with this relationship.
 	Attributes []RelationshipAttribute
-	// BeginYear contains the year when the relationship started, or 0 if unknown.
-	BeginYear int
-	// BeginMonth contains the 1-indexed month when the relationship started, or 0 if unknown.
-	BeginMonth int
-	// BeginDay contains the day of the month when the relationship started, or 0 if unknown.
-	BeginDay int
-	// EndYear contains the year when the relationship ended, or 0 if unknown.
-	EndYear int
-	// EndMonth contains the 1-indexed month when the relationship ended, or 0 if unknown.
-	EndMonth int
-	// EndDay contains the day of the month when the relationship ended, or 0 if unknown.
-	EndDay int
+	// BeginDate contains the date when the relationship began.
+	BeginDate Date
+	// EndMonth contains the date when the relationship ended.
+	EndDate Date
 	// Ended describes whether the relationship has ended.
 	Ended bool
 	// Backward describes whether the relationship direction should be reversed.
@@ -64,18 +56,19 @@ func (rel *Relationship) setParams(vals url.Values, prefix string) {
 		attr.setParams(vals, prefix+fmt.Sprintf("attributes.%d.", i))
 	}
 
+	// Unlike other dates, the relationship date format uses a single parameter.
 	// https://bitbucket.org/metabrainz/musicbrainz-server/pull-requests/1393 says
 	// "To support partial dates it accepts hyphens in place of the missing parts,
 	// e.g. --09-09 for a missing year or 1999---09 for a missing month."
 	// This doesn't seem to work, though (which seems fine, since it's pretty weird!).
-	setDate := func(name string, y, m, d int) {
+	setDate := func(name string, date Date) {
 		var s string
-		if y > 0 {
-			s += fmt.Sprintf("%04d", y)
-			if m > 0 {
-				s += fmt.Sprintf("-%02d", m)
-				if d > 0 {
-					s += fmt.Sprintf("-%02d", d)
+		if date.Year > 0 {
+			s += fmt.Sprintf("%04d", date.Year)
+			if date.Month > 0 {
+				s += fmt.Sprintf("-%02d", date.Month)
+				if date.Day > 0 {
+					s += fmt.Sprintf("-%02d", date.Day)
 				}
 			}
 		}
@@ -83,8 +76,8 @@ func (rel *Relationship) setParams(vals url.Values, prefix string) {
 			vals.Set(prefix+name, s)
 		}
 	}
-	setDate("begin_date", rel.BeginYear, rel.BeginMonth, rel.BeginDay)
-	setDate("end_date", rel.EndYear, rel.EndMonth, rel.EndDay)
+	setDate("begin_date", rel.BeginDate)
+	setDate("end_date", rel.EndDate)
 
 	if rel.Ended {
 		vals.Set(prefix+"ended", "1")

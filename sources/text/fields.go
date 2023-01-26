@@ -163,6 +163,12 @@ func setBool(dst *bool, val string) error {
 	return nil
 }
 
+func setDate(dst *seed.Date, v string) error {
+	var err error
+	dst.Year, dst.Month, dst.Day, err = parseDate(v)
+	return err
+}
+
 func setDuration(dst *time.Duration, val string) error {
 	var err error
 	*dst, err = parseDuration(val)

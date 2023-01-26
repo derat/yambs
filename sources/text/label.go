@@ -15,11 +15,7 @@ var labelFields = map[string]fieldInfo{
 	},
 	"begin_date": {
 		`Date when label began as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
-		func(l *seed.Label, k, v string) error {
-			var err error
-			l.BeginYear, l.BeginMonth, l.BeginDay, err = parseDate(v)
-			return err
-		},
+		func(l *seed.Label, k, v string) error { return setDate(&l.BeginDate, v) },
 	},
 	"disambiguation": {
 		"Comment disambiguating this label from others with similar names",
@@ -31,11 +27,7 @@ var labelFields = map[string]fieldInfo{
 	},
 	"end_date": {
 		`Date when label ended as "YYYY-MM-DD", "YYYY-MM", or "YYYY"`,
-		func(l *seed.Label, k, v string) error {
-			var err error
-			l.EndYear, l.EndMonth, l.EndDay, err = parseDate(v)
-			return err
-		},
+		func(l *seed.Label, k, v string) error { return setDate(&l.EndDate, v) },
 	},
 	"ended": {
 		`Whether the label has ended ("1" or "true" if true)`,

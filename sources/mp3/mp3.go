@@ -161,13 +161,13 @@ func createSongEdit(song *songInfo, typ seed.Entity) (seed.Edit, error) {
 		if tm := song.time; !tm.Empty() && !tm.Time().Before(mp3RelDate) {
 			var ev seed.ReleaseEvent
 			if year := tm.Year(); year >= 1 {
-				ev.Year = year
+				ev.Date.Year = year
 			}
 			if month := tm.Month(); month >= 1 {
-				ev.Month = month
+				ev.Date.Month = month
 			}
 			if day := tm.Day(); day >= 1 {
-				ev.Day = day
+				ev.Date.Day = day
 			}
 			rel.Events = append(rel.Events, ev)
 		}

@@ -92,9 +92,11 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	// Use the release date if it's plausible (i.e. not before Qobuz's launch).
 	if t, err := time.Parse(`2006-01-02`, data.ReleaseDate); err == nil && !t.Before(qobuzLaunch) {
 		rel.Events = []seed.ReleaseEvent{{
-			Year:  t.Year(),
-			Month: int(t.Month()),
-			Day:   t.Day(),
+			Date: seed.Date{
+				Year:  t.Year(),
+				Month: int(t.Month()),
+				Day:   t.Day(),
+			},
 		}}
 	}
 

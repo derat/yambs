@@ -172,15 +172,11 @@ func TestRead_Recording_All(t *testing.T) {
 			Video:          true,
 			Relationships: []seed.Relationship{
 				{
-					Target:     relTarget,
-					Type:       relType,
-					BeginYear:  relBeginYear,
-					BeginMonth: relBeginMonth,
-					BeginDay:   relBeginDay,
-					EndYear:    relEndYear,
-					EndMonth:   relEndMonth,
-					EndDay:     relEndDay,
-					Ended:      true,
+					Target:    relTarget,
+					Type:      relType,
+					BeginDate: seed.Date{Year: relBeginYear, Month: relBeginMonth, Day: relBeginDay},
+					EndDate:   seed.Date{Year: relEndYear, Month: relEndMonth, Day: relEndDay},
+					Ended:     true,
 				},
 				{
 					Target:   rel2Target,

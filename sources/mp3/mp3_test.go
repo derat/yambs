@@ -29,7 +29,7 @@ func TestReadFile_ID3v24(t *testing.T) {
 		Script:    "Latn",
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
-		Events:    []seed.ReleaseEvent{{Country: "XW", Year: 2004}},
+		Events:    []seed.ReleaseEvent{{Country: "XW", Date: seed.Date{Year: 2004}}},
 		Artists:   []seed.ArtistCredit{{MBID: mbid, NameAsCredited: "Second Artist"}},
 		Mediums: []seed.Medium{{
 			Format: seed.MediumFormat_DigitalMedia,

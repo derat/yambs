@@ -43,18 +43,10 @@ type Label struct {
 	// ISNICodes contains the label's International Standard Name Identifier(s).
 	// See https://musicbrainz.org/doc/ISNI.
 	ISNICodes []string
-	// BeginYear contains the year when the label started, or 0 if unknown.
-	BeginYear int
-	// BeginMonth contains the 1-indexed month when the label started, or 0 if unknown.
-	BeginMonth int
-	// BeginDay contains the day of the month when the label started, or 0 if unknown.
-	BeginDay int
-	// EndYear contains the year when the label ended, or 0 if unknown.
-	EndYear int
-	// EndMonth contains the 1-indexed month when the label ended, or 0 if unknown.
-	EndMonth int
-	// EndDay contains the day of the month when the label ended, or 0 if unknown.
-	EndDay int
+	// BeginDate contains the date when the label started.
+	BeginDate Date
+	// EndDate contains the date when the label ended.
+	EndDate Date
 	// Ended describes whether the label has ended.
 	Ended bool
 	// Relationships contains (non-URL) relationships between this label and other entities.
@@ -114,26 +106,8 @@ func (l *Label) Params() url.Values {
 		vals.Set(fmt.Sprintf("edit-label.isni_codes.%d", i), code)
 	}
 
-	// It'd be nice if labels could share date-setting code with the similar-looking
-	// begin/end/ended date ranges for relationships, but the seeding mechanism seems
-	// completely different: relationships use "begin_date" and "end_date" parameters
-	// with "YYYY-MM-DD" values, while labels have separate "period.begin_date.year",
-	// "period.begin_date.month", etc. parameters.
-	for _, p := range []struct {
-		name string
-		val  int
-	}{
-		{"begin_date.year", l.BeginYear},
-		{"begin_date.month", l.BeginMonth},
-		{"begin_date.day", l.BeginDay},
-		{"end_date.year", l.EndYear},
-		{"end_date.month", l.EndMonth},
-		{"end_date.day", l.EndDay},
-	} {
-		if p.val > 0 {
-			vals.Set("edit-label.period."+p.name, strconv.Itoa(p.val))
-		}
-	}
+	l.BeginDate.setParams(vals, "edit-label.period.begin_date.")
+	l.EndDate.setParams(vals, "edit-label.period.end_date.")
 	if l.Ended {
 		vals.Set("edit-label.period.ended", "1")
 	}
