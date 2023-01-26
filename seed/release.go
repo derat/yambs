@@ -86,6 +86,9 @@ func (rel *Release) Entity() Entity { return ReleaseEntity }
 
 func (rel *Release) Description() string {
 	var parts []string
+	if rel.MBID != "" {
+		parts = append(parts, truncate(rel.MBID, mbidPrefixLen, false))
+	}
 	if rel.Title != "" {
 		parts = append(parts, rel.Title)
 	}
