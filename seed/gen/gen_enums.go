@@ -106,6 +106,34 @@ func main() {
 	var enums enumTypes
 	var fullEnums enumTypes // unabridged versions of large enums
 
+	artistTypes := enums.add(&enumType{
+		Name:    "ArtistType",
+		Type:    "int",
+		Comment: `ArtistType describes whether an artist is a person, group, or something else.`,
+		sort:    sortValue,
+	})
+	readTable("artist_type", func(row []string) {
+		artistTypes.add(enumValue{
+			Name:    clean(row[1]),
+			Value:   row[0],
+			Comment: row[4],
+		})
+	})
+
+	genders := enums.add(&enumType{
+		Name:    "Gender",
+		Type:    "int",
+		Comment: `Gender describes how the artist (if a person or character) identifies.`,
+		sort:    sortName,
+	})
+	readTable("gender", func(row []string) {
+		genders.add(enumValue{
+			Name:    clean(row[1]),
+			Value:   row[0],
+			Comment: row[4],
+		})
+	})
+
 	labelTypes := enums.add(&enumType{
 		Name:    "LabelType",
 		Type:    "int",
@@ -454,6 +482,7 @@ var linkAttrTypeMappings = map[string]string{
 // This is used to prune the link_type table based on its entity_type0 and
 // entity_type1 columns.
 var seedEntityTypes = map[string]bool{
+	"artist":        true,
 	"label":         true,
 	"recording":     true,
 	"release":       true,
