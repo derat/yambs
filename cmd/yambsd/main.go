@@ -222,8 +222,13 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		}
 
 	case "text":
+		// Sigh, so dumb.
+		allowedTypes := make([]interface{}, len(seed.EntityTypes))
+		for i, t := range seed.EntityTypes {
+			allowedTypes[i] = t
+		}
 		typ := seed.Entity(req.FormValue("type"))
-		if !checkEnum(typ, seed.LabelEntity, seed.RecordingEntity, seed.ReleaseEntity, seed.WorkEntity) {
+		if !checkEnum(typ, allowedTypes...) {
 			return nil, httpErrorf(http.StatusBadRequest, "bad type %q", string(typ))
 		}
 		format := text.Format(req.FormValue("format"))

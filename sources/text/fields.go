@@ -316,17 +316,8 @@ func indexedField(items interface{}, field, prefix string, fn interface{}) error
 // they can be used to set fields on a seed.Edit of the supplied type.
 func ParseSetCommands(cmds []string, typ seed.Entity) ([][2]string, error) {
 	// This is a bit hokey: create a throwaway edit to use to test the commands.
-	var edit seed.Edit
-	switch typ {
-	case seed.LabelEntity:
-		edit = &seed.Label{}
-	case seed.RecordingEntity:
-		edit = &seed.Recording{}
-	case seed.ReleaseEntity:
-		edit = &seed.Release{}
-	case seed.WorkEntity:
-		edit = &seed.Work{}
-	default:
+	edit := newEdit(typ)
+	if edit == nil {
 		return nil, fmt.Errorf("unsupported edit type %q", typ)
 	}
 

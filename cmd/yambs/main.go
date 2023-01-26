@@ -42,14 +42,9 @@ func main() {
 		val:     defaultAction(),
 		allowed: []string{actionOpen, actionPrint, actionServe, actionWrite},
 	}
-	entity := enumFlag{
-		val: "", // empty default
-		allowed: []string{
-			string(seed.LabelEntity),
-			string(seed.RecordingEntity),
-			string(seed.ReleaseEntity),
-			string(seed.WorkEntity),
-		},
+	var entity enumFlag // empty default
+	for _, t := range seed.EntityTypes {
+		entity.allowed = append(entity.allowed, string(t))
 	}
 	format := enumFlag{
 		val:     string(text.TSV),

@@ -345,10 +345,9 @@
           </select>
           <label for="form-text-type-select">Type:</label>
           <select id="form-text-type-select">
-            <option value="label">Label</option>
-            <option value="recording" selected>Recording</option>
-            <option value="release">Release</option>
-            <option value="work">Work</option>
+            {{- range .TypeInfo}}
+            <option value="{{.Type}}">{{.Name}}</option>
+            {{- end}}
           </select>
           <button id="form-text-toggle-fields-button">Show available fields</button>
         </div>
@@ -445,6 +444,11 @@
   {{- if not .Edits}}
   <script>
     // This seems to confuse Prettier unless it's in its own script element.
+    const formTypes = [
+      {{- range .TypeInfo}}
+      {{.Type}},
+      {{- end}}
+    ];
     const formSetExamples = {
       {{- range .TypeInfo}}
       {{.Type}}: {{.SetExample}},
@@ -496,7 +500,7 @@
       }
 
       const selType = formTextTypeSelect.value;
-      for (const type of ['label', 'recording', 'release', 'work']) {
+      for (const type of formTypes) {
         const visible = formTextFieldsTableShown && type === selType;
         $(`form-text-${type}-fields-table`).classList.toggle('visible', visible);
       }
@@ -555,7 +559,7 @@
 
     // Restores the state of the form UI from localStorage and the URL hash.
     function restoreFormUI() {
-      const state = {};
+      const state = { textType: 'recording' };
       try {
         Object.assign(state, JSON.parse(localStorage.getItem(uiStateKey) || '{}'));
       } catch (e) {

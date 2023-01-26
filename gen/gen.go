@@ -143,21 +143,20 @@ func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
 	if err != nil {
 		return err
 	}
+	typeInfos := make([]typeInfo, len(seed.EntityTypes))
+	for i, t := range seed.EntityTypes {
+		typeInfos[i] = newTypeInfo(t)
+	}
 	return tmpl.Execute(w, struct {
 		IconSVG  template.HTML
 		Version  string
 		TypeInfo []typeInfo
 		Edits    []*EditInfo
 	}{
-		IconSVG: template.HTML(iconSVG),
-		Version: cfg.version,
-		TypeInfo: []typeInfo{
-			newTypeInfo(seed.LabelEntity),
-			newTypeInfo(seed.RecordingEntity),
-			newTypeInfo(seed.ReleaseEntity),
-			newTypeInfo(seed.WorkEntity),
-		},
-		Edits: editInfos,
+		IconSVG:  template.HTML(iconSVG),
+		Version:  cfg.version,
+		TypeInfo: typeInfos,
+		Edits:    editInfos,
 	})
 }
 
@@ -251,6 +250,7 @@ func NewEditInfos(edits []seed.Edit, srv string) ([]*EditInfo, error) {
 // It's passed to pageTmpl.
 type typeInfo struct {
 	Type   string      // seed.Entity
+	Name   string      // title case human-readable name
 	Fields []fieldInfo // fields that can be set for the type
 
 	SetExample    string            // e.g. "field1=val\nfield2=val"
@@ -277,6 +277,7 @@ func newTypeInfo(typ seed.Entity) typeInfo {
 
 	return typeInfo{
 		Type:          string(typ),
+		Name:          strings.Title(string(typ)),
 		Fields:        fields,
 		SetExample:    text.SetExample(typ),
 		FieldsExample: text.FieldsExample(typ),

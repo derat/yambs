@@ -29,6 +29,14 @@ const (
 	InfoEntity      Entity = "info" // informational edit; not a true entity
 )
 
+// EntityTypes lists real database entity types in alphabetical order.
+var EntityTypes = []Entity{
+	LabelEntity,
+	RecordingEntity,
+	ReleaseEntity,
+	WorkEntity,
+}
+
 // Edit represents a seeded MusicBrainz edit.
 type Edit interface {
 	// Entity returns the type of entity being edited.

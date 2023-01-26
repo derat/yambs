@@ -83,17 +83,8 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Entity,
 			return nil, errors.New("too many edits")
 		}
 
-		var edit seed.Edit
-		switch typ {
-		case seed.LabelEntity:
-			edit = &seed.Label{}
-		case seed.RecordingEntity:
-			edit = &seed.Recording{}
-		case seed.ReleaseEntity:
-			edit = &seed.Release{}
-		case seed.WorkEntity:
-			edit = &seed.Work{}
-		default:
+		edit := newEdit(typ)
+		if edit == nil {
 			return nil, fmt.Errorf("unknown edit type %q", typ)
 		}
 
@@ -210,5 +201,22 @@ func newRowReader(r io.Reader, format Format, fields []string) (
 		return &tsvReader{bufio.NewScanner(r), len(fields)}, fields, nil
 	default:
 		return nil, nil, fmt.Errorf("unknown format %q", format)
+	}
+}
+
+// newEdit returns a new seed.Edit for the specified entity type.
+// nil is returned if the type is unsupported.
+func newEdit(typ seed.Entity) seed.Edit {
+	switch typ {
+	case seed.LabelEntity:
+		return &seed.Label{}
+	case seed.RecordingEntity:
+		return &seed.Recording{}
+	case seed.ReleaseEntity:
+		return &seed.Release{}
+	case seed.WorkEntity:
+		return &seed.Work{}
+	default:
+		return nil
 	}
 }
