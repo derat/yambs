@@ -22,6 +22,7 @@ const (
 type Entity string
 
 const (
+	LabelEntity     Entity = "label"
 	RecordingEntity Entity = "recording"
 	ReleaseEntity   Entity = "release"
 	WorkEntity      Entity = "work"

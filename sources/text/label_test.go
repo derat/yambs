@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"fmt"
 	"strconv"
 	"testing"
 
@@ -15,35 +16,44 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-func TestRead_Work_All(t *testing.T) {
+func TestRead_Label_All(t *testing.T) {
 	const (
-		attrType    = seed.WorkAttributeType_ASCAP_ID
-		attrValue   = "123456789"
-		disambig    = "not the same"
-		editNote    = "here's the justification"
-		iswc1       = "T-345246800-1"
-		iswc2       = "T-123456789-0"
-		lang1       = seed.Language_Hindi
-		lang2       = seed.Language_Hebrew
+		areaName    = "New York"
+		beginYear   = 2014
+		beginMonth  = 4
+		beginDay    = 5
+		disambig    = "this one"
+		editNote    = "here's my edit"
+		endYear     = 2018
+		endMonth    = 12
+		endDay      = 31
+		ipi1        = "123456789"
+		ipi2        = "987654321"
+		isni1       = "1234567899999799"
+		isni2       = "000000012146438X"
+		labelCode   = "52361"
+		labelType   = seed.LabelType_Manufacturer
 		mbid        = "0096a0bf-804e-4e47-bf2a-e0878dbb3eb7"
-		name        = "Work Title"
+		name        = "The Label"
 		relTarget   = "65389277-491a-4055-8e71-0a9be1c9c99c"
-		relType     = seed.LinkType_BasedOn_Work_Work
+		relType     = seed.LinkType_Manufactured_Label_Release
 		relAttrText = "4"
 		relAttrType = seed.LinkAttributeType_Number
 		url         = "https://www.example.org/foo"
-		urlType     = seed.LinkType_Lyrics_URL_Work
-		workType    = seed.WorkType_Mass
+		urlType     = seed.LinkType_DownloadForFree_Label_URL
 	)
 
 	var input bytes.Buffer
 	if err := csv.NewWriter(&input).WriteAll([][]string{{
-		strconv.Itoa(int(attrType)),
-		attrValue,
+		areaName,
+		fmt.Sprintf("%04d-%02d-%02d", beginYear, beginMonth, beginDay),
 		disambig,
 		editNote,
-		iswc1 + "," + iswc2,
-		strconv.Itoa(int(lang1)) + "," + strconv.Itoa(int(lang2)),
+		fmt.Sprintf("%04d-%02d-%02d", endYear, endMonth, endDay),
+		"true",
+		ipi1 + "," + ipi2,
+		isni1 + "," + isni2,
+		labelCode,
 		mbid,
 		name,
 		relTarget,
@@ -52,17 +62,20 @@ func TestRead_Work_All(t *testing.T) {
 		strconv.Itoa(int(relAttrType)),
 		url,
 		strconv.Itoa(int(urlType)),
-		strconv.Itoa(int(workType)),
+		strconv.Itoa(int(labelType)),
 	}}); err != nil {
 		t.Fatal("Failed writing input:", err)
 	}
-	got, err := Read(context.Background(), &input, CSV, seed.WorkEntity, []string{
-		"attr0_type",
-		"attr0_value",
+	got, err := Read(context.Background(), &input, CSV, seed.LabelEntity, []string{
+		"area_name",
+		"begin_date",
 		"disambiguation",
 		"edit_note",
-		"iswcs",
-		"languages",
+		"end_date",
+		"ended",
+		"ipi_codes",
+		"isni_codes",
+		"label_code",
 		"mbid",
 		"name",
 		"rel0_target",
@@ -78,15 +91,20 @@ func TestRead_Work_All(t *testing.T) {
 	}
 
 	want := []seed.Edit{
-		&seed.Work{
-			Attributes: []seed.WorkAttribute{{
-				Type:  attrType,
-				Value: attrValue,
-			}},
+		&seed.Label{
+			AreaName:       areaName,
+			BeginYear:      beginYear,
+			BeginMonth:     beginMonth,
+			BeginDay:       beginDay,
 			Disambiguation: disambig,
 			EditNote:       editNote,
-			ISWCs:          []string{iswc1, iswc2},
-			Languages:      []seed.Language{lang1, lang2},
+			EndYear:        endYear,
+			EndMonth:       endMonth,
+			EndDay:         endDay,
+			Ended:          true,
+			IPICodes:       []string{ipi1, ipi2},
+			ISNICodes:      []string{isni1, isni2},
+			LabelCode:      labelCode,
 			MBID:           mbid,
 			Name:           name,
 			Relationships: []seed.Relationship{{
@@ -98,7 +116,7 @@ func TestRead_Work_All(t *testing.T) {
 				}},
 			}},
 			URLs: []seed.URL{{URL: url, LinkType: urlType}},
-			Type: workType,
+			Type: labelType,
 		},
 	}
 	if diff := cmp.Diff(want, got); diff != "" {

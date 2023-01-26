@@ -7,8 +7,8 @@ database.
 
 It can simplify adding multiple standalone recordings: given a [CSV] or [TSV]
 file describing recordings, `yambs` can open the [Add Standalone Recording] page
-for each with various fields pre-filled. The [Add Work] page can be seeded in a
-similar manner.
+for each with various fields pre-filled. The [Add Label] and [Add Work] pages
+can be seeded in a similar manner.
 
 `yambs` can also read `key=value` lines from text files to seed the [Add
 Release] page, and it can use [Bandcamp] and [Qobuz] album pages and local MP3
@@ -20,6 +20,7 @@ There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 [CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
 [TSV]: https://en.wikipedia.org/wiki/Tab-separated_values
 [Add Standalone Recording]: https://musicbrainz.org/recording/create
+[Add Label]: https://musicbrainz.org/label/create
 [Add Work]: https://musicbrainz.org/work/create
 [Add Release]: http://musicbrainz.org/release/add
 [Bandcamp]: https://bandcamp.com/
@@ -173,10 +174,7 @@ yambs \
 The `keyval` format can be used to seed a single entity across multiple lines:
 
 ```sh
-yambs \
-  -type release \
-  -format keyval \
-  <release.txt
+yambs -type release -format keyval <release.txt
 ```
 
 `release.txt`:
@@ -207,12 +205,35 @@ edit_note=https://www.example.org
 
 ---
 
+If you'd like to bulk-add `LinkType_Published_Label_Release` (ID `362`)
+relationships between the existing label `02442aba` and releases `43bcfb95` and
+`a9d8b538`, you can set the `mbid` field to edit the label and seed the new
+relationships:
+
+```sh
+yambs -type label -format keyval <label.txt
+```
+
+`label.txt`:
+
+```
+mbid=02442aba-cf00-445c-877e-f0eaa504d8c2
+rel0_target=43bcfb95-f26c-4f8d-84f8-7b2ac5b8ab72
+rel0_type=362
+rel1_target=a9d8b538-c20a-4025-aea1-5530d616a20a
+rel1_type=362
+```
+
+---
+
 Pass the `-list-fields` flag to list all available fields for a given entity
 type:
 
 ```sh
+yambs -type label     -list-fields
 yambs -type recording -list-fields
 yambs -type release   -list-fields
+yambs -type work      -list-fields
 ```
 
 Acceptable values for various fields are listed in

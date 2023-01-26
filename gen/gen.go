@@ -152,6 +152,7 @@ func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
 		IconSVG: template.HTML(iconSVG),
 		Version: cfg.version,
 		TypeInfo: []typeInfo{
+			newTypeInfo(seed.LabelEntity),
 			newTypeInfo(seed.RecordingEntity),
 			newTypeInfo(seed.ReleaseEntity),
 			newTypeInfo(seed.WorkEntity),

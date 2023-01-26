@@ -1255,6 +1255,9 @@ const (
 	// overseeing the artistic development of an artist, and acting as liaison
 	// between artists and the labels.
 	LinkType_ArtistsAndRepertoire_Artist_ReleaseGroup LinkType = 62
+	// This indicates that an artist was officially employed by a label in an
+	// artists and repertoire (A&R) position.
+	LinkType_ArtistsAndRepertoirePosition_Artist_Label LinkType = 1081
 	// This indicates a person or agency who provided artwork for the release when
 	// no more specific information is available.
 	LinkType_Artwork_Artist_Release LinkType = 993
@@ -1274,10 +1277,16 @@ const (
 	LinkType_Balance_Artist_Recording LinkType = 726
 	// This links a release to the balance engineer who engineered it.
 	LinkType_Balance_Artist_Release LinkType = 727
+	// This links a label to its page at Bandcamp.
+	LinkType_Bandcamp_Label_URL LinkType = 719
 	// This links two <a href="/doc/Work" title="Work">works</a>, where the second
 	// work is based on music or text from the first, but isn't directly a revision
 	// or an arrangement of it.
 	LinkType_BasedOn_Work_Work LinkType = 314
+	// This relationship type is used to link a label to its blog.
+	LinkType_Blog_Label_URL LinkType = 224
+	// Points to the BookBrainz page for this label.
+	LinkType_BookBrainz_Label_URL LinkType = 851
 	// Points to the BookBrainz page for this release.
 	LinkType_BookBrainz_Release_URL LinkType = 850
 	// Points to the BookBrainz page for this release group.
@@ -1292,7 +1301,10 @@ const (
 	LinkType_Booking_Artist_Release LinkType = 23
 	// This relationship indicates an artist credited as the booklet editor for a
 	// release.
-	LinkType_BookletEditor_Artist_Release LinkType = 929
+	LinkType_BookletEditor_Artist_Release    LinkType = 929
+	LinkType_BusinessAssociation_Label_Label LinkType = 205
+	// This links to a catalog or list of records published by the label.
+	LinkType_CatalogSite_Label_URL LinkType = 212
 	// This indicates the chorus master of a choir which performed on this
 	// recording.
 	LinkType_ChorusMaster_Artist_Recording LinkType = 152
@@ -1355,6 +1367,7 @@ const (
 	// This indicates an artist who conducted an orchestra, band or choir on this
 	// release.
 	LinkType_Conductor_Artist_Release        LinkType = 46
+	LinkType_Contract_Artist_Label           LinkType = 119
 	LinkType_ContractedTasks_Label_Recording LinkType = 945
 	LinkType_ContractedTasks_Label_Release   LinkType = 944
 	// This relationship indicates the artist is the copyright holder for this
@@ -1384,6 +1397,12 @@ const (
 	// inspiration during the recording of this release group, without actually
 	// contributing to the writing or performance.
 	LinkType_CreativeDirection_Artist_ReleaseGroup LinkType = 63
+	// This indicates that an artist was officially employed by a label in a
+	// creative position, such as photographer or graphic designer.
+	LinkType_CreativePosition_Artist_Label LinkType = 115
+	// This links a label to their profile at a crowdfunding site like Kickstarter
+	// or Indiegogo.
+	LinkType_Crowdfunding_Label_URL LinkType = 903
 	// This links a recording to the relevant crowdfunding project at a
 	// crowdfunding site like Kickstarter or Indiegogo.
 	LinkType_Crowdfunding_Recording_URL LinkType = 905
@@ -1429,6 +1448,8 @@ const (
 	// This link points to a page for a particular release within a discography for
 	// an artist or label.
 	LinkType_DiscographyEntry_Release_URL LinkType = 288
+	// This is used to link the Discogs page for this label.
+	LinkType_Discogs_Label_URL LinkType = 217
 	// This is used to link the Discogs page for this release.
 	LinkType_Discogs_Release_URL LinkType = 76
 	// This is used to link the Discogs page for this release group.
@@ -1450,6 +1471,8 @@ const (
 	// href="/relationship/9162dedd-790c-446c-838e-240f877dbfe2">DJ-mixer</a> for
 	// crediting the person who created the DJ-mix.
 	LinkType_DJMix_ReleaseGroup_ReleaseGroup LinkType = 8
+	// Indicates a webpage where you can download a label's releases for free.
+	LinkType_DownloadForFree_Label_URL LinkType = 958
 	// This links a recording to a page where it can be legally downloaded for
 	// free.
 	LinkType_DownloadForFree_Recording_URL LinkType = 255
@@ -1504,6 +1527,11 @@ const (
 	// Links a release to the area it was engineered in. Use only when the place is
 	// unknown!
 	LinkType_EngineeredIn_Area_Release LinkType = 815
+	// This indicates that an artist was officially employed by a label as an
+	// engineer.
+	LinkType_EngineerPosition_Artist_Label LinkType = 120
+	// This links a label to a fan-created website.
+	LinkType_Fanpage_Label_URL LinkType = 214
 	// This indicates a recording engineer that recorded field recordings for the
 	// recording.
 	LinkType_FieldRecordist_Artist_Recording LinkType = 1011
@@ -1513,6 +1541,9 @@ const (
 	// This relationship type is <strong>deprecated</strong>! If two recordings are
 	// identical, please merge them.
 	LinkType_FirstTrackRelease_Recording_Recording LinkType = 238
+	// This relationship type is used to link a label to a site where music can be
+	// legally streamed for free, e.g. Spotify.
+	LinkType_FreeStreaming_Label_URL LinkType = 997
 	// This relationship type is used to link a track to a site where the track can
 	// be legally streamed for free, such as Spotify for audio tracks or YouTube
 	// for videos.
@@ -1520,6 +1551,7 @@ const (
 	// This relationship type is used to link a release to a site where the tracks
 	// can be legally streamed for free, e.g. Spotify.
 	LinkType_FreeStreaming_Release_URL LinkType = 85
+	LinkType_GetTheMusic_Label_URL     LinkType = 957
 	LinkType_GetTheMusic_Recording_URL LinkType = 257
 	LinkType_GetTheMusic_Release_URL   LinkType = 73
 	LinkType_GetTheScore_URL_Work      LinkType = 911
@@ -1536,8 +1568,12 @@ const (
 	// This credits the people or agency who did the graphic design, arranging
 	// pieces of content into a coherent and aesthetically-pleasing sleeve design.
 	LinkType_GraphicDesign_Artist_Release LinkType = 27
+	// This links to a site describing relevant details about a label's history.
+	LinkType_HistorySite_Label_URL LinkType = 211
 	// This indicates a person or agency who did illustration for the release.
 	LinkType_Illustration_Artist_Release LinkType = 927
+	// This links a label to its page in <a href="http://www.imdb.com/">IMDb</a>.
+	LinkType_IMDB_Label_URL LinkType = 313
 	// This links a soundtrack release group to the <a
 	// href="http://www.imdb.com/">IMDb</a> page for the movie, show or game of
 	// which it is a soundtrack.
@@ -1559,6 +1595,9 @@ const (
 	// href="/relationship/85b0a010-3237-47c7-8476-6fcefd4761af">IMDB relationship
 	// type for release groups</a>.
 	LinkType_IMDBSamples_Release_URL LinkType = 83
+	// This indicates that a record label (company) owns or has the right to use an
+	// imprint.
+	LinkType_Imprint_Label_Label LinkType = 725
 	// This indicates that a release group was included in another. This allows
 	// linking release groups (often albums) to box sets and other compilations
 	// that contain them.
@@ -1589,6 +1628,9 @@ const (
 	// Indicates the instrument technician for this release. Use also for "piano
 	// tuner" credits and other similar ones.
 	LinkType_InstrumentTechnician_Artist_Release LinkType = 987
+	// This relationship links an instrument to the company that invented or
+	// designed it.
+	LinkType_Invented_Instrument_Label LinkType = 918
 	// This is used to link a karaoke version of a song to the original song. A
 	// karaoke version is a version of the song with the main vocals removed,
 	// designed to be used for karaoke. These are generally produced from the
@@ -1597,6 +1639,34 @@ const (
 	// numerous different ways other than "karaoke": instrumental (even if backing
 	// vocals are still present), off vocal, backing track, etc.
 	LinkType_Karaoke_Recording_Recording LinkType = 226
+	// This describes a situation where one label is distributing (part of) another
+	// label's catalog, in a country/region of the world, during a period of time.
+	LinkType_LabelDistribution_Label_Label LinkType = 203
+	// This relationship type can be used to link a label to the person(s) who
+	// founded it.
+	LinkType_LabelFounder_Artist_Label LinkType = 116
+	// This describes a situation where one label is (or was) a subsidiary of
+	// another label, during a given period of time. This should be used either to
+	// describe the fact a label is a subdivision of another one, or, through
+	// corporate acquisition of the former label, has become a subdivision of
+	// another one.
+	LinkType_LabelOwnership_Label_Label LinkType = 200
+	// This describes a situation where one label is reissuing, under its own name,
+	// (part of) another label's catalog. This can happen in at least three cases:
+	// <ul> <li>A label acquires a lease on another label's catalog, for a period
+	// of time, in a specific region of the world.</li> <li>A label buys the rights
+	// to a defunct label's catalog, or buys a label (with its catalog) and
+	// dismantles it.</li> <li>A bootleg label reissues another label's
+	// catalog.</li> </ul>
+	LinkType_LabelReissue_Label_Label LinkType = 201
+	// This describes a situation where a label has changed its name, either for
+	// purely aesthetic reasons or following a buyout/sellout/spin-off. Extra care
+	// should be taken with cases where complicated merge/split/restructure
+	// financial operations are done. For example, it's not a good idea to rename
+	// the label <a href="/label/99a24d71-54c1-4d3f-88cc-00fbcc4fce83">Verve</a>
+	// into <a href="/label/4fb00dfd-7674-44c0-bf67-79daf8c61767">The Verve Music
+	// Group</a>, as Verve continued its existence thereafter as an imprint.
+	LinkType_LabelRename_Label_Label LinkType = 202
 	// Links a release to the engineer who did the lacquer cutting for it.
 	LinkType_LacquerCut_Artist_Release LinkType = 969
 	// Links a release to the place where the lacquer cutting took place.
@@ -1604,6 +1674,8 @@ const (
 	// Links a release to the area where the lacquer cutting took place. Use only
 	// when the place is unknown!
 	LinkType_LacquerCutIn_Area_Release LinkType = 967
+	// This relationship type links a label to its corresponding page at Last.fm
+	LinkType_Lastfm_Label_URL LinkType = 838
 	// Links a release with a launch event for it.
 	LinkType_LaunchEvent_Event_Release LinkType = 796
 	// Links a release group with a launch event for it.
@@ -1645,6 +1717,8 @@ const (
 	// This is used to indicate that a release group is a live performance of a
 	// studio release group.
 	LinkType_LivePerformance_ReleaseGroup_ReleaseGroup LinkType = 17
+	// This is used to link a label to an image of its logo.
+	LinkType_Logo_Label_URL LinkType = 213
 	// This is used when a work includes a brief quotation of the lyrics of another
 	// work. In most cases the quotation is uncredited, although this is not a
 	// requirement. For a work that includes significantly more of another than
@@ -1654,6 +1728,11 @@ const (
 	LinkType_Lyricist_Artist_Release LinkType = 56
 	// Indicates the lyricist for this work.
 	LinkType_Lyricist_Artist_Work LinkType = 165
+	// This relationship describes a URL where lyrics for the label (most often as
+	// a publisher) can be found. Only sites on the <a
+	// href="/doc/Style/Relationships/URLs/Lyrics_whitelist">whitelist</a> are
+	// permitted.
+	LinkType_Lyrics_Label_URL LinkType = 982
 	// This relationship describes a URL where lyrics for the release group can be
 	// found. Only sites on the <a
 	// href="/doc/Style/Relationships/URLs/Lyrics_whitelist">whitelist</a> are
@@ -1760,6 +1839,8 @@ const (
 	LinkType_MusicalQuotation_Work_Work LinkType = 1046
 	// This is used to link a music video to the corresponding audio recording.
 	LinkType_MusicVideo_Recording_Recording LinkType = 857
+	// This relationship type links a label to its Myspace page.
+	LinkType_Myspace_Label_URL LinkType = 215
 	// This indicates the release group that inspired this artist’s name.
 	LinkType_NamedAfter_Artist_ReleaseGroup LinkType = 974
 	// This indicates the work that inspired this artist’s name.
@@ -1767,6 +1848,9 @@ const (
 	// This relationship type is used to link a release group to an official
 	// website created specifically for the release group.
 	LinkType_OfficialHomepage_ReleaseGroup_URL LinkType = 287
+	// Indicates the official homepage for a label.
+	LinkType_OfficialSite_Label_URL LinkType = 219
+	LinkType_OnlineData_Label_URL   LinkType = 221
 	// This links two <a href="/doc/Work" title="Work">works</a> where one work is
 	// an orchestration of the other.
 	LinkType_Orchestration_Work_Work LinkType = 316
@@ -1797,6 +1881,10 @@ const (
 	// This links an entity to the equivalent entry in another database. Please
 	// respect the <a
 	// href="/doc/Other_Databases_Relationship_Type/Whitelist">whitelist</a>.
+	LinkType_OtherDatabases_Label_URL LinkType = 222
+	// This links an entity to the equivalent entry in another database. Please
+	// respect the <a
+	// href="/doc/Other_Databases_Relationship_Type/Whitelist">whitelist</a>.
 	LinkType_OtherDatabases_Recording_URL LinkType = 306
 	// This links an entity to the equivalent entry in another database. Please
 	// respect the <a
@@ -1813,6 +1901,12 @@ const (
 	// This links two versions of a <a href="/doc/Work" title="Work">work</a>.
 	LinkType_OtherVersion_Work_Work            LinkType = 241
 	LinkType_OtherVersions_Recording_Recording LinkType = 233
+	// This indicates the artist was the owner of this label.
+	LinkType_Owner_Artist_Label LinkType = 991
+	// This indicates the label / organization was the owner of this place (often a
+	// studio, but sometimes also a venue).
+	LinkType_Owner_Label_Place      LinkType = 989
+	LinkType_Ownership_Artist_Label LinkType = 990
 	// Indicates that the recording is part of a series.
 	LinkType_PartOf_Recording_Series LinkType = 740
 	// Indicates that the release is part of a series.
@@ -1826,7 +1920,10 @@ const (
 	LinkType_PartOfSet_Release_Release LinkType = 1
 	// This indicates that a work is made up of multiple parts (e.g. an orchestral
 	// suite broken into movements)
-	LinkType_Parts_Work_Work              LinkType = 281
+	LinkType_Parts_Work_Work LinkType = 281
+	// This links a label to a site where the label can receive
+	// donations/patronage, such as Flattr or PayPal.me.
+	LinkType_Patronage_Label_URL          LinkType = 899
 	LinkType_Performance_Artist_Recording LinkType = 122
 	LinkType_Performance_Artist_Release   LinkType = 34
 	// This is used to link works to their recordings.
@@ -1842,6 +1939,14 @@ const (
 	LinkType_PerformingOrchestra_Artist_Recording LinkType = 150
 	// Indicates an orchestra that performed on this release.
 	LinkType_PerformingOrchestra_Artist_Release LinkType = 45
+	// This indicates a personal production label for an artist. A personal label
+	// is a small label (usually a subdivision of a larger one) that exclusively
+	// handles releases by that artist.
+	LinkType_PersonalLabel_Artist_Label LinkType = 723
+	// This indicates a personal publishing label for an artist. A personal
+	// publishing label is a small label (usually a subdivision of a larger one)
+	// that exclusively handles the rights to works by that artist.
+	LinkType_PersonalPublisher_Artist_Label LinkType = 724
 	// This relationship indicates the artist is the <a
 	// href="//en.wikipedia.org/wiki/Sound_recording_copyright_symbol"
 	// target="_blank">phonographic copyright</a> holder for this recording,
@@ -1912,11 +2017,14 @@ const (
 	LinkType_Producer_Artist_Recording LinkType = 141
 	// This indicates an artist who is responsible for the creative and practical
 	// day-to-day aspects involved with making a musical recording.
-	LinkType_Producer_Artist_Release     LinkType = 30
-	LinkType_Production_Artist_Recording LinkType = 160
-	LinkType_Production_Artist_Release   LinkType = 59
-	LinkType_Production_Recording_URL    LinkType = 256
-	LinkType_Production_Release_URL      LinkType = 72
+	LinkType_Producer_Artist_Release LinkType = 30
+	// This indicates that an artist was officially employed by a label as a
+	// producer.
+	LinkType_ProducerPosition_Artist_Label LinkType = 117
+	LinkType_Production_Artist_Recording   LinkType = 160
+	LinkType_Production_Artist_Release     LinkType = 59
+	LinkType_Production_Recording_URL      LinkType = 256
+	LinkType_Production_Release_URL        LinkType = 72
 	// This links a recording to the artist who did the programming for electronic
 	// instruments used on the recording. In the most cases, the 'electronic
 	// instrument' is either a synthesizer or a drum machine.
@@ -1933,6 +2041,8 @@ const (
 	// <strong>not</strong> the same concept as the <a href="/doc/Label">record
 	// label</a>.
 	LinkType_Published_Label_Release LinkType = 362
+	// This allows linking a series to the label who publishes it.
+	LinkType_PublishesSeries_Label_Series LinkType = 933
 	// Publishers should be added on works instead. Keep in mind this is
 	// <strong>not</strong> the same concept as the <a href="/doc/Label"
 	// target="_blank">record label</a>.
@@ -1951,6 +2061,9 @@ const (
 	// Indicates the publisher of this work. This is <strong>not</strong> the same
 	// concept as the <a href="/doc/Label">record label</a>.
 	LinkType_Publishing_Label_Work LinkType = 208
+	// This is used to link to a page where the label's releases can be purchased
+	// for download.
+	LinkType_PurchaseForDownload_Label_URL LinkType = 959
 	// This is used to link to a page where the recording can be purchased for
 	// download.
 	LinkType_PurchaseForDownload_Recording_URL LinkType = 254
@@ -1960,6 +2073,9 @@ const (
 	// This relationship type is used to link to a page where the score / sheet
 	// music for this work can be legally purchased for download.
 	LinkType_PurchaseForDownload_URL_Work LinkType = 912
+	// This relationship type is used to link to a page where the label's releases
+	// can be purchased for mail order.
+	LinkType_PurchaseForMailOrder_Label_URL LinkType = 960
 	// This relationship type is used to link to a page where the release can be
 	// purchased for mail order.
 	LinkType_PurchaseForMailOrder_Release_URL LinkType = 79
@@ -1999,6 +2115,8 @@ const (
 	// recording devices, or as simple as pressing the 'record' button on a
 	// 4-track.
 	LinkType_Recording_Artist_Release LinkType = 36
+	// This indicates that an artist had a recording contract with a label.
+	LinkType_RecordingContract_Artist_Label LinkType = 121
 	// This relationship type is <strong>deprecated</strong>! <a
 	// href="/doc/Style/Recording#Recordings_with_Different_Mastering">Different
 	// remasters should be merged.</a>
@@ -2074,6 +2192,9 @@ const (
 	LinkType_SamplesMaterial_Recording_Recording LinkType = 231
 	// Indicates that the recording contains samples from this release.
 	LinkType_SamplesMaterial_Recording_Release LinkType = 69
+	// This is used to link a label to its corresponding page in the
+	// SecondHandSongs database.
+	LinkType_Secondhandsongs_Label_URL LinkType = 977
 	// This is used to link a recording to its corresponding page in the
 	// SecondHandSongs database.
 	LinkType_Secondhandsongs_Recording_URL LinkType = 976
@@ -2090,6 +2211,12 @@ const (
 	// taken from an album release group. This allows a release group to be linked
 	// to its associated singles and EPs.
 	LinkType_SingleFrom_ReleaseGroup_ReleaseGroup LinkType = 11
+	// A social network page is a label's own page on a <a
+	// href="https://en.wikipedia.org/wiki/Social_networking_service">social
+	// network</a> which only people involved with the label can post content to.
+	// Examples include Facebook pages, and accounts on Twitter, Instagram and
+	// Flickr.
+	LinkType_SocialNetwork_Label_URL LinkType = 218
 	// This links an entity to the appropriate listing in the Songfacts database, a
 	// user contributed database concerned with the stories behind the songs.
 	LinkType_Songfacts_URL_Work LinkType = 289
@@ -2101,6 +2228,12 @@ const (
 	// artists make reach the microphones sounding pleasant, without unwanted
 	// resonance or noise. Sometimes known as acoustical engineering.
 	LinkType_Sound_Artist_Release LinkType = 29
+	// This links a label to its profile at SoundCloud.
+	LinkType_Soundcloud_Label_URL LinkType = 290
+	// This relationship type is used to link a label to a site where music can be
+	// legally streamed for a subscription fee, e.g. Apple Music. If the site
+	// allows free streaming, use "free streaming" instead.
+	LinkType_Streaming_Label_URL LinkType = 1005
 	// This relationship type is used to link a track to a site where the track can
 	// be legally streamed for a subscription fee, e.g. Tidal. If the site allows
 	// free streaming, use "free streaming" instead.
@@ -2146,6 +2279,10 @@ const (
 	// the label. Often they are various artist compilations, but a single artist
 	// can perform the entire tribute album.
 	LinkType_Tribute_Label_ReleaseGroup LinkType = 970
+	// This relationship type links a label to its corresponding page at <a
+	// href="http://vgmdb.net/">VGMdb</a>. VGMdb is a community project dedicated
+	// to cataloguing the music of video games and anime.
+	LinkType_VGMdb_Label_URL LinkType = 210
 	// This relationship type links a release to its corresponding page <a
 	// href="http://vgmdb.net/">VGMdb</a>. VGMdb is a community project dedicated
 	// to cataloguing the music of video games and anime.
@@ -2155,6 +2292,13 @@ const (
 	// community project dedicated to cataloguing the music of video games and
 	// anime.
 	LinkType_VGMdb_URL_Work LinkType = 992
+	// This points to the <a href="//viaf.org/">VIAF</a> page for this label. VIAF
+	// is an international project to make a common authority file available to
+	// libraries across the world. An authority file is similar to an MBID for
+	// libraries. (<a
+	// href="//en.wikipedia.org/wiki/Virtual_International_Authority_File">more
+	// information on Wikipedia</a>)
+	LinkType_VIAF_Label_URL LinkType = 311
 	// This points to the <a href="//viaf.org/">VIAF</a> page for this work. VIAF
 	// is an international project to make a common authority file available to
 	// libraries across the world. An authority file is similar to an MBID for
@@ -2168,6 +2312,9 @@ const (
 	// This indicates that an artist appears on a music video, but doesn't actually
 	// perform on the audio track.
 	LinkType_VideoAppearance_Artist_Recording LinkType = 858
+	// This links a label to a channel, playlist, or user page on a video sharing
+	// site containing videos curated by it.
+	LinkType_VideoChannel_Label_URL LinkType = 304
 	// This indicates the artist was the director of this music video.
 	LinkType_VideoDirector_Artist_Recording LinkType = 962
 	// This indicates the video was shot at/during this event.
@@ -2195,12 +2342,17 @@ const (
 	// that turn a composition into a form that can be played by a specific type of
 	// ensemble.
 	LinkType_VocalArranger_Artist_Work LinkType = 294
+	// Points to the Wikidata page for this label, and will be used to fetch
+	// Wikipedia summaries
+	LinkType_Wikidata_Label_URL LinkType = 354
 	// Points to the Wikidata page for this release group, and will be used to
 	// fetch Wikipedia summaries
 	LinkType_Wikidata_ReleaseGroup_URL LinkType = 353
 	// Points to the Wikidata page for this work, and will be used to fetch
 	// Wikipedia summaries
 	LinkType_Wikidata_URL_Work LinkType = 351
+	// This is used to link a label to its corresponding Wikipedia page.
+	LinkType_Wikipedia_Label_URL LinkType = 216
 	// Points to the Wikipedia page for this album.
 	LinkType_Wikipedia_ReleaseGroup_URL LinkType = 89
 	// Points to the Wikipedia page for this work.
@@ -2224,6 +2376,8 @@ const (
 	LinkType_WrittenAt_Place_Work LinkType = 874
 	// This links a work with the area it was written in.
 	LinkType_WrittenIn_Area_Work LinkType = 873
+	// This links a label to the equivalent entry at YouTube.
+	LinkType_YouTube_Label_URL LinkType = 225
 )
 
 // MediumFormat describes a medium's format (e.g. CD, cassette, digital media).

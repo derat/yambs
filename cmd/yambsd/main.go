@@ -223,7 +223,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 
 	case "text":
 		typ := seed.Entity(req.FormValue("type"))
-		if !checkEnum(typ, seed.RecordingEntity, seed.ReleaseEntity, seed.WorkEntity) {
+		if !checkEnum(typ, seed.LabelEntity, seed.RecordingEntity, seed.ReleaseEntity, seed.WorkEntity) {
 			return nil, httpErrorf(http.StatusBadRequest, "bad type %q", string(typ))
 		}
 		format := text.Format(req.FormValue("format"))

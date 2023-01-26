@@ -15,6 +15,8 @@ import (
 func SetExample(typ seed.Entity) string {
 	const editNote = "edit_note=https://www.example.org/"
 	switch typ {
+	case seed.LabelEntity:
+		return "type=7\n" + editNote
 	case seed.RecordingEntity:
 		return "artist=7e84f845-ac16-41fe-9ff8-df12eb32af55\n" + editNote
 	case seed.ReleaseEntity:
@@ -28,6 +30,8 @@ func SetExample(typ seed.Entity) string {
 // FieldsExample returns an example value for the web interface's "fields" input.
 func FieldsExample(typ seed.Entity) string {
 	switch typ {
+	case seed.LabelEntity:
+		return "name,begin_date"
 	case seed.RecordingEntity:
 		return "name,length"
 	case seed.ReleaseEntity:
@@ -42,6 +46,14 @@ func FieldsExample(typ seed.Entity) string {
 func InputExample(typ seed.Entity, format Format) string {
 	if format == KeyVal {
 		switch typ {
+		case seed.LabelEntity:
+			return strings.TrimLeft(`
+mbid=02442aba-cf00-445c-877e-f0eaa504d8c2
+rel0_target=43bcfb95-f26c-4f8d-84f8-7b2ac5b8ab72
+rel0_type=362
+rel1_target=a9d8b538-c20a-4025-aea1-5530d616a20a
+rel1_type=362
+edit_note=https://www.example.org/`, "\n")
 		case seed.RecordingEntity:
 			return strings.TrimLeft(`
 name=Recording Name
@@ -80,6 +92,11 @@ edit_note=https://www.example.org/`, "\n")
 
 	var rows [][]string
 	switch typ {
+	case seed.LabelEntity:
+		rows = [][]string{
+			{"Some Label", "1985-02-13"},
+			{"Another Label", "2016"},
+		}
 	case seed.RecordingEntity:
 		rows = [][]string{
 			{"Recording Name", "4:35.16"},

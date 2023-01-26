@@ -345,7 +345,8 @@
           </select>
           <label for="form-text-type-select">Type:</label>
           <select id="form-text-type-select">
-            <option value="recording">Recording</option>
+            <option value="label">Label</option>
+            <option value="recording" selected>Recording</option>
             <option value="release">Release</option>
             <option value="work">Work</option>
           </select>
@@ -495,7 +496,7 @@
       }
 
       const selType = formTextTypeSelect.value;
-      for (const type of ['recording', 'release', 'work']) {
+      for (const type of ['label', 'recording', 'release', 'work']) {
         const visible = formTextFieldsTableShown && type === selType;
         $(`form-text-${type}-fields-table`).classList.toggle('visible', visible);
       }

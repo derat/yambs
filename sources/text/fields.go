@@ -53,6 +53,7 @@ type fieldInfo struct {
 }
 
 var typeFields = map[seed.Entity]map[string]fieldInfo{
+	seed.LabelEntity:     labelFields,
 	seed.RecordingEntity: recordingFields,
 	seed.ReleaseEntity:   releaseFields,
 	seed.WorkEntity:      workFields,
@@ -68,6 +69,8 @@ func SetField(edit seed.Edit, field, val string) error {
 		return err
 	}
 	switch tedit := edit.(type) {
+	case *seed.Label:
+		return fn.(func(*seed.Label, string, string) error)(tedit, field, val)
 	case *seed.Recording:
 		return fn.(func(*seed.Recording, string, string) error)(tedit, field, val)
 	case *seed.Release:
@@ -309,6 +312,8 @@ func ParseSetCommands(cmds []string, typ seed.Entity) ([][2]string, error) {
 	// This is a bit hokey: create a throwaway edit to use to test the commands.
 	var edit seed.Edit
 	switch typ {
+	case seed.LabelEntity:
+		edit = &seed.Label{}
 	case seed.RecordingEntity:
 		edit = &seed.Recording{}
 	case seed.ReleaseEntity:

@@ -454,6 +454,7 @@ var linkAttrTypeMappings = map[string]string{
 // This is used to prune the link_type table based on its entity_type0 and
 // entity_type1 columns.
 var seedEntityTypes = map[string]bool{
+	"label":         true,
 	"recording":     true,
 	"release":       true,
 	"release_group": true,

@@ -45,6 +45,7 @@ func main() {
 	entity := enumFlag{
 		val: "", // empty default
 		allowed: []string{
+			string(seed.LabelEntity),
 			string(seed.RecordingEntity),
 			string(seed.ReleaseEntity),
 			string(seed.WorkEntity),

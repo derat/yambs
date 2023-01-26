@@ -85,6 +85,8 @@ func Read(ctx context.Context, r io.Reader, format Format, typ seed.Entity,
 
 		var edit seed.Edit
 		switch typ {
+		case seed.LabelEntity:
+			edit = &seed.Label{}
 		case seed.RecordingEntity:
 			edit = &seed.Recording{}
 		case seed.ReleaseEntity:
