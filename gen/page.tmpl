@@ -538,6 +538,7 @@
         );
       }
       updatePermalink();
+      updateGenButton();
     }
 
     // Updates the permalink's URL to reflect the UI's current state.
@@ -592,6 +593,14 @@
       updateFormUI(false /* save */);
     }
 
+    // Updates |formGenButton|'s disabled state based on whether input has been provided.
+    function updateGenButton() {
+      const src = formSourceSelect.value;
+      formGenButton.disabled =
+        (src === 'online' && formOnlineUrlInput.value.trim() === '') ||
+        (src === 'text' && formTextInputTextarea.value.trim() === '');
+    }
+
     // Clears form fields. Select elements are left unchanged.
     function clearFormFields() {
       formOnlineUrlInput.value = '';
@@ -599,6 +608,7 @@
       formTextSetTextarea.value = '';
       setFormTextInputTextareaValue('');
       updatePermalink();
+      updateGenButton();
     }
 
     // Sets |formTextInputFileInput|'s value.
@@ -686,6 +696,9 @@
       // if the user types and then immediately moves the pointer to the link.
       formTextSetTextarea.addEventListener('input', updatePermalink);
       formTextFieldsInput.addEventListener('input', updatePermalink);
+
+      formOnlineUrlInput.addEventListener('input', updateGenButton);
+      formTextInputTextarea.addEventListener('input', updateGenButton);
 
       formTextToggleFieldsButton.addEventListener('click', () => {
         formTextFieldsTableShown = !formTextFieldsTableShown;
