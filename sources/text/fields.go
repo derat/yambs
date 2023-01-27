@@ -53,6 +53,7 @@ type fieldInfo struct {
 }
 
 var typeFields = map[seed.Entity]map[string]fieldInfo{
+	seed.ArtistEntity:    artistFields,
 	seed.LabelEntity:     labelFields,
 	seed.RecordingEntity: recordingFields,
 	seed.ReleaseEntity:   releaseFields,
@@ -69,6 +70,8 @@ func SetField(edit seed.Edit, field, val string) error {
 		return err
 	}
 	switch tedit := edit.(type) {
+	case *seed.Artist:
+		return fn.(func(*seed.Artist, string, string) error)(tedit, field, val)
 	case *seed.Label:
 		return fn.(func(*seed.Label, string, string) error)(tedit, field, val)
 	case *seed.Recording:

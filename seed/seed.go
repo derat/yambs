@@ -22,6 +22,7 @@ const (
 type Entity string
 
 const (
+	ArtistEntity    Entity = "artist"
 	LabelEntity     Entity = "label"
 	RecordingEntity Entity = "recording"
 	ReleaseEntity   Entity = "release"
@@ -31,6 +32,7 @@ const (
 
 // EntityTypes lists real database entity types in alphabetical order.
 var EntityTypes = []Entity{
+	ArtistEntity,
 	LabelEntity,
 	RecordingEntity,
 	ReleaseEntity,

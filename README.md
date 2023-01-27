@@ -7,8 +7,8 @@ database.
 
 It can simplify adding multiple standalone recordings: given a [CSV] or [TSV]
 file describing recordings, `yambs` can open the [Add Standalone Recording] page
-for each with various fields pre-filled. The [Add Label] and [Add Work] pages
-can be seeded in a similar manner.
+for each with various fields pre-filled. The [Add Artist], [Add Label], and
+[Add Work] pages can be seeded in a similar manner.
 
 `yambs` can also read `key=value` lines from text files to seed the [Add
 Release] page, and it can use [Bandcamp] and [Qobuz] album pages and local MP3
@@ -20,6 +20,7 @@ There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 [CSV]: https://en.wikipedia.org/wiki/Comma-separated_values
 [TSV]: https://en.wikipedia.org/wiki/Tab-separated_values
 [Add Standalone Recording]: https://musicbrainz.org/recording/create
+[Add Artist]: https://musicbrainz.org/artist/create
 [Add Label]: https://musicbrainz.org/label/create
 [Add Work]: https://musicbrainz.org/work/create
 [Add Release]: http://musicbrainz.org/release/add

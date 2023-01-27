@@ -208,6 +208,8 @@ func newRowReader(r io.Reader, format Format, fields []string) (
 // nil is returned if the type is unsupported.
 func newEdit(typ seed.Entity) seed.Edit {
 	switch typ {
+	case seed.ArtistEntity:
+		return &seed.Artist{}
 	case seed.LabelEntity:
 		return &seed.Label{}
 	case seed.RecordingEntity:
