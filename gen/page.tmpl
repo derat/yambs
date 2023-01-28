@@ -644,10 +644,14 @@
           // Set commands and the field list aren't used for the keyval format.
           if (['csv', 'tsv'].includes(format)) {
             // Trim whitespace at the beginning of lines and then drop empty lines.
+            // Also unescape backslash sequences so it's possible to supply multiline edit notes.
             formTextSetTextarea.value
               .split('\n')
               .map((v) => v.trimStart())
               .filter(Boolean)
+              .map((v) =>
+                v.replace(/\\./g, (m) => (m[1] === 'n' ? '\n' : m[1] === 't' ? '\t' : m[1]))
+              )
               .forEach((v) => body.append('set', v));
 
             const fields = formTextFieldsInput.value.trim();

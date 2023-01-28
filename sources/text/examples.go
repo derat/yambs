@@ -13,7 +13,7 @@ import (
 
 // SetExample returns an example value for the web interface's "set" textarea.
 func SetExample(typ seed.Entity) string {
-	const editNote = "edit_note=https://www.example.org/"
+	const editNote = `edit_note=https://example.org/\nsee also edit #123`
 	switch typ {
 	case seed.ArtistEntity:
 		return "type=1\ngender=1\n" + editNote
