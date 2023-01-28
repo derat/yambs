@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/derat/yambs/db"
-	"github.com/derat/yambs/gen"
+	"github.com/derat/yambs/render"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online"
 	"github.com/derat/yambs/sources/text"
@@ -63,7 +63,7 @@ func main() {
 
 	// Just generate the page once.
 	var b bytes.Buffer
-	if err := gen.Write(&b, nil, gen.Version(version)); err != nil {
+	if err := render.Write(&b, nil, render.Version(version)); err != nil {
 		log.Fatal("Failed generating page: ", err)
 	}
 	form := b.Bytes()
@@ -171,10 +171,10 @@ func httpErrorf(code int, format string, args ...interface{}) *httpError {
 	return &httpError{code: code, err: fmt.Errorf(format, args...)}
 }
 
-// getEditsForRequest generates gen.EditInfo objects in response to a /edits request to the server.
+// getEditsForRequest generates render.EditInfo objects in response to an /edits request to the server.
 func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
 	rm *rateMap, mbdb *db.DB) (
-	[]*gen.EditInfo, error) {
+	[]*render.EditInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
 	}
@@ -249,7 +249,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	default:
 		return nil, httpErrorf(http.StatusBadRequest, "bad source %q", req.FormValue("source"))
 	}
-	return gen.NewEditInfos(edits, mbServer)
+	return render.NewEditInfos(edits, mbServer)
 }
 
 // clientAddr returns the client's address (which may be either "ip" or "ip:port").

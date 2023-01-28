@@ -32,11 +32,11 @@ type imgInfo struct {
 	path string // path to temp file containing image data
 }
 
-// getImages returns information about images stored in gen.
+// getImages returns information about images stored in gtag.
 // Image data is written to temporary files.
-func getImages(gen taglib.GenericTag) ([]imgInfo, error) {
+func getImages(gtag taglib.GenericTag) ([]imgInfo, error) {
 	var infos []imgInfo
-	switch tag := gen.(type) {
+	switch tag := gtag.(type) {
 	case *id3.Id3v23Tag:
 		for _, frame := range tag.Frames[imgFrameID] {
 			info, err := readImageFrame(frame.Content)

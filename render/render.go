@@ -1,8 +1,8 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-// Package gen generates HTML pages listing edits.
-package gen
+// Package render generates HTML pages listing edits.
+package render
 
 import (
 	"bytes"

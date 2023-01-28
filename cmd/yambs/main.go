@@ -20,7 +20,7 @@ import (
 	"strings"
 
 	"github.com/derat/yambs/db"
-	"github.com/derat/yambs/gen"
+	"github.com/derat/yambs/render"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/mp3"
 	"github.com/derat/yambs/sources/online"
@@ -153,14 +153,14 @@ func main() {
 			}
 		}
 
-		opts := []gen.Option{
-			gen.Server(*server),
-			gen.Version(version), // not actually displayed
+		opts := []render.Option{
+			render.Server(*server),
+			render.Version(version), // not actually displayed
 		}
 
 		switch action.val {
 		case actionOpen:
-			if err := gen.OpenFile(edits, opts...); err != nil {
+			if err := render.OpenFile(edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed opening page:", err)
 				return 1
 			}
@@ -180,12 +180,12 @@ func main() {
 				fmt.Println(u.String())
 			}
 		case actionServe:
-			if err := gen.OpenHTTP(ctx, *addr, edits, opts...); err != nil {
+			if err := render.OpenHTTP(ctx, *addr, edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed serving page:", err)
 				return 1
 			}
 		case actionWrite:
-			if err := gen.Write(os.Stdout, edits, opts...); err != nil {
+			if err := render.Write(os.Stdout, edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed writing page:", err)
 				return 1
 			}
