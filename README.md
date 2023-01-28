@@ -73,7 +73,7 @@ Seeds MusicBrainz edits.
   -set value
     	Set a field for all entities (e.g. "edit_note=from https://www.example.org")
   -type value
-    	Entity type for text or MP3 input (recording, release, work)
+    	Entity type for text or MP3 input (artist, label, recording, release, work)
   -verbose
     	Enable verbose logging
   -version
