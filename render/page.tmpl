@@ -331,6 +331,7 @@
             id="form-online-url-input"
             type="text"
             placeholder="https://example.bandcamp.com/album/some-album"
+            autofocus
           />
         </div>
       </div>
@@ -764,6 +765,9 @@
         clearFormFields();
         hideFormError();
         showEdits([]);
+
+        // Make it easy to paste another URL.
+        if (formSourceSelect.value === 'online') formOnlineUrlInput.focus();
       });
     })();
   </script>
@@ -853,7 +857,10 @@
     function showEdits(edits) {
       if (edits.length) {
         editSection.classList.add('visible');
-        window.setTimeout(() => editSection.scrollIntoView(false /* alignToTop */));
+        window.setTimeout(() => {
+          editSection.scrollIntoView(false /* alignToTop */);
+          editOpenAllButton.focus();
+        });
       } else {
         editSection.classList.remove('visible');
       }
