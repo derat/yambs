@@ -179,6 +179,9 @@
       input[type='text'] {
         padding: 2px 4px;
       }
+      input[type='checkbox'] {
+        vertical-align: bottom; /* prevent checkbox from being too high */
+      }
       select {
         padding: 2px;
         margin-right: var(--margin);
@@ -334,6 +337,15 @@
             autofocus
           />
         </div>
+        <div class="form-row">
+          <input id="form-online-extract-artists-checkbox" type="checkbox" />
+          <label
+            for="form-online-extract-artists-checkbox"
+            title='e.g. "Artist 1 & Artist 2 - Track Title"'
+          >
+            Extract artist names from track titles in Bandcamp pages
+          </label>
+        </div>
       </div>
 
       <div id="form-text-section" class="section">
@@ -474,6 +486,7 @@
     const uiStateKey = 'uiState';
     const formSourceSelect = $('form-source-select');
     const formOnlineUrlInput = $('form-online-url-input');
+    const formOnlineExtractArtistsCheckbox = $('form-online-extract-artists-checkbox');
     const formTextFormatSelect = $('form-text-format-select');
     const formTextTypeSelect = $('form-text-type-select');
     const formTextCsvTsvSection = $('form-text-csv-tsv-section');
@@ -605,6 +618,7 @@
     // Clears form fields. Select elements are left unchanged.
     function clearFormFields() {
       formOnlineUrlInput.value = '';
+      formOnlineExtractArtistsCheckbox.checked = false;
       formTextFieldsInput.value = '';
       formTextSetTextarea.value = '';
       setFormTextInputTextareaValue('');
@@ -678,6 +692,7 @@
           // section that displays the fields for releases.
           body.set('source', 'online');
           body.set('url', formOnlineUrlInput.value.trim());
+          if (formOnlineExtractArtistsCheckbox.checked) body.set('extractTrackArtists', '1');
           break;
       }
 

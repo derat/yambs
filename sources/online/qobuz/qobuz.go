@@ -17,10 +17,11 @@ import (
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
 )
 
-// Provider implements online.Provider for Qobuz.
+// Provider implements internal.Provider for Qobuz.
 type Provider struct{}
 
 // pathRegexp matches a path like "/album/hyttetur-2-svartepetter/e3qy2e01fbs9a" or
@@ -66,7 +67,7 @@ func (p *Provider) ExampleURL() string { return "https://www.qobuz.com/us-en/alb
 
 // Release extracts release information from the supplied Qobuz page.
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
-	db *db.DB, network bool) (rel *seed.Release, img *seed.Info, err error) {
+	db *db.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
 	// The HTML is a mess (e.g. the date format differs depending on the locale),
 	// so get what we can from the structured data.
 	var data structData
@@ -182,7 +183,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 
 	// Fill unset fields where possible.
-	rel.Autofill(ctx, network)
+	rel.Autofill(ctx, !cfg.DisallowNetwork)
 
 	return rel, img, nil
 }

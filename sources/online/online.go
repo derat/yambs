@@ -11,6 +11,7 @@ import (
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/bandcamp"
+	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/sources/online/qobuz"
 	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
@@ -33,7 +34,13 @@ func CleanURL(orig string) (string, error) {
 }
 
 // Fetch generates seeded edits from the page at url.
-func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]seed.Edit, error) {
+// If cfg is nil, a default configuration will be used.
+func Fetch(ctx context.Context, url string, rawSetCmds []string,
+	db *db.DB, cfg *Config) ([]seed.Edit, error) {
+	if cfg == nil {
+		cfg = &Config{}
+	}
+
 	setCmds, err := text.ParseSetCommands(rawSetCmds, seed.ReleaseEntity)
 	if err != nil {
 		return nil, err
@@ -43,7 +50,7 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]s
 	if err != nil {
 		return nil, err
 	}
-	rel, img, err := selectProvider(url).Release(ctx, page, url, db, true /* network */)
+	rel, img, err := selectProvider(url).Release(ctx, page, url, db, (*internal.Config)(cfg))
 	if err != nil {
 		return nil, err
 	}
@@ -63,20 +70,12 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string, db *db.DB) ([]s
 	return edits, nil
 }
 
-// Provider gets information from an online music provider.
-type Provider interface {
-	// CleanURL returns a normalized version of the supplied URL.
-	// An error is returned if the URL doesn't match a supported format for the provider.
-	CleanURL(orig string) (string, error)
-	// Release extracts release information from the supplied page.
-	// The img return value is nil if a cover image is not found.
-	Release(ctx context.Context, page *web.Page, url string, db *db.DB, network bool) (
-		rel *seed.Release, img *seed.Info, err error)
-	// ExampleURL returns an example URL that can be displayed to the user.
-	ExampleURL() string
-}
+// Config configures Fetch's behavior.
+// Aliasing an internal type like this is weird, but it avoids a circular dependency
+// (subpackages can't depend on this package since it depends on the subpackages).
+type Config internal.Config
 
-var allProviders = []Provider{
+var allProviders = []internal.Provider{
 	&bandcamp.Provider{},
 	&qobuz.Provider{},
 }
@@ -91,7 +90,7 @@ func init() {
 }
 
 // selectProvider chooses the appropriate provider for handling url.
-func selectProvider(url string) Provider {
+func selectProvider(url string) internal.Provider {
 	for _, p := range allProviders {
 		if _, err := p.CleanURL(url); err == nil {
 			return p

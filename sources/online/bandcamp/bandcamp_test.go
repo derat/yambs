@@ -7,12 +7,14 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/net/html"
@@ -25,6 +27,7 @@ func TestRelease(t *testing.T) {
 
 	// Add canned MBIDs for artists and label lookups.
 	for url, mbid := range map[string]string{
+		"https://anti-mass.bandcamp.com/":       "7fa907c9-35a0-40dd-b926-8c962782ba1d",
 		"https://louiezong.bandcamp.com/":       "0e2c603f-fd71-4ab6-af96-92c3e936586d",
 		"https://louiscole.bandcamp.com/":       "525ef747-abf6-423c-98b4-cd49c0c07927",
 		"https://pillarsinthesky.bandcamp.com/": "7ba8b326-34ba-472b-b710-b01dc1f14f94",
@@ -36,15 +39,57 @@ func TestRelease(t *testing.T) {
 	for url, mbid := range map[string]string{
 		"https://brainfeeder.bandcamp.com/": "20b3d6f9-9086-48d9-802f-5f808456a0ef",
 		// "https://mascotlabelgroup.bandcamp.com/" omitted
+		"https://syssistersounds.bandcamp.com/": "2583b10d-0528-4281-8d2f-31d9a64a570c",
 	} {
 		db.SetLabelMBIDFromURLForTest(url, mbid)
 	}
 
 	for _, tc := range []struct {
-		url string
-		rel *seed.Release
-		img string
+		url                 string
+		extractTrackArtists bool
+		rel                 *seed.Release
+		img                 string
 	}{
+		{
+			// This is a compilation album with artist name(s) at the beginning of each track.
+			// Check that they get extracted when ExtractTrackArtists is true.
+			url:                 "https://anti-mass.bandcamp.com/album/doxa",
+			extractTrackArtists: true,
+			rel: &seed.Release{
+				Title:     "DOXA",
+				Types:     nil,
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2021, Month: 10, Day: 7}, Country: "XW"}},
+				Artists: []seed.ArtistCredit{{
+					MBID: "7fa907c9-35a0-40dd-b926-8c962782ba1d",
+					Name: "ANTI-MASS",
+				}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Galiba", Artists: artists("Authentically Plastic", "Nsasi"), Length: sec(230)},
+						{Title: "Grind", Artists: artists("Nsasi"), Length: sec(156)},
+						{Title: "Diesel Femme", Artists: artists("Turkana", "Authentically Plastic"), Length: sec(260)},
+						{Title: "Influencer Convention", Artists: artists("Turkana"), Length: sec(240)},
+						{Title: "Binia Yei", Artists: artists("Nsasi", "Turkana"), Length: sec(232)},
+						{Title: "Sabula", Artists: artists("Authentically Plastic"), Length: sec(234)},
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://anti-mass.bandcamp.com/album/doxa",
+						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
+					},
+					{
+						URL:      "https://anti-mass.bandcamp.com/album/doxa",
+						LinkType: seed.LinkType_FreeStreaming_Release_URL,
+					},
+				},
+			},
+			img: "https://f4.bcbits.com/img/a2017435297_0.jpg",
+		},
 		{
 			// This album has a hidden track, which should be included in the tracklist.
 			// It also shouldn't have a stream-for-free link since the hidden track can't be streamed.
@@ -171,6 +216,37 @@ func TestRelease(t *testing.T) {
 			img: "https://f4.bcbits.com/img/a2320496643_0.jpg",
 		},
 		{
+			// This is a non-album track with the artist's name prefixed to its title.
+			// The artist name should be stripped even without setting ExtractTrackArtists.
+			url: "https://syssistersounds.bandcamp.com/track/apsara",
+			rel: &seed.Release{
+				Title:     "Apsara",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 5, Day: 18}, Country: "XW"}},
+				Artists:   []seed.ArtistCredit{{Name: "Maggie Tra"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Apsara", Length: sec(212.574)},
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://syssistersounds.bandcamp.com/track/apsara",
+						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
+					},
+					{
+						URL:      "https://syssistersounds.bandcamp.com/track/apsara",
+						LinkType: seed.LinkType_FreeStreaming_Release_URL,
+					},
+				},
+			},
+			img: "https://f4.bcbits.com/img/a0574189382_0.jpg",
+		},
+		{
 			// This album has a Creative Commons license.
 			url: "https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
 			rel: &seed.Release{
@@ -268,7 +344,11 @@ func TestRelease(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := pr.Release(ctx, page, tc.url, db, false /* network */)
+			cfg := internal.Config{
+				ExtractTrackArtists: tc.extractTrackArtists,
+				DisallowNetwork:     true,
+			}
+			rel, img, err := pr.Release(ctx, page, tc.url, db, &cfg)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}
@@ -298,6 +378,38 @@ func getFilename(url string) string {
 
 func sec(sec float64) time.Duration {
 	return time.Duration(sec * float64(time.Second))
+}
+
+func artists(names ...string) []seed.ArtistCredit {
+	credits := make([]seed.ArtistCredit, len(names))
+	for i, n := range names {
+		credits[i].Name = n
+		if i == len(names)-2 {
+			credits[i].JoinPhrase = " & "
+		} else if i < len(names)-2 {
+			credits[i].JoinPhrase = ", "
+		}
+	}
+	return credits
+}
+
+func TestExtractTrackArtists(t *testing.T) {
+	for _, tc := range []struct {
+		orig, track string
+		artists     []string
+	}{
+		{"The Title", "The Title", nil},
+		{"Artist Name - The Title", "The Title", []string{"Artist Name"}},
+		{"Artist Name & Someone Else - The Title", "The Title", []string{"Artist Name", "Someone Else"}},
+		{"Artist Name, Someone Else & Me - The Title", "The Title", []string{"Artist Name", "Someone Else", "Me"}},
+		{"Artist Name - The Title - More Junk", "The Title - More Junk", []string{"Artist Name"}},
+	} {
+		track, artists := extractTrackArtists(tc.orig)
+		if track != tc.track || !reflect.DeepEqual(artists, tc.artists) {
+			t.Errorf("extractTrackArtists(%q) = %q, %q; want %q, %q",
+				tc.orig, track, artists, tc.track, tc.artists)
+		}
+	}
 }
 
 func TestCleanURL(t *testing.T) {

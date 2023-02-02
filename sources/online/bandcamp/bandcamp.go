@@ -18,18 +18,19 @@ import (
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
 	"golang.org/x/net/html"
 )
 
-// Provider implements online.Provider for Bandcamp.
+// Provider implements internal.Provider for Bandcamp.
 type Provider struct{}
 
 // Release extracts release information from the supplied Bandcamp page.
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
-	db *db.DB, network bool) (rel *seed.Release, img *seed.Info, err error) {
+	db *db.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(pageURL, "http://") {
 		pageURL = "https" + pageURL[4:]
@@ -91,15 +92,35 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	// Add a single medium with all of the tracks.
 	med := &rel.Mediums[0]
 	var streamableTracks int
+	artistPrefix := album.Artist + " - "
 	for _, tr := range album.TrackInfo {
-		// TODO: If we previously guessed that this release has various artists,
-		// try to parse them from the title here. The userscript uses "^(.+) - (.+)$",
-		// but the MB data also has an "artist" field -- is it used? Seems to be null
-		// for single-artist albums.
-		med.Tracks = append(med.Tracks, seed.Track{
+		track := seed.Track{
 			Title:  tr.Title,
 			Length: time.Duration(float64(time.Second) * tr.Duration),
-		})
+		}
+		if cfg.ExtractTrackArtists {
+			var artists []string
+			track.Title, artists = extractTrackArtists(tr.Title)
+			for i, name := range artists {
+				ac := seed.ArtistCredit{Name: name}
+				// TODO: Would it be better to not hardcode these join phrases?
+				// It probably doesn't matter right now since these are the only ones
+				// that extractTrackArtists() understands.
+				if i < len(artists)-2 {
+					ac.JoinPhrase = ", "
+				} else if i == len(artists)-2 {
+					ac.JoinPhrase = " & "
+				}
+				track.Artists = append(track.Artists, ac)
+			}
+		} else if strings.HasPrefix(track.Title, artistPrefix) {
+			// Strip "Artist - " from the beginning of the track title even
+			// if we weren't explicitly told to extract artist names:
+			// https://github.com/derat/yambs/issues/16
+			track.Title = track.Title[len(artistPrefix):]
+		}
+		med.Tracks = append(med.Tracks, track)
+
 		if len(tr.File) != 0 {
 			streamableTracks++
 		}
@@ -156,6 +177,8 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 			}
 		}
 	}
+	// TODO: If we didn't get an artist MBID earlier, should we try looking up the base URL
+	// here to see if it belongs to a label?
 	if labelName != "" || labelMBID != "" {
 		rel.Labels = append(rel.Labels, seed.ReleaseLabel{
 			Name: labelName,
@@ -171,7 +194,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 
 	// Fill unset fields where possible.
-	rel.Autofill(ctx, network)
+	rel.Autofill(ctx, !cfg.DisallowNetwork)
 
 	// Add an informational edit containing the full-resolution cover art to make it easy
 	// for the user to add it in a followup edit.
@@ -268,6 +291,29 @@ func getArtistURL(orig string) string {
 		return "https://" + u.Host + "/"
 	}
 	return ""
+}
+
+// extractTrackArtists attempts to extract one or more artist names from the beginning
+// of the supplied track title.
+func extractTrackArtists(orig string) (track string, artists []string) {
+	tparts := strings.SplitN(orig, " - ", 2)
+	if len(tparts) != 2 {
+		return orig, nil
+	}
+
+	track = tparts[1]
+	aparts := strings.SplitN(tparts[0], " & ", 2)
+	if len(aparts) != 2 {
+		return track, []string{tparts[0]}
+	}
+
+	// TODO: Does Bandcamp actually use commas?
+	// Is this all just free-form based on whatever the artist/label enters?
+	for _, p := range strings.Split(aparts[0], ", ") {
+		artists = append(artists, p)
+	}
+	artists = append(artists, aparts[1])
+	return track, artists
 }
 
 // CleanURL returns a cleaned version of a Bandcamp URL like

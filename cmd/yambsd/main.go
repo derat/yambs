@@ -207,13 +207,14 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	var edits []seed.Edit
 	switch src {
 	case "online":
+		cfg := online.Config{ExtractTrackArtists: req.FormValue("extractTrackArtists") == "1"}
 		if url, err := online.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
 				code: http.StatusBadRequest,
 				msg:  fmt.Sprintf("Unsupported URL (%v)", strings.Join(online.ExampleURLs, ", ")),
 				err:  fmt.Errorf("%q: %v", req.FormValue("onlineUrl"), err),
 			}
-		} else if edits, err = online.Fetch(ctx, url, req.Form["set"], mbdb); err != nil {
+		} else if edits, err = online.Fetch(ctx, url, req.Form["set"], mbdb, &cfg); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),

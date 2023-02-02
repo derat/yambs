@@ -59,6 +59,7 @@ func main() {
 	}
 	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
 	addr := flag.String("addr", "localhost:8999", `Address to listen on for -action=serve`)
+	extractTrackArtists := flag.Bool("extract-track-artists", false, `Extract artist names from track titles in Bandcamp pages`)
 	fields := flag.String("fields", "", `Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
@@ -129,7 +130,8 @@ func main() {
 		var edits []seed.Edit
 		if srcURL != "" {
 			var err error
-			if edits, err = online.Fetch(ctx, srcURL, setCmds, db); err != nil {
+			cfg := online.Config{ExtractTrackArtists: *extractTrackArtists}
+			if edits, err = online.Fetch(ctx, srcURL, setCmds, db, &cfg); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed fetching page:", err)
 				return 1
 			}

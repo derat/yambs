@@ -13,6 +13,7 @@ import (
 
 	"github.com/derat/yambs/db"
 	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
 	"github.com/google/go-cmp/cmp"
 	"golang.org/x/net/html"
@@ -161,7 +162,8 @@ func TestRelease(t *testing.T) {
 				t.Fatal("Failed parsing HTML:", err)
 			}
 			page := &web.Page{Root: root}
-			rel, img, err := pr.Release(ctx, page, tc.url, db, false /* network */)
+			cfg := internal.Config{DisallowNetwork: true}
+			rel, img, err := pr.Release(ctx, page, tc.url, db, &cfg)
 			if err != nil {
 				t.Fatal("Failed parsing page:", err)
 			}
