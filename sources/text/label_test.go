@@ -93,10 +93,10 @@ func TestRead_Label_All(t *testing.T) {
 	want := []seed.Edit{
 		&seed.Label{
 			AreaName:       areaName,
-			BeginDate:      seed.Date{Year: beginYear, Month: beginMonth, Day: beginDay},
+			BeginDate:      seed.MakeDate(beginYear, beginMonth, beginDay),
 			Disambiguation: disambig,
 			EditNote:       editNote,
-			EndDate:        seed.Date{Year: endYear, Month: endMonth, Day: endDay},
+			EndDate:        seed.MakeDate(endYear, endMonth, endDay),
 			Ended:          true,
 			IPICodes:       []string{ipi1, ipi2},
 			ISNICodes:      []string{isni1, isni2},

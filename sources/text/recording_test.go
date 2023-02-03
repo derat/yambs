@@ -174,8 +174,8 @@ func TestRead_Recording_All(t *testing.T) {
 				{
 					Target:    relTarget,
 					Type:      relType,
-					BeginDate: seed.Date{Year: relBeginYear, Month: relBeginMonth, Day: relBeginDay},
-					EndDate:   seed.Date{Year: relEndYear, Month: relEndMonth, Day: relEndDay},
+					BeginDate: seed.MakeDate(relBeginYear, relBeginMonth, relBeginDay),
+					EndDate:   seed.MakeDate(relEndYear, relEndMonth, relEndDay),
 					Ended:     true,
 				},
 				{

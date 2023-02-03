@@ -103,11 +103,11 @@ func TestRead_Artist_All(t *testing.T) {
 		&seed.Artist{
 			AreaName:       areaName,
 			BeginAreaName:  beginAreaName,
-			BeginDate:      seed.Date{Year: beginYear, Month: beginMonth, Day: beginDay},
+			BeginDate:      seed.MakeDate(beginYear, beginMonth, beginDay),
 			Disambiguation: disambig,
 			EditNote:       editNote,
 			EndAreaName:    endAreaName,
-			EndDate:        seed.Date{Year: endYear, Month: endMonth, Day: endDay},
+			EndDate:        seed.MakeDate(endYear, endMonth, endDay),
 			Ended:          true,
 			Gender:         gender,
 			IPICodes:       []string{ipi1, ipi2},

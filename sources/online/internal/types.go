@@ -17,7 +17,11 @@ type Provider interface {
 	// CleanURL returns a normalized version of the supplied URL.
 	// An error is returned if the URL doesn't match a supported format for the provider.
 	CleanURL(orig string) (string, error)
+	// NeedsPage returns true if Release needs the page to be fetched and passed to it.
+	// Providers should return false if they use some other API to get data.
+	NeedsPage() bool
 	// Release extracts release information from the supplied page.
+	// If NeedsPage returns false, then the supplied page will be nil.
 	// The img return value is nil if a cover image is not found.
 	Release(ctx context.Context, page *web.Page, url string, db *db.DB, cfg *Config) (
 		rel *seed.Release, img *seed.Info, err error)

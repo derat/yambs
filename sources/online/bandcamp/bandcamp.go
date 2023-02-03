@@ -83,11 +83,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 	if !date.IsZero() {
 		rel.Events = []seed.ReleaseEvent{{
-			Date: seed.Date{
-				Year:  date.Year(),
-				Month: int(date.Month()),
-				Day:   date.Day(),
-			},
+			Date:    seed.DateFromTime(date),
 			Country: "XW",
 		}}
 	}
@@ -370,4 +366,5 @@ func (p *Provider) CleanURL(orig string) (string, error) {
 	return u.String(), nil
 }
 
+func (p *Provider) NeedsPage() bool    { return true }
 func (p *Provider) ExampleURL() string { return "https://artist.bandcamp.com/album/…" }

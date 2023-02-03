@@ -13,6 +13,7 @@ import (
 	"github.com/derat/yambs/sources/online/bandcamp"
 	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/sources/online/qobuz"
+	"github.com/derat/yambs/sources/online/tidal"
 	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 )
@@ -46,11 +47,17 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string,
 		return nil, err
 	}
 
-	page, err := web.FetchPage(ctx, url)
-	if err != nil {
-		return nil, err
+	prov := selectProvider(url)
+	if prov == nil {
+		return nil, errors.New("no suitable provider found")
 	}
-	rel, img, err := selectProvider(url).Release(ctx, page, url, db, (*internal.Config)(cfg))
+	var page *web.Page
+	if prov.NeedsPage() {
+		if page, err = web.FetchPage(ctx, url); err != nil {
+			return nil, err
+		}
+	}
+	rel, img, err := prov.Release(ctx, page, url, db, (*internal.Config)(cfg))
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +85,7 @@ type Config internal.Config
 var allProviders = []internal.Provider{
 	&bandcamp.Provider{},
 	&qobuz.Provider{},
+	&tidal.Provider{},
 }
 
 // ExampleURLs holds example URLs that can be displayed to the user.

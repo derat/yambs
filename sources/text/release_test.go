@@ -79,8 +79,8 @@ edit_note=https://www.example.org/
 			Status:         seed.ReleaseStatus_Official,
 			Packaging:      seed.ReleasePackaging_Digipak,
 			Events: []seed.ReleaseEvent{
-				{Date: seed.Date{Year: 2021, Month: 4, Day: 5}, Country: "xw"},
-				{Date: seed.Date{Year: 2020, Month: 1, Day: 2}},
+				{Date: seed.MakeDate(2021, 4, 5), Country: "xw"},
+				{Date: seed.MakeDate(2020, 1, 2)},
 			},
 			Labels: []seed.ReleaseLabel{
 				{MBID: "bb9bba31-cb31-440d-a813-f5bf884f6adb", CatalogNumber: "CAT012"},

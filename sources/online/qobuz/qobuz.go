@@ -63,6 +63,7 @@ func cleanURL(orig string, removeLocale bool) (string, error) {
 	return u.String(), nil
 }
 
+func (p *Provider) NeedsPage() bool    { return true }
 func (p *Provider) ExampleURL() string { return "https://www.qobuz.com/us-en/album/…" }
 
 // Release extracts release information from the supplied Qobuz page.
@@ -102,13 +103,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 
 	// Use the release date if it's plausible (i.e. not before Qobuz's launch).
 	if t, err := time.Parse(`2006-01-02`, data.ReleaseDate); err == nil && !t.Before(qobuzLaunch) {
-		rel.Events = []seed.ReleaseEvent{{
-			Date: seed.Date{
-				Year:  t.Year(),
-				Month: int(t.Month()),
-				Day:   t.Day(),
-			},
-		}}
+		rel.Events = []seed.ReleaseEvent{{Date: seed.DateFromTime(t)}}
 	}
 
 	// Add an informational edit containing the cover image URL.

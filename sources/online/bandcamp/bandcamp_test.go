@@ -61,7 +61,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2021, Month: 10, Day: 7}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2021, 10, 7), Country: "XW"}},
 				Artists: []seed.ArtistCredit{{
 					MBID: "7fa907c9-35a0-40dd-b926-8c962782ba1d",
 					Name: "ANTI-MASS",
@@ -100,7 +100,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 6, Day: 17}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2022, 6, 17), Country: "XW"}},
 				Artists: []seed.ArtistCredit{{
 					MBID: "0e2c603f-fd71-4ab6-af96-92c3e936586d",
 					Name: "Louie Zong",
@@ -153,7 +153,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 8, Day: 2}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2022, 8, 2), Country: "XW"}},
 				Labels:    []seed.ReleaseLabel{{Name: "Brainfeeder"}},
 				Artists: []seed.ArtistCredit{{
 					MBID: "525ef747-abf6-423c-98b4-cd49c0c07927",
@@ -187,7 +187,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2015, Month: 5, Day: 3}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2015, 5, 3), Country: "XW"}},
 				Artists: []seed.ArtistCredit{{
 					MBID: "7ba8b326-34ba-472b-b710-b01dc1f14f94",
 					Name: "Pillars In The Sky",
@@ -226,7 +226,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 5, Day: 18}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2022, 5, 18), Country: "XW"}},
 				Labels:    []seed.ReleaseLabel{{MBID: "2583b10d-0528-4281-8d2f-31d9a64a570c"}},
 				Artists:   []seed.ArtistCredit{{Name: "Maggie Tra"}},
 				Mediums: []seed.Medium{{
@@ -257,7 +257,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 10, Day: 22}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2022, 10, 22), Country: "XW"}},
 				Artists: []seed.ArtistCredit{{
 					MBID: "f34ae170-055d-46bc-9208-a750a646481b",
 					Name: "The Lovely Moon",
@@ -299,7 +299,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 4, Day: 1}, Country: "XW"}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2022, 4, 1), Country: "XW"}},
 				Labels:    []seed.ReleaseLabel{{Name: "Mascot Label Group"}},
 				Artists:   []seed.ArtistCredit{{Name: "VOLA"}},
 				Mediums: []seed.Medium{{

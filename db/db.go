@@ -139,11 +139,20 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 		return mbid.(string), nil
 	}
 
+	// TODO: Add negative caching? It should have a short TTL.
+
+	// If we're being called from a test, just pretend like the URL is missing.
+	if db.disallowQueries {
+		return "", nil
+	}
+
 	log.Printf("Requesting %v MBID for %v", entity, linkURL)
 	reqURL := fmt.Sprintf("https://%s/ws/2/url?resource=%s&inc=%s-rels",
 		db.server, url.QueryEscape(linkURL), entity)
 	r, err := db.doQuery(ctx, reqURL)
-	if err != nil {
+	if err == notFoundError {
+		return "", nil
+	} else if err != nil {
 		return "", err
 	}
 	defer r.Close()
@@ -192,6 +201,9 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 	return "", nil
 }
 
+// notFoundError is returned by doQuery if a 404 error was received.
+var notFoundError = errors.New("not found")
+
 // doQuery sends a GET request for url and returns the response body.
 // The caller should close the body if error is non-nil.
 func (db *DB) doQuery(ctx context.Context, url string) (io.ReadCloser, error) {
@@ -220,6 +232,9 @@ func (db *DB) doQuery(ctx context.Context, url string) (io.ReadCloser, error) {
 
 	if resp.StatusCode != 200 {
 		resp.Body.Close()
+		if resp.StatusCode == 404 {
+			return nil, notFoundError
+		}
 		return nil, fmt.Errorf("server returned %v: %v", resp.StatusCode, resp.Status)
 	}
 	return resp.Body, nil

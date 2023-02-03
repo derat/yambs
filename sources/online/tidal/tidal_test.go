@@ -1,0 +1,251 @@
+// Copyright 2023 Daniel Erat.
+// All rights reserved.
+
+package tidal
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"regexp"
+	"testing"
+	"time"
+
+	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/seed"
+	"github.com/derat/yambs/sources/online/internal"
+	"github.com/google/go-cmp/cmp"
+)
+
+func TestGetRelease(t *testing.T) {
+	ctx := context.Background()
+	api := &fakeAPICaller{}
+	cfg := &internal.Config{DisallowNetwork: true}
+
+	db := db.NewDB(db.DisallowQueries)
+	for url, mbid := range map[string]string{
+		// Add both tidal.com and stream.tidal.com URLs since both appear in the database.
+		"https://tidal.com/artist/608":            "4bd95eea-b9f6-4d70-a36c-cfea77431553",
+		"https://stream.tidal.com/artist/9091":    "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd",
+		"https://tidal.com/artist/24905":          "309c62ba-7a22-4277-9f67-4a162526d18a",
+		"https://stream.tidal.com/artist/5483069": "65b1de19-50cb-49fe-b802-d1d8616f9ebe",
+	} {
+		db.SetArtistMBIDFromURLForTest(url, mbid)
+	}
+
+	for _, tc := range []struct {
+		url string
+		rel *seed.Release
+		img string
+	}{
+		{
+			url: "https://tidal.com/album/24700142",
+			rel: &seed.Release{
+				Title:     "Sap",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_EP},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Artists:   []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Brother", Length: sec(267)},
+						{Title: "Got Me Wrong", Length: sec(250)},
+						{Title: "Right Turn", Length: sec(194)},
+						{Title: "Am I Inside", Length: sec(308)},
+						{Title: "Love Song", Length: sec(225)},
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://tidal.com/album/24700142",
+						LinkType: seed.LinkType_Streaming_Release_URL,
+					},
+				},
+			},
+			img: "https://resources.tidal.com/images/d546be20/d268/46ab/874c/29364764407f/origin.jpg",
+		},
+		{
+			url: "https://tidal.com/album/58823194",
+			rel: &seed.Release{
+				Title:     "Junk",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2016, 4, 8)}},
+				Artists:   []seed.ArtistCredit{{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Do It, Try It", Length: sec(217)},
+						{Title: "Go! (feat. Mai Lan)", Length: sec(236), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "Mai Lan", MBID: "65b1de19-50cb-49fe-b802-d1d8616f9ebe"},
+						}},
+						{Title: "Walkway Blues (feat. J Laser)", Length: sec(289), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "J Laser"},
+						}},
+						{Title: "Bibi The Dog (feat. Mai Lan)", Length: sec(234), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "Mai Lan", MBID: "65b1de19-50cb-49fe-b802-d1d8616f9ebe"},
+						}},
+						{Title: "Moon Crystal", Length: sec(147)},
+						{Title: "For The Kids (feat. Susanne Sundfør)", Length: sec(281), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "Susanne Sundfør"},
+						}},
+						{Title: "Solitude", Length: sec(364)},
+						{Title: "The Wizard", Length: sec(145)},
+						{Title: "Laser Gun (feat. Mai Lan)", Length: sec(257), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "Mai Lan", MBID: "65b1de19-50cb-49fe-b802-d1d8616f9ebe"},
+						}},
+						{Title: "Road Blaster", Length: sec(262)},
+						{Title: "Tension", Length: sec(126)},
+						{Title: "Atlantique Sud (feat. Mai Lan)", Length: sec(204), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "Mai Lan", MBID: "65b1de19-50cb-49fe-b802-d1d8616f9ebe"},
+						}},
+						{Title: "Time Wind (feat. Beck)", Length: sec(249), Artists: []seed.ArtistCredit{
+							{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", JoinPhrase: " feat. "},
+							{Name: "Beck", MBID: "309c62ba-7a22-4277-9f67-4a162526d18a"},
+						}},
+						{Title: "Ludivine", Length: sec(95)},
+						{Title: "Sunday Night 1987", Length: sec(240)},
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://tidal.com/album/58823194",
+						LinkType: seed.LinkType_Streaming_Release_URL,
+					},
+				},
+			},
+			img: "https://resources.tidal.com/images/00355f8a/1727/49e4/a2c9/738404c005e9/origin.jpg",
+		},
+		{
+			url: "https://tidal.com/album/93071188",
+			rel: &seed.Release{
+				Title:     "Never Fade",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2018, 8, 10)}},
+				Artists:   []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{{Title: "Never Fade", Length: sec(280)}},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://tidal.com/album/93071188",
+						LinkType: seed.LinkType_Streaming_Release_URL,
+					},
+				},
+			},
+			img: "https://resources.tidal.com/images/f6a26633/8c97/4bce/9d29/a3f4ed9637e3/origin.jpg",
+		},
+	} {
+		t.Run(tc.url, func(t *testing.T) {
+			rel, img, err := getRelease(ctx, tc.url, api, db, cfg)
+			if err != nil {
+				t.Fatal("Failed getting release:", err)
+			}
+			if diff := cmp.Diff(tc.rel, rel); diff != "" {
+				t.Error("Bad release data:\n" + diff)
+			}
+			var imgURL string
+			if img != nil {
+				imgURL = img.URL("" /* srv */)
+			}
+			if diff := cmp.Diff(tc.img, imgURL); diff != "" {
+				t.Error("Bad cover image URL:\n" + diff)
+			}
+		})
+	}
+}
+
+func sec(sec float64) time.Duration {
+	return time.Duration(sec * float64(time.Second))
+}
+
+type fakeAPICaller struct{}
+
+func (*fakeAPICaller) call(ctx context.Context, path string) (io.ReadCloser, error) {
+	if ms := apiAlbumRegexp.FindStringSubmatch(path); ms != nil {
+		return os.Open(filepath.Join("testdata", "album_"+ms[1]+"_"+ms[2]+".json"))
+	} else if ms := apiTracksRegexp.FindStringSubmatch(path); ms != nil {
+		return os.Open(filepath.Join("testdata", "tracks_"+ms[1]+"_"+ms[2]+".json"))
+	}
+	return nil, fmt.Errorf("unhandled path %q", path)
+}
+
+// These match API paths requested by getRelease().
+var apiAlbumRegexp = regexp.MustCompile(`^/v1/albums/(\d+)\?countryCode=([A-Z]{2})$`)
+var apiTracksRegexp = regexp.MustCompile(`^/v1/albums/(\d+)/tracks\?countryCode=([A-Z]{2})$`)
+
+func TestMakeArtistCredits(t *testing.T) {
+	ctx := context.Background()
+	db := db.NewDB(db.DisallowQueries)
+	for _, tc := range []struct {
+		artists []artistData
+		want    []seed.ArtistCredit
+	}{
+		{
+			artists: []artistData{{ID: 1, Name: "Artist", Type: "MAIN"}},
+			want:    []seed.ArtistCredit{{Name: "Artist"}},
+		},
+		{
+			artists: []artistData{
+				{ID: 1, Name: "A", Type: "MAIN"},
+				{ID: 2, Name: "B", Type: "MAIN"},
+				{ID: 3, Name: "C", Type: "MAIN"},
+				{ID: 4, Name: "D", Type: "FEATURED"},
+			},
+			want: []seed.ArtistCredit{
+				{Name: "A", JoinPhrase: ", "},
+				{Name: "B", JoinPhrase: " & "},
+				{Name: "C", JoinPhrase: " feat. "},
+				{Name: "D"},
+			},
+		},
+	} {
+		missing := make(map[int]bool)
+		got := makeArtistCredits(ctx, tc.artists, db, missing)
+		if diff := cmp.Diff(tc.want, got); diff != "" {
+			t.Errorf("Bad artist credits from %v:\n%v", tc.artists, diff)
+		}
+		// TODO: Also check that the negative cache is used properly.
+	}
+}
+
+func TestCleanURL(t *testing.T) {
+	for _, tc := range []struct {
+		in   string
+		want string
+		ok   bool // if false, error should be returned
+	}{
+		{"https://tidal.com/album/12345", "https://tidal.com/album/12345", true},
+		{"http://tidal.com/album/12345", "https://tidal.com/album/12345", true},
+		{"https://tidal.com/album/12345?utm_source=google#foo", "https://tidal.com/album/12345", true},
+		{"https://listen.tidal.com/album/12345", "https://tidal.com/album/12345", true},
+		{"https://tidal.com/browse/album/12345", "https://tidal.com/album/12345", true},
+		{"https://help.tidal.com/album/12345", "", false},
+		{"https://example.com/album/12345", "", false},
+		{"https://tidal.com/album/bogus", "", false},
+	} {
+		if got, err := cleanURL(tc.in); !tc.ok && err == nil {
+			t.Errorf("cleanURL(%q) = %q; wanted error", tc.in, got)
+		} else if tc.ok && err != nil {
+			t.Errorf("cleanURL(%q) failed: %v", tc.in, err)
+		} else if tc.ok && got != tc.want {
+			t.Errorf("cleanURL(%q) = %q; want %q", tc.in, got, tc.want)
+		}
+	}
+}

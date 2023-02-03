@@ -80,7 +80,7 @@ func TestRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2007, Month: 10, Day: 10}}},
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2007, 10, 10)}},
 				Labels:    []seed.ReleaseLabel{{Name: "XL Recordings"}},
 				Artists:   []seed.ArtistCredit{{Name: "Radiohead"}},
 				Mediums: []seed.Medium{{
