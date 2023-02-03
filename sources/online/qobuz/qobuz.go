@@ -68,27 +68,37 @@ func (p *Provider) ExampleURL() string { return "https://www.qobuz.com/us-en/alb
 // Release extracts release information from the supplied Qobuz page.
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	db *db.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
-	// The HTML is a mess (e.g. the date format differs depending on the locale),
-	// so get what we can from the structured data.
-	var data structData
-	if js, err := page.Query(`script[type="application/ld+json"]`).Text(true); err != nil {
-		title, _ := page.Query("title").Text(true)
-		return nil, nil, fmt.Errorf("structured data (%q): %v", title, err)
-	} else if err := json.Unmarshal([]byte(js), &data); err != nil {
-		return nil, nil, fmt.Errorf("structured data: %v", err)
-	} else if data.Context != "https://schema.org/" {
-		return nil, nil, fmt.Errorf("structured data has unexpected context %q", data.Context)
-	} else if data.Name == "" || data.Brand.Name == "" {
-		return nil, nil, errors.New("structured data missing title or artist")
-	}
+	// Get the page title so it can be included in errors.
+	pageTitle, _ := page.Query("title").Text(true)
 
 	rel = &seed.Release{
-		Title:     data.Name,
-		Artists:   []seed.ArtistCredit{{Name: data.Brand.Name}},
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 		Mediums:   []seed.Medium{{Format: seed.MediumFormat_DigitalMedia}},
 	}
+
+	// Extract the album title from the page since the version in the structured data seems to omit
+	// extra title info. For example, the structured data in
+	// https://www.qobuz.com/us-en/album/waynes-world-various-artists/0093624963714 contains
+	// "Wayne's World" rather than the "Wayne's World (Music From The Motion Picture)" that appears
+	// in the actual page.
+	if rel.Title, err = page.Query(".album-meta__title").Text(true); err != nil {
+		return nil, nil, fmt.Errorf("title (%q): %v", pageTitle, err)
+	}
+
+	// The HTML is a mess (e.g. the date format differs depending on the locale),
+	// so get what we can from the structured data.
+	var data structData
+	if js, err := page.Query(`script[type="application/ld+json"]`).Text(true); err != nil {
+		return nil, nil, fmt.Errorf("structured data (%q): %v", pageTitle, err)
+	} else if err := json.Unmarshal([]byte(js), &data); err != nil {
+		return nil, nil, fmt.Errorf("structured data: %v", err)
+	} else if data.Context != "https://schema.org/" {
+		return nil, nil, fmt.Errorf("structured data has unexpected context %q", data.Context)
+	} else if data.Brand.Name == "" {
+		return nil, nil, errors.New("structured data is missing artist")
+	}
+	rel.Artists = []seed.ArtistCredit{{Name: data.Brand.Name}}
 
 	// Use the release date if it's plausible (i.e. not before Qobuz's launch).
 	if t, err := time.Parse(`2006-01-02`, data.ReleaseDate); err == nil && !t.Before(qobuzLaunch) {
@@ -142,10 +152,14 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	// spans, e.g. "Explicit".
 	if tracks, err := page.QueryAll("#playerTracks .track__item--name span:first-child").Text(true); err != nil {
 		return nil, nil, fmt.Errorf("track titles: %v", err)
+	} else if artists, err := page.QueryAll("#playerTracks .track__item--artist span:first-child").Text(true); err != nil {
+		return nil, nil, fmt.Errorf("track titles: %v", err)
 	} else if durs, err := page.QueryAll("#playerTracks .track__item--duration").Text(true); err != nil {
 		return nil, nil, fmt.Errorf("track durations: %v", err)
 	} else if len(tracks) == 0 {
 		return nil, nil, errors.New("didn't find track titles")
+	} else if len(artists) > 0 && len(tracks) != len(artists) {
+		return nil, nil, fmt.Errorf("found %d track titles(s) but %d artist(s)", len(tracks), len(artists))
 	} else if len(tracks) != len(durs) {
 		return nil, nil, fmt.Errorf("found %d track titles(s) but %d duration(s)", len(tracks), len(durs))
 	} else {
@@ -154,10 +168,11 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 			if err != nil {
 				return nil, nil, fmt.Errorf("track %d duration %q: %v", i, durs[i], err)
 			}
-			rel.Mediums[0].Tracks = append(rel.Mediums[0].Tracks, seed.Track{
-				Title:  title,
-				Length: dur,
-			})
+			tr := seed.Track{Title: title, Length: dur}
+			if len(artists) > 0 {
+				tr.Artists = []seed.ArtistCredit{{Name: artists[i]}}
+			}
+			rel.Mediums[0].Tracks = append(rel.Mediums[0].Tracks, tr)
 		}
 	}
 

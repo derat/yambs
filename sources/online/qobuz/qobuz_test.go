@@ -149,6 +149,49 @@ func TestRelease(t *testing.T) {
 			},
 			img: "https://static.qobuz.com/images/covers/jb/ml/xggxq5w5dmljb_max.jpg",
 		},
+		{
+			// This album contains per-track artist credits.
+			url: "https://www.qobuz.com/us-en/album/waynes-world-various-artists/0093624963714",
+			rel: &seed.Release{
+				// The extra space here is present throughout the page.
+				Title:     "Wayne's World  (Music From The Motion Picture)",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Labels:    []seed.ReleaseLabel{{Name: "Reprise"}},
+				Artists:   []seed.ArtistCredit{{Name: "Various Artists"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						trackArtist("Bohemian Rhapsody", "Queen", "00:05:57"),
+						trackArtist("Hot and Bothered (Album Version)", "Cinderella", "00:04:16"),
+						trackArtist("Rock Candy (Album Version)", "Bulletboys", "00:05:04"),
+						trackArtist("Dream Weaver (Wayne's World Version) (Album Version)", "Gary Wright", "00:04:25"),
+						trackArtist("Sikamikanico (Album Version)", "Red Hot Chili Peppers", "00:03:25"),
+						trackArtist("Time Machine (Wayne's World Soundtrack Version) [2000 Remaster] (Album Version)", "Black Sabbath", "00:04:19"),
+						trackArtist("Wayne's World Theme (Extended Version)", "Wayne And Garth", "00:05:14"),
+						trackArtist("Ballroom Blitz (Album Version)", "Tia Carrere", "00:03:30"),
+						trackArtist("Foxey Lady (Album Version)", "Jimi Hendrix", "00:03:19"),
+						trackArtist("Feed My Frankenstein (Album Version)", "Alice Cooper", "00:04:46"),
+						trackArtist("Ride with Yourself", "Rhino Bucket", "00:03:15"),
+						trackArtist("Loving Your Lovin' (Album Version)", "Eric Clapton", "00:03:54"),
+						trackArtist("Why You Wanna Break My Heart (Album Version)", "Tia Carrere", "00:03:32"),
+					},
+				}},
+				URLs: []seed.URL{
+					{
+						URL:      "https://www.qobuz.com/album/waynes-world-various-artists/0093624963714",
+						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
+					},
+					{
+						URL:      "https://open.qobuz.com/album/0093624963714",
+						LinkType: seed.LinkType_Streaming_Release_URL,
+					},
+				},
+			},
+			img: "https://static.qobuz.com/images/covers/14/37/0093624963714_max.jpg",
+		},
 	} {
 		t.Run(tc.url, func(t *testing.T) {
 			f, err := os.Open(getFilename(tc.url))
@@ -198,6 +241,13 @@ func track(title, dur string) seed.Track {
 		panic(fmt.Sprintf("Bad %q duration %q: %v", title, dur, err))
 	}
 	return seed.Track{Title: title, Length: d}
+}
+
+// trackArtist constructs a seed.Track from the supplied title, artist name, and "HH:MM:SS" duration.
+func trackArtist(title, artist, dur string) seed.Track {
+	tr := track(title, dur)
+	tr.Artists = []seed.ArtistCredit{{Name: artist}}
+	return tr
 }
 
 func TestCleanURL(t *testing.T) {
