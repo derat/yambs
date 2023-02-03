@@ -334,7 +334,6 @@
             id="form-online-url-input"
             type="text"
             placeholder="https://example.bandcamp.com/album/some-album"
-            autofocus
           />
         </div>
         <div class="form-row">
@@ -605,6 +604,11 @@
       setText(formTextFieldsInput, state.textFields);
 
       updateFormUI(false /* save */);
+
+      // Autofocus the URL input to make it easy to paste URLs.
+      // I'm doing this from JS since the 'autofocus' attribute doesn't work reliably
+      // (possibly since the input may not be visible when the page is first loaded).
+      if (formSourceSelect.value === 'online') formOnlineUrlInput.focus();
     }
 
     // Updates |formGenButton|'s disabled state based on whether input has been provided.
