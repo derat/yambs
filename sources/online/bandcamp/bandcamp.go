@@ -51,6 +51,8 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 		// The userscript checks if all tracks have titles like "artist - tracktitle" with
 		// non-numeric artists (which would instead be a track number) and tests the album
 		// artist against '^various(?: artists)?$'.
+		// TODO: Consider passing this to parseArtists. There are a bunch of group names that
+		// would be incorrectly split, though, so maybe not.
 		Artists:   []seed.ArtistCredit{{Name: album.Artist}},
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
@@ -95,30 +97,16 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	var streamableTracks int
 	artistPrefix := album.Artist + " - "
 	for _, tr := range album.TrackInfo {
-		track := seed.Track{
-			Title:  tr.Title,
-			Length: time.Duration(float64(time.Second) * tr.Duration),
-		}
+		track := seed.Track{Length: time.Duration(float64(time.Second) * tr.Duration)}
 		if cfg.ExtractTrackArtists {
-			var artists []string
-			track.Title, artists = extractTrackArtists(tr.Title)
-			for i, name := range artists {
-				ac := seed.ArtistCredit{Name: name}
-				// TODO: Would it be better to not hardcode these join phrases?
-				// It probably doesn't matter right now since these are the only ones
-				// that extractTrackArtists() understands.
-				if i < len(artists)-2 {
-					ac.JoinPhrase = ", "
-				} else if i == len(artists)-2 {
-					ac.JoinPhrase = " & "
-				}
-				track.Artists = append(track.Artists, ac)
-			}
-		} else if strings.HasPrefix(track.Title, artistPrefix) {
+			track.Title, track.Artists = extractTrackArtists(tr.Title)
+		} else if strings.HasPrefix(tr.Title, artistPrefix) {
 			// Strip "Artist - " from the beginning of the track title even
 			// if we weren't explicitly told to extract artist names:
 			// https://github.com/derat/yambs/issues/16
-			track.Title = track.Title[len(artistPrefix):]
+			track.Title = tr.Title[len(artistPrefix):]
+		} else {
+			track.Title = tr.Title
 		}
 		med.Tracks = append(med.Tracks, track)
 
@@ -301,26 +289,64 @@ func getBaseURL(orig string) string {
 
 // extractTrackArtists attempts to extract one or more artist names from the beginning
 // of the supplied track title.
-func extractTrackArtists(orig string) (track string, artists []string) {
-	tparts := strings.SplitN(orig, " - ", 2)
-	if len(tparts) != 2 {
+func extractTrackArtists(orig string) (track string, artists []seed.ArtistCredit) {
+	parts := strings.SplitN(orig, " - ", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		return orig, nil
 	}
-
-	track = tparts[1]
-	aparts := strings.SplitN(tparts[0], " & ", 2)
-	if len(aparts) != 2 {
-		return track, []string{tparts[0]}
-	}
-
-	// TODO: Does Bandcamp actually use commas?
-	// Is this all just free-form based on whatever the artist/label enters?
-	for _, p := range strings.Split(aparts[0], ", ") {
-		artists = append(artists, p)
-	}
-	artists = append(artists, aparts[1])
-	return track, artists
+	return parts[1], parseArtists(parts[0])
 }
+
+// parseArtists splits a string like "A, B & C" into individual artist credits.
+func parseArtists(orig string) []seed.ArtistCredit {
+	if orig == "" {
+		return nil
+	}
+
+	// Split on join phrases and get the artist name from the part before each join phrase.
+	ms := joinPhraseRegexp.FindAllStringIndex(orig, -1)
+	if len(ms) == 0 {
+		return []seed.ArtistCredit{{Name: orig}}
+	}
+	artists := make([]seed.ArtistCredit, len(ms)+1)
+	for i, rng := range ms {
+		start, end := rng[0], rng[1]
+		artists[i].JoinPhrase = orig[start:end]
+
+		var prev int
+		if i > 0 {
+			prev = ms[i-1][1]
+		}
+		if prev < start {
+			artists[i].Name = orig[prev:start]
+		}
+	}
+
+	// Add the artist after the final join phrase.
+	if last := ms[len(ms)-1][1]; last < len(orig) {
+		artists[len(artists)-1].Name = orig[last:]
+	}
+
+	// If any of the artist names were blank, just give up.
+	for i := range artists {
+		if artists[i].Name == "" {
+			return []seed.ArtistCredit{{Name: orig}}
+		}
+	}
+
+	return artists
+}
+
+// joinPhraseRegexp matches join phrases appearing in artist names.
+var joinPhraseRegexp = regexp.MustCompile(`(?i)` + strings.Join([]string{
+	` & `,
+	`, `,
+	` feat\. `,
+	` ft\. `,
+	// TODO: Add more? I think that these are freeform based on whatever the artist
+	// enters when uploading their music. I've seen " x " used occasionally, but I'm
+	// a bit worried about false positives.
+}, "|"))
 
 // CleanURL returns a cleaned version of a Bandcamp URL like
 // "https://artist-name.bandcamp.com/album/album-name" or

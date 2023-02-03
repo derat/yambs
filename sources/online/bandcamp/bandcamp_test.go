@@ -69,11 +69,11 @@ func TestRelease(t *testing.T) {
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
-						{Title: "Galiba", Artists: artists("Authentically Plastic", "Nsasi"), Length: sec(230)},
+						{Title: "Galiba", Artists: artists("Authentically Plastic", " & ", "Nsasi"), Length: sec(230)},
 						{Title: "Grind", Artists: artists("Nsasi"), Length: sec(156)},
-						{Title: "Diesel Femme", Artists: artists("Turkana", "Authentically Plastic"), Length: sec(260)},
+						{Title: "Diesel Femme", Artists: artists("Turkana", " & ", "Authentically Plastic"), Length: sec(260)},
 						{Title: "Influencer Convention", Artists: artists("Turkana"), Length: sec(240)},
-						{Title: "Binia Yei", Artists: artists("Nsasi", "Turkana"), Length: sec(232)},
+						{Title: "Binia Yei", Artists: artists("Nsasi", " & ", "Turkana"), Length: sec(232)},
 						{Title: "Sabula", Artists: artists("Authentically Plastic"), Length: sec(234)},
 					},
 				}},
@@ -382,14 +382,13 @@ func sec(sec float64) time.Duration {
 	return time.Duration(sec * float64(time.Second))
 }
 
-func artists(names ...string) []seed.ArtistCredit {
-	credits := make([]seed.ArtistCredit, len(names))
-	for i, n := range names {
-		credits[i].Name = n
-		if i == len(names)-2 {
-			credits[i].JoinPhrase = " & "
-		} else if i < len(names)-2 {
-			credits[i].JoinPhrase = ", "
+// artists constructs artist credits from a sequence of artist names and join phrases.
+func artists(in ...string) []seed.ArtistCredit {
+	credits := make([]seed.ArtistCredit, (len(in)+1)/2)
+	for i := 0; i < len(in); i += 2 {
+		credits[i/2].Name = in[i]
+		if i+1 < len(in) {
+			credits[i/2].JoinPhrase = in[i+1]
 		}
 	}
 	return credits
@@ -398,18 +397,43 @@ func artists(names ...string) []seed.ArtistCredit {
 func TestExtractTrackArtists(t *testing.T) {
 	for _, tc := range []struct {
 		orig, track string
-		artists     []string
+		artists     []seed.ArtistCredit
 	}{
 		{"The Title", "The Title", nil},
-		{"Artist Name - The Title", "The Title", []string{"Artist Name"}},
-		{"Artist Name & Someone Else - The Title", "The Title", []string{"Artist Name", "Someone Else"}},
-		{"Artist Name, Someone Else & Me - The Title", "The Title", []string{"Artist Name", "Someone Else", "Me"}},
-		{"Artist Name - The Title - More Junk", "The Title - More Junk", []string{"Artist Name"}},
+		{"Artist Name - The Title", "The Title", artists("Artist Name")},
+		{"Artist Name & Someone Else - The Title", "The Title", artists("Artist Name", " & ", "Someone Else")},
+		{"Artist Name - The Title - More Junk", "The Title - More Junk", artists("Artist Name")},
+		{" - The Title", " - The Title", nil},
+		{"The Title - ", "The Title - ", nil},
 	} {
 		track, artists := extractTrackArtists(tc.orig)
 		if track != tc.track || !reflect.DeepEqual(artists, tc.artists) {
 			t.Errorf("extractTrackArtists(%q) = %q, %q; want %q, %q",
 				tc.orig, track, artists, tc.track, tc.artists)
+		}
+	}
+}
+
+func TestParseArtists(t *testing.T) {
+	for _, tc := range []struct {
+		orig string
+		want []seed.ArtistCredit
+	}{
+		{"Artist 1", artists("Artist 1")},
+		{"Artist 1 & Artist 2", artists("Artist 1", " & ", "Artist 2")},
+		{"Artist 1, Artist 2 & Artist 3", artists("Artist 1", ", ", "Artist 2", " & ", "Artist 3")},
+		{"Artist 1 feat. Artist 2", artists("Artist 1", " feat. ", "Artist 2")},
+		{"Artist 1 & Artist 2 feat. Artist 3", artists("Artist 1", " & ", "Artist 2", " feat. ", "Artist 3")},
+		// Check that bad input is handled reasonably.
+		{"Artist 1 & ", artists("Artist 1 & ")},
+		{" & Artist 1", artists(" & Artist 1")},
+		{" & ", artists(" & ")},
+		{", & ", artists(", & ")},
+		{",  & ", artists(",  & ")},
+		{"", nil},
+	} {
+		if got := parseArtists(tc.orig); !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("parseArtists(%q) = %+v; want %+v", tc.orig, got, tc.want)
 		}
 	}
 }
