@@ -218,6 +218,7 @@ func TestRelease(t *testing.T) {
 		{
 			// This is a non-album track with the artist's name prefixed to its title.
 			// The artist name should be stripped even without setting ExtractTrackArtists.
+			// The label MBID should also be derived from the hostname.
 			url: "https://syssistersounds.bandcamp.com/track/apsara",
 			rel: &seed.Release{
 				Title:     "Apsara",
@@ -226,6 +227,7 @@ func TestRelease(t *testing.T) {
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
 				Events:    []seed.ReleaseEvent{{Date: seed.Date{Year: 2022, Month: 5, Day: 18}, Country: "XW"}},
+				Labels:    []seed.ReleaseLabel{{MBID: "2583b10d-0528-4281-8d2f-31d9a64a570c"}},
 				Artists:   []seed.ArtistCredit{{Name: "Maggie Tra"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,

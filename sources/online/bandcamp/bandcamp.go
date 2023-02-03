@@ -62,9 +62,10 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 
 	// Try to find the artist's MBID from the URL.
-	if au := getArtistURL(pageURL); au != "" {
-		if mbid, err := db.GetArtistMBIDFromURL(ctx, au); err != nil {
-			log.Printf("Failed getting artist MBID from %v: %v", au, err)
+	baseURL := getBaseURL(pageURL)
+	if baseURL != "" {
+		if mbid, err := db.GetArtistMBIDFromURL(ctx, baseURL); err != nil {
+			log.Printf("Failed getting artist MBID from %v: %v", baseURL, err)
 		} else if mbid != "" {
 			rel.Artists[0].MBID = mbid
 		}
@@ -173,12 +174,17 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 		if labelURL, err := url.Parse(val); err == nil {
 			labelURL.RawQuery = "" // clear "?from=btl"
 			if labelMBID, err = db.GetLabelMBIDFromURL(ctx, labelURL.String()); err != nil {
-				log.Printf("Failed getting artist MBID from %s: %v", labelURL, err)
+				log.Printf("Failed getting label MBID from %s: %v", labelURL, err)
 			}
 		}
 	}
-	// TODO: If we didn't get an artist MBID earlier, should we try looking up the base URL
-	// here to see if it belongs to a label?
+	// If we didn't find a label MBID yet and the base URL didn't correspond to an artist,
+	// check if it corresponds to a label instead.
+	if labelMBID == "" && baseURL != "" && rel.Artists[0].MBID == "" {
+		if labelMBID, err = db.GetLabelMBIDFromURL(ctx, baseURL); err != nil {
+			log.Printf("Failed getting label MBID from %s: %v", baseURL, err)
+		}
+	}
 	if labelName != "" || labelMBID != "" {
 		rel.Labels = append(rel.Labels, seed.ReleaseLabel{
 			Name: labelName,
@@ -282,7 +288,7 @@ var (
 	pathRegexp = regexp.MustCompile(`^/(?:album|track)/[-a-z0-9]+$`)
 )
 
-func getArtistURL(orig string) string {
+func getBaseURL(orig string) string {
 	u, err := url.Parse(orig)
 	if err != nil {
 		return ""
