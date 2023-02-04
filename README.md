@@ -11,8 +11,8 @@ for each with various fields pre-filled. The [Add Artist], [Add Label], and
 [Add Work] pages can be seeded in a similar manner.
 
 `yambs` can also read `key=value` lines from text files to seed the [Add
-Release] page, and it can use [Bandcamp] and [Qobuz] album pages and local MP3
-files to seed edits too.
+Release] page, and it can use [Bandcamp], [Qobuz], and [Tidal] album pages and
+local MP3 files to seed edits too.
 
 There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 
@@ -26,6 +26,7 @@ There's a web frontend at [yambs.erat.org](https://yambs.erat.org).
 [Add Release]: http://musicbrainz.org/release/add
 [Bandcamp]: https://bandcamp.com/
 [Qobuz]: https://www.qobuz.com/
+[Tidal]: https://tidal.com/
 
 ## Installation
 
