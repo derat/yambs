@@ -84,6 +84,10 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 			return nil, nil, fmt.Errorf("decoding album: %v", err)
 		}
 	}
+	if album.NumberOfTracks <= 0 {
+		return nil, nil, fmt.Errorf("API claimed album has %d track(s)", album.NumberOfTracks)
+	}
+
 	missingArtistIDs := make(map[int]bool) // cache of artists not in MB
 	rel = &seed.Release{
 		Title:     album.Title,
@@ -115,8 +119,9 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 			return nil, nil, fmt.Errorf("decoding tracklist: %v", err)
 		}
 	}
-	if len(tracklist.Items) == 0 {
-		return nil, nil, fmt.Errorf("no tracks found (album unavailable in %v?)", country)
+	if len(tracklist.Items) != album.NumberOfTracks {
+		return nil, nil, fmt.Errorf("API claimed %v track(s) but only returned %v (album unavailable in %v?)",
+			album.NumberOfTracks, len(tracklist.Items), country)
 	}
 
 	sort.Slice(tracklist.Items, func(i, j int) bool {
@@ -174,6 +179,7 @@ type albumData struct {
 	ID             int          `json:"id"`
 	Title          string       `json:"title"` // album title
 	AllowStreaming bool         `json:"allowStreaming"`
+	NumberOfTracks int          `json:"numberOfTracks"`
 	ReleaseDate    jsonDate     `json:"releaseDate"` // e.g. "2016-06-24"
 	Type           string       `json:"type"`        // "ALBUM", "EP", "SINGLE"
 	Cover          string       `json:"cover"`       // UUID
@@ -231,10 +237,10 @@ func makeArtistCredits(ctx context.Context, artists []artistData,
 	for i, a := range artists {
 		credits[i].Name = a.Name
 
-		// Try to look up the artist's MBID based on their URL.
-		// MusicBrainz seems to not normalize Tidal URLs, unfortunately,
-		// so I see "Stream at Tidal" relationships pointing at both
-		// tidal.com and stream.tidal.com URLs. Look for both, I guess.
+		// Try to look up the artist's MBID based on their URL. MusicBrainz appears to normalize
+		// Tidal URLs to tidal.com now, but I still see a lot of "Stream at Tidal" relationships
+		// with stream.tidal.com URLs. Look for both, I guess:
+		// https://github.com/derat/yambs/issues/20
 		if a.ID != 0 && !missing[a.ID] {
 			var mbid string
 			for _, aurl := range []string{

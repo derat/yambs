@@ -41,6 +41,13 @@ func TestGetRelease(t *testing.T) {
 		img string
 	}{
 		{
+			// This request should fail: the API reports that the album has 16 tracks, but the
+			// /tracks endpoint only returns 9 (presumably due to country restrictions).
+			url: "https://tidal.com/album/1588184",
+			rel: nil,
+			img: "",
+		},
+		{
 			url: "https://tidal.com/album/24700142",
 			rel: &seed.Release{
 				Title:     "Sap",
@@ -154,6 +161,13 @@ func TestGetRelease(t *testing.T) {
 	} {
 		t.Run(tc.url, func(t *testing.T) {
 			rel, img, err := getRelease(ctx, tc.url, api, db, cfg)
+			if tc.rel == nil {
+				if err == nil {
+					t.Fatal("Expected error but unexpectedly succeeded")
+				}
+				return
+			}
+
 			if err != nil {
 				t.Fatal("Failed getting release:", err)
 			}
