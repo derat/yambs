@@ -242,9 +242,17 @@
         opacity: 0.5;
       }
 
+      #form-online-section {
+        margin-bottom: calc(2 * var(--margin));
+      }
       #form-online-url-input {
         max-width: 100%;
         width: 600px;
+      }
+      #form-online-country-input {
+        margin-left: var(--margin);
+        max-width: 100%;
+        width: 2.5em;
       }
       #form-text-fields-input {
         display: block;
@@ -335,6 +343,15 @@
             type="text"
             placeholder="https://example.bandcamp.com/album/some-album"
           />
+        </div>
+        <div class="form-row">
+          <label
+            for="form-online-country-input"
+            title="Some albums are only available in certain countries"
+          >
+            Country code for Tidal API:
+          </label>
+          <input id="form-online-country-input" type="text" maxlength="2" placeholder="US" />
         </div>
         <div class="form-row">
           <input id="form-online-extract-artists-checkbox" type="checkbox" />
@@ -485,6 +502,7 @@
     const uiStateKey = 'uiState';
     const formSourceSelect = $('form-source-select');
     const formOnlineUrlInput = $('form-online-url-input');
+    const formOnlineCountryInput = $('form-online-country-input');
     const formOnlineExtractArtistsCheckbox = $('form-online-extract-artists-checkbox');
     const formTextFormatSelect = $('form-text-format-select');
     const formTextTypeSelect = $('form-text-type-select');
@@ -559,11 +577,14 @@
       // These property names need to match the ones in updateFormUI() and restoreFormUI().
       const state = { source: formSourceSelect.value };
 
-      // Only include text-related state in the permalink if the text source is used.
-      if (formSourceSelect.value === 'text') {
+      // Only include state relevant to the selected source.
+      const save = (k, v) => v !== '' && (state[k] = v);
+      if (formSourceSelect.value === 'online') {
+        if (formOnlineExtractArtistsCheckbox.checked) state.onlineExtractArtists = '1';
+        save('onlineCountry', formOnlineCountryInput.value);
+      } else if (formSourceSelect.value === 'text') {
         state.textFormat = formTextFormatSelect.value;
         state.textType = formTextTypeSelect.value;
-        const save = (k, v) => v !== '' && (state[k] = v);
         save('textSet', formTextSetTextarea.value);
         save('textFields', formTextFieldsInput.value);
       }
@@ -600,8 +621,11 @@
       setSelect(formTextTypeSelect, state.textType);
 
       const setText = (el, val) => val !== undefined && (el.value = val);
+      setText(formOnlineCountryInput, state.onlineCountry);
       setText(formTextSetTextarea, state.textSet);
       setText(formTextFieldsInput, state.textFields);
+
+      formOnlineExtractArtistsCheckbox.checked = state.onlineExtractArtists === '1';
 
       updateFormUI(false /* save */);
 
@@ -622,6 +646,7 @@
     // Clears form fields. Select elements are left unchanged.
     function clearFormFields() {
       formOnlineUrlInput.value = '';
+      formOnlineCountryInput.value = '';
       formOnlineExtractArtistsCheckbox.checked = false;
       formTextFieldsInput.value = '';
       formTextSetTextarea.value = '';
@@ -696,6 +721,7 @@
           // section that displays the fields for releases.
           body.set('source', 'online');
           body.set('url', formOnlineUrlInput.value.trim());
+          body.set('country', formOnlineCountryInput.value.trim().toUpperCase());
           if (formOnlineExtractArtistsCheckbox.checked) body.set('extractTrackArtists', '1');
           break;
       }
@@ -718,6 +744,8 @@
       // TODO: It'd be nicer to not update the permalink on each keystroke,
       // but 'change' only fires on blur, so we might end up with a stale URL
       // if the user types and then immediately moves the pointer to the link.
+      formOnlineCountryInput.addEventListener('input', updatePermalink);
+      formOnlineExtractArtistsCheckbox.addEventListener('input', updatePermalink);
       formTextSetTextarea.addEventListener('input', updatePermalink);
       formTextFieldsInput.addEventListener('input', updatePermalink);
 
@@ -753,12 +781,14 @@
       });
 
       // Let the user submit URLs by pressing Enter.
-      formOnlineUrlInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-          formGenButton.click();
-          formOnlineUrlInput.blur();
-        }
-      });
+      for (const el of [formOnlineUrlInput, formOnlineCountryInput]) {
+        el.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            formGenButton.click();
+            el.blur();
+          }
+        });
+      }
 
       formGenButton.addEventListener('click', () => {
         const origText = formGenButton.innerText;

@@ -207,7 +207,17 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	var edits []seed.Edit
 	switch src {
 	case "online":
-		cfg := online.Config{ExtractTrackArtists: req.FormValue("extractTrackArtists") == "1"}
+		cfg := online.Config{
+			CountryCode:         req.FormValue("country"),
+			ExtractTrackArtists: req.FormValue("extractTrackArtists") == "1",
+		}
+		if !countryCodeRegexp.MatchString(cfg.CountryCode) {
+			return nil, &httpError{
+				code: http.StatusBadRequest,
+				msg:  "Invalid country code (should be two letters)",
+				err:  fmt.Errorf("invalid country %q", cfg.CountryCode),
+			}
+		}
 		if url, err := online.CleanURL(req.FormValue("url")); err != nil {
 			return nil, &httpError{
 				code: http.StatusBadRequest,
@@ -252,6 +262,9 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	}
 	return render.NewEditInfos(edits, mbServer)
 }
+
+// countryCodeRegexp is used to validate the optional "country" query parameter.
+var countryCodeRegexp = regexp.MustCompile(`^(?:|[A-Z][A-Z])$`)
 
 // clientAddr returns the client's address (which may be either "ip" or "ip:port").
 func clientAddr(req *http.Request) string {

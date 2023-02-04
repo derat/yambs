@@ -67,10 +67,16 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 		return nil, nil, fmt.Errorf("album ID: %v", err)
 	}
 
-	// TODO: Let the user specify the country, since the /track endpoint seems to
-	// return an empty list of tracks in some cases.
+	country := defaultCountry
+	if cfg.CountryCode != "" {
+		country = strings.ToUpper(cfg.CountryCode)
+	}
+	if !countryCodeRegexp.MatchString(country) {
+		return nil, nil, fmt.Errorf("invalid country code %q (want two capital letters)", country)
+	}
+
 	var album albumData
-	if r, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d?countryCode=%s", albumID, defaultCountry)); err != nil {
+	if r, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d?countryCode=%s", albumID, country)); err != nil {
 		return nil, nil, fmt.Errorf("fetching album: %v", err)
 	} else {
 		defer r.Close()
@@ -101,7 +107,7 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 	}
 
 	var tracklist tracklistData
-	if r, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d/tracks?countryCode=%s", albumID, defaultCountry)); err != nil {
+	if r, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d/tracks?countryCode=%s", albumID, country)); err != nil {
 		return nil, nil, fmt.Errorf("fetching tracklist: %v", err)
 	} else {
 		defer r.Close()
@@ -110,7 +116,7 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 		}
 	}
 	if len(tracklist.Items) == 0 {
-		return nil, nil, errors.New("no tracks found (geographic restrictions?)")
+		return nil, nil, fmt.Errorf("no tracks found (album unavailable in %v?)", country)
 	}
 
 	sort.Slice(tracklist.Items, func(i, j int) bool {
@@ -161,6 +167,8 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 
 	return rel, img, nil
 }
+
+var countryCodeRegexp = regexp.MustCompile(`^[A-Z][A-Z]$`)
 
 type albumData struct {
 	ID             int          `json:"id"`

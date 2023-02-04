@@ -62,6 +62,8 @@ Seeds MusicBrainz edits.
     	Action to perform with seed URLs (open, print, serve, write) (default open)
   -addr string
     	Address to listen on for -action=serve (default "localhost:8999")
+  -country string
+    	Country code for querying Tidal API (e.g. "US" or "DE")
   -extract-track-artists
     	Extract artist names from track titles in Bandcamp pages
   -fields string

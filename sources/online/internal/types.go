@@ -32,8 +32,12 @@ type Provider interface {
 // Config is passed to Provider implementations to configure their behavior.
 type Config struct {
 	// ExtractTrackArtists indicates that artist names should be extracted from the
-	// beginnings of track names, e.g. "Artist - Title".
+	// beginnings of track names, e.g. "Artist - Title". This is currently only used
+	// for Bandcamp pages.
 	ExtractTrackArtists bool
+	// CountryCode contains the country that should be used when requesting album
+	// data, e.g. "US" or "DE". This is currently only used for the Tidal API.
+	CountryCode string
 	// DisallowNetwork indicates that network requests should not be made.
 	// This can be set by tests.
 	DisallowNetwork bool
