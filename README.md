@@ -64,7 +64,7 @@ Seeds MusicBrainz edits.
   -addr string
     	Address to listen on for -action=serve (default "localhost:8999")
   -country string
-    	Country code for querying Tidal API (e.g. "US" or "DE")
+    	Country code for querying Tidal API (ISO 3166, e.g. "US" or "DE"; "XW" for all)
   -extract-track-artists
     	Extract artist names from track titles in Bandcamp pages
   -fields string

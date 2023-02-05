@@ -22,7 +22,7 @@ import (
 func TestGetRelease(t *testing.T) {
 	ctx := context.Background()
 	api := &fakeAPICaller{}
-	cfg := &internal.Config{DisallowNetwork: true}
+	now := time.Date(2015, 2, 10, 0, 0, 0, 0, time.UTC)
 
 	db := mbdb.NewDB(mbdb.DisallowQueries)
 	for url, mbid := range map[string]string{
@@ -36,16 +36,61 @@ func TestGetRelease(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		url string
-		rel *seed.Release
-		img string
+		url     string
+		country string // defaultCountry if empty
+		rel     *seed.Release
+		img     string
 	}{
 		{
 			// This request should fail: the API reports that the album has 16 tracks, but the
-			// /tracks endpoint only returns 9 (presumably due to country restrictions).
+			// /tracks endpoint only returns 9 for US (presumably due to country restrictions).
 			url: "https://tidal.com/album/1588184",
 			rel: nil,
 			img: "",
+		},
+		{
+			// When querying all countries, the two countries with the full tracklist should
+			// be mentioned in the annotation.
+			url:     "https://tidal.com/album/1588184",
+			country: "XW",
+			rel: &seed.Release{
+				Title:      "Step Up 2 The Streets Original Motion Picture Soundtrack",
+				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+				Annotation: "Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n* Norway (NO)\n* Sweden (SE)",
+				Script:     "Latn",
+				Status:     "Official",
+				Packaging:  "None",
+				Artists:    []seed.ArtistCredit{{Name: "Step Up 2 The Streets"}},
+				URLs: []seed.URL{{
+					URL:      "https://tidal.com/album/1588184",
+					LinkType: seed.LinkType_Streaming_Release_URL,
+				}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						track("Low (feat. T-Pain) [Step Up 2 the Streets O.S.T. Version]", sec(230), "Flo Rida", " feat. ", "T-Pain"),
+						track("Shake Your Pom Pom", sec(240), "Missy Elliott"),
+						track("Killa", sec(231), "Cherish featuring Yung Joc"),
+						track("Hypnotized (feat. Akon) [Step up 2 the Streets Original Soundtrack Version]", sec(188),
+							"Plies", " feat. ", "Akon"),
+						track("Is It You (Step Up 2 the Streets O.S.T. Version)", sec(238), "Cassie"),
+						track("Can't Help but Wait", sec(205), "Trey Songz"),
+						track("Church (feat. Teddy Verseti) [Step Up 2 the Streets Original Soundtrack Version]", sec(241),
+							"T-Pain", " feat. ", "Teddy Verseti"),
+						track("Ching-A-Ling", sec(219), "Missy Elliott"),
+						track("Push (Step Up 2 the Streets O.S.T. Version)", sec(208), "Enrique Iglesias"),
+						track("369 (feat. B.o.B.) [Step up 2 the Streets Original Soundtrack Version]", sec(211), "Cupid", " & ", "B.o.B"),
+						track("Impossible (Step Up 2 the Streets O.S.T. Version)", sec(218), "Bayje"),
+						track("Lives in da Club (feat. Jay Lyriq) [Step Up 2 the Streets O.S.T. Version]", sec(209),
+							"Sophia Fresh", " feat. ", "Jay Lyriq"),
+						track("Girl You Know (Feat. Trey Songz) [Step Up 2 The Streets O.S.T. Version]", sec(254), "Scarface"),
+						track("Say Cheese (Step Up 2 the Streets O.S.T. Version)", sec(245), "K.C."),
+						track("Let It Go (Step Up 2 the Streets O.S.T. Version)", sec(202), "Brit & Alex"),
+						track("Ain't No Stressin (Step Up 2 the Streets O.S.T. Version)", sec(260), "Montana Tucker, Sikora, Denial"),
+					},
+				}},
+			},
+			img: "https://resources.tidal.com/images/ec479657/8559/45a2/9d67/42a5f8d4c048/origin.jpg",
 		},
 		{
 			url: "https://tidal.com/album/24700142",
@@ -66,12 +111,10 @@ func TestGetRelease(t *testing.T) {
 						{Title: "Love Song", Length: sec(225)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://tidal.com/album/24700142",
-						LinkType: seed.LinkType_Streaming_Release_URL,
-					},
-				},
+				URLs: []seed.URL{{
+					URL:      "https://tidal.com/album/24700142",
+					LinkType: seed.LinkType_Streaming_Release_URL,
+				}},
 			},
 			img: "https://resources.tidal.com/images/d546be20/d268/46ab/874c/29364764407f/origin.jpg",
 		},
@@ -126,12 +169,10 @@ func TestGetRelease(t *testing.T) {
 						{Title: "Sunday Night 1987", Length: sec(240)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://tidal.com/album/58823194",
-						LinkType: seed.LinkType_Streaming_Release_URL,
-					},
-				},
+				URLs: []seed.URL{{
+					URL:      "https://tidal.com/album/58823194",
+					LinkType: seed.LinkType_Streaming_Release_URL,
+				}},
 			},
 			img: "https://resources.tidal.com/images/00355f8a/1727/49e4/a2c9/738404c005e9/origin.jpg",
 		},
@@ -149,18 +190,20 @@ func TestGetRelease(t *testing.T) {
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{{Title: "Never Fade", Length: sec(280)}},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://tidal.com/album/93071188",
-						LinkType: seed.LinkType_Streaming_Release_URL,
-					},
-				},
+				URLs: []seed.URL{{
+					URL:      "https://tidal.com/album/93071188",
+					LinkType: seed.LinkType_Streaming_Release_URL,
+				}},
 			},
 			img: "https://resources.tidal.com/images/f6a26633/8c97/4bce/9d29/a3f4ed9637e3/origin.jpg",
 		},
 	} {
 		t.Run(tc.url, func(t *testing.T) {
-			rel, img, err := getRelease(ctx, tc.url, api, db, cfg)
+			cfg := &internal.Config{
+				DisallowNetwork: true,
+				CountryCode:     tc.country,
+			}
+			rel, img, err := getRelease(ctx, tc.url, api, db, cfg, now)
 			if tc.rel == nil {
 				if err == nil {
 					t.Fatal("Expected error but unexpectedly succeeded")
@@ -189,13 +232,36 @@ func sec(sec float64) time.Duration {
 	return time.Duration(sec * float64(time.Second))
 }
 
+func track(title string, length time.Duration, creds ...string) seed.Track {
+	tr := seed.Track{Title: title, Length: length}
+	for i := 0; i < len(creds); i += 2 {
+		ac := seed.ArtistCredit{Name: creds[i]}
+		if i+1 < len(creds) {
+			ac.JoinPhrase = creds[i+1]
+		}
+		tr.Artists = append(tr.Artists, ac)
+	}
+	return tr
+}
+
 type fakeAPICaller struct{}
 
-func (*fakeAPICaller) call(ctx context.Context, path string) (io.ReadCloser, error) {
+func (*fakeAPICaller) call(ctx context.Context, path string) ([]byte, error) {
+	read := func(p string) ([]byte, error) {
+		f, err := os.Open(p)
+		if os.IsNotExist(err) {
+			return nil, notFoundErr
+		} else if err != nil {
+			return nil, err
+		}
+		defer f.Close()
+		return io.ReadAll(f)
+	}
+
 	if ms := apiAlbumRegexp.FindStringSubmatch(path); ms != nil {
-		return os.Open(filepath.Join("testdata", "album_"+ms[1]+"_"+ms[2]+".json"))
+		return read(filepath.Join("testdata", "album_"+ms[1]+"_"+ms[2]+".json"))
 	} else if ms := apiTracksRegexp.FindStringSubmatch(path); ms != nil {
-		return os.Open(filepath.Join("testdata", "tracks_"+ms[1]+"_"+ms[2]+".json"))
+		return read(filepath.Join("testdata", "tracks_"+ms[1]+"_"+ms[2]+".json"))
 	}
 	return nil, fmt.Errorf("unhandled path %q", path)
 }

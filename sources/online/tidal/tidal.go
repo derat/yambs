@@ -6,13 +6,9 @@ package tidal
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -34,10 +30,11 @@ const (
 	defaultToken = "gsFXkJqGrUNoYMQPZe4k3WKwijnrp8iGSwn3bApe"
 	// defaultCountry is the default country code passed to the Tidal API.
 	defaultCountry = "US"
-	// apiTimeout is the maximum time for a request to the (unreliable) Tidal API.
-	apiTimeout = 5 * time.Second
 	// finishTime is reserved to finish creating edits after querying the MusicBrainz API.
 	finishTime = 3 * time.Second
+	// maxContriesForAnnotation is the maximum number of countries to include in annotations
+	// for albums that aren't available everywhere.
+	maxCountriesForAnnotation = 10
 )
 
 // https://www.telegraph.co.uk/technology/news/11192375/Tidal-launches-lossless-music-streaming-in-UK-and-US.html
@@ -54,13 +51,13 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 		return nil, nil, errors.New("network is disallowed")
 	}
 	api := newRealAPICaller(defaultToken)
-	return getRelease(ctx, pageURL, api, db, cfg)
+	return getRelease(ctx, pageURL, api, db, cfg, time.Now())
 }
 
 // getRelease is called by Release.
 // This helper function exists so that unit tests can inject fake apiCallers.
-func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB, cfg *internal.Config) (
-	rel *seed.Release, img *seed.Info, err error) {
+func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB, cfg *internal.Config,
+	now time.Time) (rel *seed.Release, img *seed.Info, err error) {
 	albumURL, err := cleanURL(pageURL)
 	if err != nil {
 		return nil, nil, err
@@ -72,24 +69,19 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 	}
 
 	country := defaultCountry
-	if cfg.CountryCode != "" {
-		country = strings.ToUpper(cfg.CountryCode)
-	}
-	if !countryCodeRegexp.MatchString(country) {
-		return nil, nil, fmt.Errorf("invalid country code %q (want two capital letters)", country)
+	if cfg.CountryCode != "" && cfg.CountryCode != AllCountriesCode {
+		if _, ok := allCountries[cfg.CountryCode]; !ok {
+			return nil, nil, errors.New("invalid country")
+		}
+		country = cfg.CountryCode
 	}
 
-	var album albumData
-	if r, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d?countryCode=%s", albumID, country)); err != nil {
+	album, err := fetchAlbum(ctx, api, albumID, country)
+	if err != nil {
 		return nil, nil, fmt.Errorf("fetching album: %v", err)
-	} else {
-		defer r.Close()
-		if err := json.NewDecoder(r).Decode(&album); err != nil {
-			return nil, nil, fmt.Errorf("decoding album: %v", err)
-		}
 	}
 	if album.NumberOfTracks <= 0 {
-		return nil, nil, fmt.Errorf("API claimed album has %d track(s)", album.NumberOfTracks)
+		return nil, nil, fmt.Errorf("API claimed album has %d tracks", album.NumberOfTracks)
 	}
 
 	// Use a shortened context for querying MusicBrainz for artist MBIDs so we'll have a bit of time
@@ -115,29 +107,40 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 	}
 
 	if date := time.Time(album.ReleaseDate); !date.Before(tidalLaunch) {
-		// TODO: Set the release location(s)?
 		rel.Events = []seed.ReleaseEvent{{Date: seed.DateFromTime(date)}}
 	}
 
-	var tracklist tracklistData
-	if r, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d/tracks?countryCode=%s", albumID, country)); err != nil {
-		return nil, nil, fmt.Errorf("fetching tracklist: %v", err)
+	var tracklist *tracklistData
+	if cfg.CountryCode != AllCountriesCode {
+		tracklist, err = fetchTracklist(ctx, api, albumID, country)
+		if err != nil {
+			return nil, nil, fmt.Errorf("fetching tracklist: %v", err)
+		}
+		if len(tracklist.Items) != album.NumberOfTracks {
+			return nil, nil, fmt.Errorf("got %d track(s) instead of %d (is album unavailable in %q?)",
+				len(tracklist.Items), album.NumberOfTracks, country)
+		}
 	} else {
-		defer r.Close()
-		if err := json.NewDecoder(r).Decode(&tracklist); err != nil {
-			return nil, nil, fmt.Errorf("decoding tracklist: %v", err)
+		countryTracklists, err := fetchAllTracklists(ctx, api, albumID)
+		if err != nil {
+			return nil, nil, fmt.Errorf("fetching tracklists: %v", err)
+		}
+		var fullCountries []string
+		for c, tl := range countryTracklists {
+			if len(tl.Items) == album.NumberOfTracks {
+				if tracklist == nil {
+					tracklist = tl
+				}
+				fullCountries = append(fullCountries, c)
+			}
+		}
+		if tracklist == nil {
+			return nil, nil, fmt.Errorf("no country has full tracklist with %d track(s)", album.NumberOfTracks)
+		}
+		if len(fullCountries) <= maxCountriesForAnnotation {
+			rel.Annotation = makeCountriesAnnotation(fullCountries, now)
 		}
 	}
-	if len(tracklist.Items) != album.NumberOfTracks {
-		return nil, nil, fmt.Errorf("API claimed %v track(s) but only returned %v (album unavailable in %v?)",
-			album.NumberOfTracks, len(tracklist.Items), country)
-	}
-
-	sort.Slice(tracklist.Items, func(i, j int) bool {
-		ti, tj := tracklist.Items[i], tracklist.Items[j]
-		return ti.VolumeNumber < tj.VolumeNumber ||
-			(ti.VolumeNumber == tj.VolumeNumber && ti.TrackNumber < tj.TrackNumber)
-	})
 
 	var vol int // last-seen volume number
 	for _, tr := range tracklist.Items {
@@ -182,60 +185,6 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 	return rel, img, nil
 }
 
-var countryCodeRegexp = regexp.MustCompile(`^[A-Z][A-Z]$`)
-
-type albumData struct {
-	ID             int          `json:"id"`
-	Title          string       `json:"title"` // album title
-	AllowStreaming bool         `json:"allowStreaming"`
-	NumberOfTracks int          `json:"numberOfTracks"`
-	ReleaseDate    jsonDate     `json:"releaseDate"` // e.g. "2016-06-24"
-	Type           string       `json:"type"`        // "ALBUM", "EP", "SINGLE"
-	Cover          string       `json:"cover"`       // UUID
-	Artist         artistData   `json:"artist"`
-	Artists        []artistData `json:"artists"`
-}
-
-type artistData struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-	Type string `json:"type"` // e.g. "MAIN", "FEATURED"
-}
-
-type tracklistData struct {
-	Items []trackData `json:"items"`
-	// TODO: Is the tracklist automatically paginated in some cases?
-	// There are also "limit", "offset", and "totalNumberOfItems" fields.
-}
-
-type trackData struct {
-	ID             int          `json:"id"`
-	Title          string       `json:"title"`
-	Duration       float32      `json:"duration"` // e.g. 364
-	AllowStreaming bool         `json:"allowStreaming"`
-	TrackNumber    int          `json:"trackNumber"`
-	VolumeNumber   int          `json:"volumeNumber"`
-	URL            string       `json:"url"` // e.g. "http://www.tidal.com/track/1234"
-	ISRC           string       `json:"isrc"`
-	Artist         artistData   `json:"artist"`  // contains only main
-	Artists        []artistData `json:"artists"` // contains both main and featured
-}
-
-// jsonDate unmarshals a time provided as a JSON string like "2020-05-21".
-type jsonDate time.Time
-
-func (d *jsonDate) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-	t, err := time.Parse("2006-01-02", s)
-	*d = jsonDate(t)
-	return err
-}
-
-func (d jsonDate) String() string { return time.Time(d).String() }
-
 // makeArtistCredits constructs a slice of seed.ArtistCredit objects
 // based on the supplied artist list from the API.
 func makeArtistCredits(ctx context.Context, artists []artistData, db *mbdb.DB) []seed.ArtistCredit {
@@ -277,52 +226,6 @@ func makeArtistCredits(ctx context.Context, artists []artistData, db *mbdb.DB) [
 	return credits
 }
 
-// apiCaller calls the Tidal API. This interface exists so fake instances can be injected by tests.
-type apiCaller interface {
-	// call makes a GET request to the Tidal API using the specified path (i.e. "/v1/...").
-	call(ctx context.Context, path string) (io.ReadCloser, error)
-}
-
-// realAPICaller is an apiCaller implementation that calls the real Tidal API.
-type realAPICaller struct {
-	client *http.Client
-	token  string
-}
-
-func newRealAPICaller(token string) *realAPICaller {
-	return &realAPICaller{
-		client: &http.Client{
-			Transport: &http.Transport{
-				// TODO: Find some way to avoid needing this.
-				// I (sometimes?) get "net/http: TLS handshake timeout" when I use http.DefaultClient.
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			},
-		},
-		token: token,
-	}
-}
-
-func (api *realAPICaller) call(ctx context.Context, path string) (io.ReadCloser, error) {
-	ctx, cancel := context.WithTimeout(ctx, apiTimeout)
-	defer cancel()
-
-	url := "https://api.tidal.com" + path
-	log.Print("Fetching ", url)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("X-Tidal-Token", api.token)
-	res, err := api.client.Do(req)
-	if err != nil {
-		return nil, err
-	} else if res.StatusCode != 200 {
-		res.Body.Close()
-		return nil, fmt.Errorf("status %v: %v", res.StatusCode, res.Status)
-	}
-	return res.Body, nil
-}
-
 // CleanURL returns a cleaned version of a Tidal album URL:
 //  https://tidal.com/album/1234 (MB's canonical form, redirects to /browse/album/1234)
 //  https://tidal.com/browse/album/1234 (Tidal's canonical form)
@@ -357,3 +260,87 @@ var pathRegexp = regexp.MustCompile(`^(?:/browse)?(/album/\d+)$`)
 
 func (p *Provider) NeedsPage() bool    { return false }
 func (p *Provider) ExampleURL() string { return "https://tidal.com/album/…" }
+
+// makeCountriesAnnotation returns a string for seed.Release's Annotation field
+// containing the supplied list of countries where an album is available.
+func makeCountriesAnnotation(countries []string, now time.Time) string {
+	vals := make([]string, len(countries))
+	for i, c := range countries {
+		vals[i] = fmt.Sprintf("* %s (%s)", allCountries[c], c)
+	}
+	sort.Strings(vals)
+	date := now.UTC().Format("2006-01-02")
+	return "Regions with all tracks on Tidal (as of " + date + " UTC):\n" + strings.Join(vals, "\n")
+}
+
+// AllCountriesCode is a value for online.Config's CountryCode field indicating that all countries
+// should be queried.
+const AllCountriesCode = "XW"
+
+// allCountries maps from ISO 3166 codes to names for all countries/regions where Tidal is
+// available per https://support.tidal.com/hc/en-us/articles/202453191-TIDAL-Where-We-re-Available.
+// Turkey also seems to be supported by the API, even though it's not listed as of 2022-02-06.
+var allCountries = map[string]string{
+	"AL": "Albania", // unsupported?
+	"AD": "Andorra",
+	"AR": "Argentina",
+	"AU": "Australia",
+	"AT": "Austria",
+	"BE": "Belgium",
+	"BA": "Bosnia and Herzegovina", // unsupported?
+	"BR": "Brazil",
+	"BG": "Bulgaria", // unsupported?
+	"CA": "Canada",
+	"CL": "Chile",
+	"CO": "Colombia",
+	"HR": "Crotia", // unsupported?
+	"CY": "Cyprus",
+	"CZ": "Czech Republic",
+	"DK": "Denmark",
+	"DO": "Dominican Republic",
+	"EE": "Estonia",
+	"FI": "Finland",
+	"FR": "France",
+	"DE": "Germany",
+	"GR": "Greece",
+	"HK": "Hong Kong",
+	"HU": "Hungary",
+	"IS": "Iceland",
+	"IE": "Ireland",
+	"IL": "Israel",
+	"IT": "Italy",
+	"JM": "Jamaica",
+	"LV": "Latvia",
+	"LI": "Liechtenstein",
+	"LT": "Lithuania",
+	"LU": "Luxemburg",
+	"MY": "Malaysia",
+	"MT": "Malta",
+	"MX": "Mexico",
+	"MC": "Monaco",
+	"ME": "Montenegro", // unsupported?
+	"NL": "Netherlands",
+	"NZ": "New Zealand",
+	"NG": "Nigeria",
+	"MK": "North Macedonia", // unsupported?
+	"NO": "Norway",
+	"PE": "Peru",
+	"PL": "Poland",
+	"PT": "Portugal",
+	"PR": "Puerto Rico",
+	"RO": "Romania",
+	"RS": "Serbia", // unsupported?
+	"SG": "Singapore",
+	"SK": "Slovakia",
+	"SI": "Slovenia",
+	"ZA": "South Africa",
+	"ES": "Spain",
+	"SE": "Sweden",
+	"CH": "Switzerland",
+	"TH": "Thailand",
+	"TR": "Turkey",
+	"UG": "Uganda",
+	"AE": "United Arab Emirates", // unsupported?
+	"GB": "United Kingdom",
+	"US": "United States of America",
+}

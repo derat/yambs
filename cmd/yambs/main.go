@@ -59,7 +59,7 @@ func main() {
 	}
 	flag.Var(&action, "action", fmt.Sprintf("Action to perform with seed URLs (%v)", action.allowedList()))
 	addr := flag.String("addr", "localhost:8999", `Address to listen on for -action=serve`)
-	country := flag.String("country", "", `Country code for querying Tidal API (e.g. "US" or "DE")`)
+	country := flag.String("country", "", `Country code for querying Tidal API (ISO 3166, e.g. "US" or "DE"; "XW" for all)`)
 	extractTrackArtists := flag.Bool("extract-track-artists", false, `Extract artist names from track titles in Bandcamp pages`)
 	fields := flag.String("fields", "", `Comma-separated fields for CSV/TSV columns (e.g. "artist,name,length")`)
 	flag.Var(&format, "format", fmt.Sprintf("Format for text input (%v)", format.allowedList()))
@@ -141,7 +141,7 @@ func main() {
 		if srcURL != "" {
 			var err error
 			cfg := online.Config{
-				CountryCode:         *country,
+				CountryCode:         strings.ToUpper(*country),
 				ExtractTrackArtists: *extractTrackArtists,
 			}
 			if edits, err = online.Fetch(ctx, srcURL, setCmds, db, &cfg); err != nil {

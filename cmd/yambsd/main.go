@@ -26,6 +26,7 @@ import (
 	"github.com/derat/yambs/render"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online"
+	"github.com/derat/yambs/sources/online/tidal"
 	"github.com/derat/yambs/sources/text"
 	"github.com/derat/yambs/web"
 )
@@ -207,7 +208,7 @@ func getEditsForRequest(w http.ResponseWriter, req *http.Request,
 		ctx, cancel := context.WithTimeout(req.Context(), onlineEditsTimeout)
 		defer cancel()
 		cfg := online.Config{
-			CountryCode:         req.FormValue("country"),
+			CountryCode:         strings.ToUpper(strings.TrimSpace(req.FormValue("country"))),
 			ExtractTrackArtists: req.FormValue("extractTrackArtists") == "1",
 		}
 		if !countryCodeRegexp.MatchString(cfg.CountryCode) {
@@ -215,6 +216,12 @@ func getEditsForRequest(w http.ResponseWriter, req *http.Request,
 				code: http.StatusBadRequest,
 				msg:  "Invalid country code (should be two letters)",
 				err:  fmt.Errorf("invalid country %q", cfg.CountryCode),
+			}
+		} else if cfg.CountryCode == tidal.AllCountriesCode {
+			return nil, &httpError{
+				code: http.StatusBadRequest,
+				msg:  "Use yambs command-line program to query all countries",
+				err:  errors.New("not querying all countries"),
 			}
 		}
 		if url, err := online.CleanURL(req.FormValue("url")); err != nil {

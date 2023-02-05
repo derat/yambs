@@ -35,8 +35,8 @@ type Config struct {
 	// beginnings of track names, e.g. "Artist - Title". This is currently only used
 	// for Bandcamp pages.
 	ExtractTrackArtists bool
-	// CountryCode contains the country that should be used when requesting album
-	// data, e.g. "US" or "DE". This is currently only used for the Tidal API.
+	// CountryCode contains the ISO 3166 code of the country that should be used when requesting
+	// album data, e.g. "US" or "DE". This is currently only used for the Tidal API.
 	CountryCode string
 	// DisallowNetwork indicates that network requests should not be made.
 	// This can be set by tests.
