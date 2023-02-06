@@ -29,7 +29,7 @@ func NewInfo(desc, rawURL string) (*Info, error) {
 
 func (in *Info) Entity() Entity                              { return InfoEntity }
 func (in *Info) Description() string                         { return in.desc }
-func (in *Info) URL(srv string) string                       { return in.url }
+func (in *Info) URL(serverURL string) string                 { return in.url }
 func (in *Info) Params() url.Values                          { return in.params }
 func (in *Info) Method() string                              { return http.MethodGet }
 func (in *Info) Finish(ctx context.Context, db *db.DB) error { return nil }

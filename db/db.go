@@ -31,7 +31,7 @@ const (
 	cacheSize     = 256         // size for various caches
 	cacheMissTime = time.Minute // TTL for negative caches
 
-	defaultServer = "musicbrainz.org"
+	defaultServerURL = "https://musicbrainz.org"
 )
 
 // entityType is an entity type sent to the MusicBrainz API.
@@ -51,7 +51,7 @@ type DB struct {
 
 	limiter         *rate.Limiter // rate-limits network requests
 	disallowQueries bool          // don't allow network traffic
-	server          string        // server hostname
+	serverURL       string        // base server URL without trailing slash
 	version         string        // included in User-Agent header
 }
 
@@ -67,8 +67,8 @@ func NewDB(opts ...Option) *DB {
 			artistType: cache.NewLRU(cacheSize),
 			labelType:  cache.NewLRU(cacheSize),
 		},
-		limiter: rate.NewLimiter(maxQPS, rateBucketSize),
-		server:  defaultServer,
+		limiter:   rate.NewLimiter(maxQPS, rateBucketSize),
+		serverURL: defaultServerURL,
 	}
 	for _, o := range opts {
 		o(&db)
@@ -83,9 +83,9 @@ type Option func(db *DB)
 // when it would need to perform a query over the network.
 var DisallowQueries = func(db *DB) { db.disallowQueries = true }
 
-// Server returns an Option that configure DB to make calls to the specified
-// hostname, e.g. "musicbrains.org" or "test.musicbrainz.org".
-func Server(s string) Option { return func(db *DB) { db.server = s } }
+// ServerURL returns an Option that configure DB to make calls to the specified
+// base server URL, e.g. "https://musicbrains.org" or "https://test.musicbrainz.org".
+func ServerURL(u string) Option { return func(db *DB) { db.serverURL = u } }
 
 // Version returns an Option that sets the application version for the
 // User-Agent header.
@@ -106,7 +106,7 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 	// for field completion rather than being part of the API (/ws/2).
 	// See https://wiki.musicbrainz.org/Development/Search_Architecture.
 	log.Print("Requesting database ID for ", mbid)
-	r, err := db.doQuery(ctx, "https://"+db.server+"/ws/js/entity/"+mbid)
+	r, err := db.doQuery(ctx, "/ws/js/entity/"+mbid)
 	if err != nil {
 		return 0, err
 	}
@@ -158,9 +158,8 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 	}
 
 	log.Printf("Requesting %v MBID for %v", entity, linkURL)
-	reqURL := fmt.Sprintf("https://%s/ws/2/url?resource=%s&inc=%s-rels",
-		db.server, url.QueryEscape(linkURL), entity)
-	r, err := db.doQuery(ctx, reqURL)
+	path := fmt.Sprintf("/ws/2/url?resource=%s&inc=%s-rels", url.QueryEscape(linkURL), entity)
+	r, err := db.doQuery(ctx, path)
 	if err == notFoundError {
 		missCache.Set(linkURL, time.Now())
 		return "", nil
@@ -216,9 +215,9 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 // notFoundError is returned by doQuery if a 404 error was received.
 var notFoundError = errors.New("not found")
 
-// doQuery sends a GET request for url and returns the response body.
+// doQuery sends a GET request for path and returns the response body.
 // The caller should close the body if error is non-nil.
-func (db *DB) doQuery(ctx context.Context, url string) (io.ReadCloser, error) {
+func (db *DB) doQuery(ctx context.Context, path string) (io.ReadCloser, error) {
 	if db.disallowQueries {
 		return nil, errors.New("querying not allowed")
 	}
@@ -230,8 +229,9 @@ func (db *DB) doQuery(ctx context.Context, url string) (io.ReadCloser, error) {
 		return nil, err
 	}
 
-	log.Print("Sending GET request for ", url)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	u := db.serverURL + path
+	log.Print("Sending GET request for ", u)
+	req, err := http.NewRequestWithContext(ctx, "GET", u, nil)
 	if err != nil {
 		return nil, err
 	}

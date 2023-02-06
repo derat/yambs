@@ -75,11 +75,11 @@ func (l *Label) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (l *Label) URL(srv string) string {
+func (l *Label) URL(serverURL string) string {
 	if l.MBID != "" {
-		return "https://" + srv + "/label/" + l.MBID + "/edit"
+		return serverURL + "/label/" + l.MBID + "/edit"
 	}
-	return "https://" + srv + "/label/create"
+	return serverURL + "/label/create"
 }
 
 func (l *Label) Params() url.Values {

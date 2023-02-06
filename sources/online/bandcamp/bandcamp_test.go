@@ -361,7 +361,7 @@ func TestRelease(t *testing.T) {
 
 			var imgURL string
 			if img != nil {
-				imgURL = img.URL("" /* srv */)
+				imgURL = img.URL("" /* serverURL */)
 			}
 			if diff := cmp.Diff(tc.img, imgURL); diff != "" {
 				t.Error("Bad cover image URL:\n" + diff)

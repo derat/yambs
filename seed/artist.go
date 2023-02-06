@@ -83,11 +83,11 @@ func (a *Artist) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (a *Artist) URL(srv string) string {
+func (a *Artist) URL(serverURL string) string {
 	if a.MBID != "" {
-		return "https://" + srv + "/artist/" + a.MBID + "/edit"
+		return serverURL + "/artist/" + a.MBID + "/edit"
 	}
-	return "https://" + srv + "/artist/create"
+	return serverURL + "/artist/create"
 }
 
 func (a *Artist) Params() url.Values {

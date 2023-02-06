@@ -61,11 +61,11 @@ func (w *Work) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (w *Work) URL(srv string) string {
+func (w *Work) URL(serverURL string) string {
 	if w.MBID != "" {
-		return "https://" + srv + "/work/" + w.MBID + "/edit"
+		return serverURL + "/work/" + w.MBID + "/edit"
 	}
-	return "https://" + srv + "/work/create"
+	return serverURL + "/work/create"
 }
 
 func (w *Work) Params() url.Values {

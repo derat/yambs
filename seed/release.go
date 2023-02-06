@@ -100,11 +100,11 @@ func (rel *Release) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (rel *Release) URL(srv string) string {
+func (rel *Release) URL(serverURL string) string {
 	if rel.MBID != "" {
-		return "https://" + srv + "/release/" + rel.MBID + "/edit"
+		return serverURL + "/release/" + rel.MBID + "/edit"
 	}
-	return "https://" + srv + "/release/add"
+	return serverURL + "/release/add"
 }
 
 func (rel *Release) Params() url.Values {

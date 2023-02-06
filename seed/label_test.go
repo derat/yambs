@@ -12,13 +12,13 @@ import (
 )
 
 func TestLabel_URL(t *testing.T) {
-	const srv = "test.musicbrainz.org"
+	const srvURL = "https://test.musicbrainz.org"
 	for _, tc := range []struct{ mbid, want string }{
-		{"", "https://" + srv + "/label/create"},
-		{"d98928e8-6757-4196-a945-e7145d94d9e4", "https://" + srv + "/label/d98928e8-6757-4196-a945-e7145d94d9e4/edit"},
+		{"", srvURL + "/label/create"},
+		{"d98928e8-6757-4196-a945-e7145d94d9e4", srvURL + "/label/d98928e8-6757-4196-a945-e7145d94d9e4/edit"},
 	} {
 		rel := Label{MBID: tc.mbid}
-		if got := rel.URL(srv); got != tc.want {
+		if got := rel.URL(srvURL); got != tc.want {
 			t.Errorf("MBID %q yielded URL %q; want %q", tc.mbid, got, tc.want)
 		}
 	}

@@ -125,7 +125,8 @@ func main() {
 			return 2
 		}
 
-		db := db.NewDB(db.Server(*server), db.Version(version))
+		serverURL := "https://" + *server
+		db := db.NewDB(db.ServerURL(serverURL), db.Version(version))
 		web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 
 		var edits []seed.Edit
@@ -160,7 +161,7 @@ func main() {
 		}
 
 		opts := []render.Option{
-			render.Server(*server),
+			render.ServerURL(serverURL),
 			render.Version(version), // not actually displayed
 		}
 
@@ -177,7 +178,7 @@ func main() {
 						ed.Entity(), ed.Method())
 					return 1
 				}
-				u, err := url.Parse(ed.URL(*server))
+				u, err := url.Parse(ed.URL(serverURL))
 				if err != nil {
 					fmt.Fprintln(os.Stderr, "Failed parsing URL:", err)
 					return 1

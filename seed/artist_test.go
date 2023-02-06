@@ -12,13 +12,13 @@ import (
 )
 
 func TestArtist_URL(t *testing.T) {
-	const srv = "test.musicbrainz.org"
+	const srvURL = "test.musicbrainz.org"
 	for _, tc := range []struct{ mbid, want string }{
-		{"", "https://" + srv + "/artist/create"},
-		{"d98928e8-6757-4196-a945-e7145d94d9e4", "https://" + srv + "/artist/d98928e8-6757-4196-a945-e7145d94d9e4/edit"},
+		{"", srvURL + "/artist/create"},
+		{"d98928e8-6757-4196-a945-e7145d94d9e4", srvURL + "/artist/d98928e8-6757-4196-a945-e7145d94d9e4/edit"},
 	} {
 		rel := Artist{MBID: tc.mbid}
-		if got := rel.URL(srv); got != tc.want {
+		if got := rel.URL(srvURL); got != tc.want {
 			t.Errorf("MBID %q yielded URL %q; want %q", tc.mbid, got, tc.want)
 		}
 	}

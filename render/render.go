@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/browser"
 )
 
-const defaultServer = "musicbrainz.org"
+const defaultServerURL = "https://musicbrainz.org"
 
 // OpenFile writes an HTML page containing edits to a temporary file
 // and opens it in a browser.
@@ -57,8 +57,8 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit, opts ...Optio
 	defer ls.Close()
 
 	// Get the real address in case the port wasn't specified.
-	srvURL := fmt.Sprintf("http://%s/", ls.Addr().String())
-	log.Print("Listening at ", srvURL)
+	listenURL := fmt.Sprintf("http://%s/", ls.Addr().String())
+	log.Print("Listening at ", listenURL)
 
 	// If there are seed.Info edits with file:// URLs, rewrite them to point at the web server.
 	filePaths := make(map[string]struct{})
@@ -84,7 +84,7 @@ func OpenHTTP(ctx context.Context, addr string, edits []seed.Edit, opts ...Optio
 	}
 
 	// Launch the browser before we start handling requests.
-	if err := browser.OpenURL(srvURL); err != nil {
+	if err := browser.OpenURL(listenURL); err != nil {
 		return err
 	}
 
@@ -139,7 +139,7 @@ func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
 	if err != nil {
 		return err
 	}
-	editInfos, err := NewEditInfos(edits, cfg.server)
+	editInfos, err := NewEditInfos(edits, cfg.serverURL)
 	if err != nil {
 		return err
 	}
@@ -163,19 +163,20 @@ func Write(w io.Writer, edits []seed.Edit, opts ...Option) error {
 // Option can be passed to configure the page.
 type Option func(*config)
 
-// Server sets the MusicBrainz server hostname, e.g. "musicbrainz.org" or "test.musicbrainz.org".
-func Server(s string) Option { return func(cfg *config) { cfg.server = s } }
+// ServerURL sets the base MusicBrainz server URL,
+// e.g. "https://musicbrainz.org" or "https://test.musicbrainz.org".
+func ServerURL(u string) Option { return func(cfg *config) { cfg.serverURL = u } }
 
 // Version sets an optional yambs version to include in the page.
 func Version(v string) Option { return func(cfg *config) { cfg.version = v } }
 
 type config struct {
-	version string // yambs version
-	server  string // MusicBrainz server hostname
+	version   string // yambs version
+	serverURL string // base MusicBrainz server URL
 }
 
 func getConfig(opts ...Option) config {
-	cfg := config{server: defaultServer}
+	cfg := config{serverURL: defaultServerURL}
 	for _, o := range opts {
 		o(&cfg)
 	}
@@ -204,7 +205,7 @@ type paramInfo struct {
 }
 
 // NewEditInfo converts a seed.Edit into an EditInfo struct.
-func NewEditInfo(edit seed.Edit, srv string) (*EditInfo, error) {
+func NewEditInfo(edit seed.Edit, serverURL string) (*EditInfo, error) {
 	info := EditInfo{Desc: edit.Description()}
 
 	// Use a different approach depending on whether the edit requires a POST or not.
@@ -212,7 +213,7 @@ func NewEditInfo(edit seed.Edit, srv string) (*EditInfo, error) {
 	case "GET":
 		// If we can use GET, construct a URL including any parameters since <form method="GET">
 		// adds an annoying question mark even if there aren't any parameters.
-		u, err := url.Parse(edit.URL(srv))
+		u, err := url.Parse(edit.URL(serverURL))
 		if err != nil {
 			return nil, err
 		}
@@ -221,7 +222,7 @@ func NewEditInfo(edit seed.Edit, srv string) (*EditInfo, error) {
 	case "POST":
 		// If we need to use POST, keep the parameters separate since <form> annoyingly
 		// clears the URL's query string.
-		info.URL = edit.URL(srv)
+		info.URL = edit.URL(serverURL)
 		for name, vals := range edit.Params() {
 			for _, val := range vals {
 				info.Params = append(info.Params, paramInfo{Name: name, Value: val})
@@ -235,11 +236,11 @@ func NewEditInfo(edit seed.Edit, srv string) (*EditInfo, error) {
 }
 
 // NewEditInfos calls NewEditInfo for each of the supplied edits.
-func NewEditInfos(edits []seed.Edit, srv string) ([]*EditInfo, error) {
+func NewEditInfos(edits []seed.Edit, serverURL string) ([]*EditInfo, error) {
 	infos := make([]*EditInfo, len(edits))
 	for i, edit := range edits {
 		var err error
-		if infos[i], err = NewEditInfo(edit, srv); err != nil {
+		if infos[i], err = NewEditInfo(edit, serverURL); err != nil {
 			return nil, err
 		}
 	}

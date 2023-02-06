@@ -39,8 +39,6 @@ const (
 
 	editsDelay       = 3 * time.Second
 	editsRateMapSize = 256
-
-	mbServer = "musicbrainz.org"
 )
 
 var version string
@@ -59,6 +57,7 @@ func main() {
 		flag.PrintDefaults()
 	}
 	addr := flag.String("addr", "localhost:8999", `Address to listen on for HTTP requests`)
+	server := flag.String("server", "musicbrainz.org", "MusicBrainz server hostname")
 	flag.Parse()
 
 	// Just generate the page once.
@@ -68,6 +67,7 @@ func main() {
 	}
 	form := b.Bytes()
 
+	serverURL := "https://" + *server
 	mbdb := db.NewDB(db.Version(version))
 	web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 	rm := newRateMap(editsDelay, editsRateMapSize)
@@ -93,7 +93,7 @@ func main() {
 		defer cancel()
 
 		caddr := clientAddr(req)
-		infos, err := getEditsForRequest(ctx, w, req, rm, mbdb)
+		infos, err := getEditsForRequest(ctx, w, req, serverURL, rm, mbdb)
 		if err != nil {
 			var msg string
 			code := http.StatusInternalServerError
@@ -173,7 +173,7 @@ func httpErrorf(code int, format string, args ...interface{}) *httpError {
 
 // getEditsForRequest generates render.EditInfo objects in response to an /edits request to the server.
 func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
-	rm *rateMap, mbdb *db.DB) (
+	serverURL string, rm *rateMap, mbdb *db.DB) (
 	[]*render.EditInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
@@ -260,7 +260,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	default:
 		return nil, httpErrorf(http.StatusBadRequest, "bad source %q", req.FormValue("source"))
 	}
-	return render.NewEditInfos(edits, mbServer)
+	return render.NewEditInfos(edits, serverURL)
 }
 
 // countryCodeRegexp is used to validate the optional "country" query parameter.

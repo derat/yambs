@@ -80,11 +80,11 @@ func (rec *Recording) Description() string {
 	return strings.Join(parts, " / ")
 }
 
-func (rec *Recording) URL(srv string) string {
+func (rec *Recording) URL(serverURL string) string {
 	if rec.MBID != "" {
-		return "https://" + srv + "/recording/" + rec.MBID + "/edit"
+		return serverURL + "/recording/" + rec.MBID + "/edit"
 	}
-	return "https://" + srv + "/recording/create"
+	return serverURL + "/recording/create"
 }
 
 func (rec *Recording) Params() url.Values {

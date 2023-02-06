@@ -30,9 +30,9 @@ func TestWrite_Edits(t *testing.T) {
 		info,
 	}
 
-	const srv = "test.musicbrainz.org"
+	const srvURL = "https://test.musicbrainz.org"
 	var b bytes.Buffer
-	if err := Write(&b, edits, Server(srv)); err != nil {
+	if err := Write(&b, edits, ServerURL(srvURL)); err != nil {
 		t.Fatal("Write failed:", err)
 	}
 
@@ -42,7 +42,7 @@ func TestWrite_Edits(t *testing.T) {
 		if desc := template.JSEscapeString(ed.Description()); !strings.Contains(b.String(), desc) {
 			t.Errorf("Write didn't include edit description %q", desc)
 		}
-		if url := template.JSEscapeString(ed.URL(srv)); !strings.Contains(b.String(), url) {
+		if url := template.JSEscapeString(ed.URL(srvURL)); !strings.Contains(b.String(), url) {
 			t.Errorf("Write didn't include edit URL %q", url)
 		}
 	}
