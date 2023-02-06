@@ -15,6 +15,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"time"
 
 	"github.com/derat/yambs/cache"
 	"golang.org/x/time/rate"
@@ -27,7 +28,8 @@ const (
 	userAgentFmt   = "yambs/%s ( https://github.com/derat/yambs )"
 
 	// TODO: Should cache entries also expire after a certain amount of time?
-	cacheSize = 256 // size for various caches
+	cacheSize     = 256         // size for various caches
+	cacheMissTime = time.Minute // TTL for negative caches
 
 	defaultServer = "musicbrainz.org"
 )
@@ -45,6 +47,7 @@ const (
 type DB struct {
 	databaseIDs *cache.LRU                // string MBID to int32 database ID
 	urlMBIDs    map[entityType]*cache.LRU // string URL to string MBID
+	urlMiss     map[entityType]*cache.LRU // string URL to time.Time of negative lookup
 
 	limiter         *rate.Limiter // rate-limits network requests
 	disallowQueries bool          // don't allow network traffic
@@ -57,6 +60,10 @@ func NewDB(opts ...Option) *DB {
 	db := DB{
 		databaseIDs: cache.NewLRU(cacheSize),
 		urlMBIDs: map[entityType]*cache.LRU{
+			artistType: cache.NewLRU(cacheSize),
+			labelType:  cache.NewLRU(cacheSize),
+		},
+		urlMiss: map[entityType]*cache.LRU{
 			artistType: cache.NewLRU(cacheSize),
 			labelType:  cache.NewLRU(cacheSize),
 		},
@@ -139,10 +146,14 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 		return mbid.(string), nil
 	}
 
-	// TODO: Add negative caching? It should have a short TTL.
-
 	// If we're being called from a test, just pretend like the URL is missing.
 	if db.disallowQueries {
+		return "", nil
+	}
+
+	// Give up if we already checked recently.
+	missCache := db.urlMiss[entity]
+	if v, ok := missCache.Get(linkURL); ok && time.Now().Sub(v.(time.Time)) <= cacheMissTime {
 		return "", nil
 	}
 
@@ -151,6 +162,7 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 		db.server, url.QueryEscape(linkURL), entity)
 	r, err := db.doQuery(ctx, reqURL)
 	if err == notFoundError {
+		missCache.Set(linkURL, time.Now())
 		return "", nil
 	} else if err != nil {
 		return "", err

@@ -88,10 +88,9 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 		return nil, nil, fmt.Errorf("API claimed album has %d track(s)", album.NumberOfTracks)
 	}
 
-	missingArtistIDs := make(map[int]bool) // cache of artists not in MB
 	rel = &seed.Release{
 		Title:     album.Title,
-		Artists:   makeArtistCredits(ctx, album.Artists, db, missingArtistIDs),
+		Artists:   makeArtistCredits(ctx, album.Artists, db),
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 	}
@@ -148,7 +147,7 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, c
 		}
 		// Don't assign artist credits to the track if they'd be identical to the album credits.
 		if !reflect.DeepEqual(tr.Artists, album.Artists) {
-			track.Artists = makeArtistCredits(ctx, tr.Artists, db, missingArtistIDs)
+			track.Artists = makeArtistCredits(ctx, tr.Artists, db)
 		}
 		med := &rel.Mediums[len(rel.Mediums)-1]
 		med.Tracks = append(med.Tracks, track)
@@ -229,10 +228,7 @@ func (d jsonDate) String() string { return time.Time(d).String() }
 
 // makeArtistCredits constructs a slice of seed.ArtistCredit objects
 // based on the supplied artist list from the API.
-// missing is a cache of Tidal artist IDs that are known to not be in MusicBrainz;
-// the same map should be passed to successive calls to this function..
-func makeArtistCredits(ctx context.Context, artists []artistData,
-	db *db.DB, missing map[int]bool) []seed.ArtistCredit {
+func makeArtistCredits(ctx context.Context, artists []artistData, db *db.DB) []seed.ArtistCredit {
 	credits := make([]seed.ArtistCredit, len(artists))
 	for i, a := range artists {
 		credits[i].Name = a.Name
@@ -241,23 +237,17 @@ func makeArtistCredits(ctx context.Context, artists []artistData,
 		// Tidal URLs to tidal.com now, but I still see a lot of "Stream at Tidal" relationships
 		// with stream.tidal.com URLs. Look for both, I guess:
 		// https://github.com/derat/yambs/issues/20
-		if a.ID != 0 && !missing[a.ID] {
-			var mbid string
+		if a.ID != 0 {
 			for _, aurl := range []string{
 				fmt.Sprintf("https://tidal.com/artist/%d", a.ID),
 				fmt.Sprintf("https://stream.tidal.com/artist/%d", a.ID),
 			} {
 				var err error
-				if mbid, err = db.GetArtistMBIDFromURL(ctx, aurl); err != nil {
+				if credits[i].MBID, err = db.GetArtistMBIDFromURL(ctx, aurl); err != nil {
 					log.Printf("Failed getting MBID for %v: %v", aurl, err)
-				} else if mbid != "" {
+				} else if credits[i].MBID != "" {
 					break
 				}
-			}
-			if mbid != "" {
-				credits[i].MBID = mbid
-			} else {
-				missing[a.ID] = true // don't try again
 			}
 		}
 

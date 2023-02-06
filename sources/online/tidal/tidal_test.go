@@ -230,8 +230,7 @@ func TestMakeArtistCredits(t *testing.T) {
 			},
 		},
 	} {
-		missing := make(map[int]bool)
-		got := makeArtistCredits(ctx, tc.artists, db, missing)
+		got := makeArtistCredits(ctx, tc.artists, db)
 		if diff := cmp.Diff(tc.want, got); diff != "" {
 			t.Errorf("Bad artist credits from %v:\n%v", tc.artists, diff)
 		}
