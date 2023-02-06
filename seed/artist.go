@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 )
 
 // Artist holds data used to seed the "Add Artist" form at https://musicbrainz.org/artist/create
@@ -143,4 +143,4 @@ func (a *Artist) Params() url.Values {
 
 func (a *Artist) Method() string { return http.MethodGet }
 
-func (a *Artist) Finish(ctx context.Context, db *db.DB) error { return nil }
+func (a *Artist) Finish(ctx context.Context, db *mbdb.DB) error { return nil }

@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
@@ -30,7 +30,7 @@ type Provider struct{}
 // This is heavily based on the bandcamp_importer.user.js userscript:
 // https://github.com/murdos/musicbrainz-userscripts/blob/master/bandcamp_importer.user.js
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
-	db *db.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
+	db *mbdb.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
 	// Upgrade the scheme for later usage.
 	if strings.HasPrefix(pageURL, "http://") {
 		pageURL = "https" + pageURL[4:]

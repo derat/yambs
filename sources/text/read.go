@@ -13,7 +13,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 )
 
@@ -43,7 +43,7 @@ type config struct {
 // slashes, and empty field names indicate that the column should be ignored.
 // rawSets contains "field=value" directives describing values to set for all edits.
 func Read(ctx context.Context, r io.Reader, format Format, typ seed.Entity,
-	fields []string, rawSetCmds []string, db *db.DB, opts ...Option) ([]seed.Edit, error) {
+	fields []string, rawSetCmds []string, db *mbdb.DB, opts ...Option) ([]seed.Edit, error) {
 	var cfg config
 	for _, o := range opts {
 		o(&cfg)

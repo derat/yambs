@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 )
 
 // Work holds data used to seed the "Add Work" form at https://musicbrainz.org/work/create
@@ -104,7 +104,7 @@ func (w *Work) Params() url.Values {
 
 func (w *Work) Method() string { return http.MethodGet }
 
-func (w *Work) Finish(ctx context.Context, db *db.DB) error { return nil }
+func (w *Work) Finish(ctx context.Context, db *mbdb.DB) error { return nil }
 
 // WorkAttribute describes an attribute associated with a work.
 type WorkAttribute struct {

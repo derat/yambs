@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/render"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online"
@@ -68,7 +68,7 @@ func main() {
 	form := b.Bytes()
 
 	serverURL := "https://" + *server
-	mbdb := db.NewDB(db.Version(version))
+	db := mbdb.NewDB(mbdb.Version(version))
 	web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 	rm := newRateMap(editsDelay, editsRateMapSize)
 
@@ -93,7 +93,7 @@ func main() {
 		defer cancel()
 
 		caddr := clientAddr(req)
-		infos, err := getEditsForRequest(ctx, w, req, serverURL, rm, mbdb)
+		infos, err := getEditsForRequest(ctx, w, req, serverURL, rm, db)
 		if err != nil {
 			var msg string
 			code := http.StatusInternalServerError
@@ -117,7 +117,7 @@ func main() {
 	// Perform redirects for seed.AddCoverArtRedirectURI.
 	http.HandleFunc("/redirect-add-cover-art", func(w http.ResponseWriter, req *http.Request) {
 		mbid := req.FormValue("release_mbid")
-		if !db.IsMBID(mbid) {
+		if !mbdb.IsMBID(mbid) {
 			http.Error(w, "Invalid release_mbid parameter", http.StatusBadRequest)
 			return
 		}
@@ -173,7 +173,7 @@ func httpErrorf(code int, format string, args ...interface{}) *httpError {
 
 // getEditsForRequest generates render.EditInfo objects in response to an /edits request to the server.
 func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
-	serverURL string, rm *rateMap, mbdb *db.DB) (
+	serverURL string, rm *rateMap, db *mbdb.DB) (
 	[]*render.EditInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
@@ -224,7 +224,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 				msg:  fmt.Sprintf("Unsupported URL (%v)", strings.Join(online.ExampleURLs, ", ")),
 				err:  fmt.Errorf("%q: %v", req.FormValue("onlineUrl"), err),
 			}
-		} else if edits, err = online.Fetch(ctx, url, req.Form["set"], mbdb, &cfg); err != nil {
+		} else if edits, err = online.Fetch(ctx, url, req.Form["set"], db, &cfg); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,
 				msg:  fmt.Sprint("Failed getting edits: ", err),
@@ -248,7 +248,7 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		}
 		var err error
 		if edits, err = text.Read(ctx, strings.NewReader(req.FormValue("input")),
-			format, typ, req.Form["field"], req.Form["set"], mbdb,
+			format, typ, req.Form["field"], req.Form["set"], db,
 			text.MaxEdits(maxEdits), text.MaxFields(maxFields)); err != nil {
 			return nil, &httpError{
 				code: http.StatusInternalServerError,

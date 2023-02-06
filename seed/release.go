@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 )
 
 // Release holds data used to seed the "Add Release" form at http://musicbrainz.org/release/add.
@@ -148,7 +148,7 @@ func (rel *Release) Params() url.Values {
 
 func (rel *Release) Method() string { return http.MethodPost }
 
-func (rel *Release) Finish(ctx context.Context, db *db.DB) error { return nil }
+func (rel *Release) Finish(ctx context.Context, db *mbdb.DB) error { return nil }
 
 // Autofill attempts to automatically fill empty fields in rel.
 // The Language and Script fields are filled based on the release and track titles.

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/google/go-cmp/cmp"
 )
@@ -32,7 +32,7 @@ Third Song	0:45
 		TSV, seed.RecordingEntity, []string{"name", "length"}, []string{
 			"artist=" + uuid,
 			"edit_note=" + note,
-		}, db.NewDB(db.DisallowQueries))
+		}, mbdb.NewDB(mbdb.DisallowQueries))
 	if err != nil {
 		t.Fatal("Read failed:", err)
 	}
@@ -93,7 +93,7 @@ func TestRead_Recording_All(t *testing.T) {
 		linkType       = seed.LinkType_DownloadForFree_Recording_URL
 	)
 
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	db.SetDatabaseIDForTest(artistMBID, artistID)
 
 	var input bytes.Buffer
@@ -200,7 +200,7 @@ func TestRead_Recording_All(t *testing.T) {
 func TestRead_Recording_BadIndex(t *testing.T) {
 	// Read should reject an "artist1" field if "artist0" wasn't previously supplied.
 	ctx := context.Background()
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	if _, err := Read(ctx,
 		strings.NewReader("name=Name\nartist1_credited=Artist\n"),
 		KeyVal, seed.RecordingEntity, nil, nil, db); err == nil {
@@ -218,7 +218,7 @@ func TestRead_Recording_BadIndex(t *testing.T) {
 func TestRead_Recording_MaxEdits(t *testing.T) {
 	// Read should accept input matching the maximum number of edits.
 	ctx := context.Background()
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	opt := MaxEdits(2)
 	if _, err := Read(ctx, strings.NewReader("Name 1\nName 2\n"),
 		TSV, seed.RecordingEntity, []string{"name"}, nil, db, opt); err != nil {
@@ -235,7 +235,7 @@ func TestRead_Recording_MaxEdits(t *testing.T) {
 func TestRead_Recording_MaxFields(t *testing.T) {
 	// Read should accept input matching the maximum number of fields.
 	ctx := context.Background()
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	opt := MaxFields(2)
 	if _, err := Read(ctx, strings.NewReader("Name\t3:45"), TSV, seed.RecordingEntity,
 		[]string{"name", "length"}, nil, db, opt); err != nil {
@@ -270,7 +270,7 @@ func TestRead_Recording_MultipleFields(t *testing.T) {
 	got, err := Read(context.Background(),
 		strings.NewReader("Name 1\t"+url1+"\nName 2\t"+url2+"\n"),
 		TSV, seed.RecordingEntity, []string{"name", "url0_url/edit_note"}, nil,
-		db.NewDB(db.DisallowQueries))
+		mbdb.NewDB(mbdb.DisallowQueries))
 	if err != nil {
 		t.Fatal("Read failed:", err)
 	}
@@ -289,7 +289,7 @@ func TestRead_Recording_SkipField(t *testing.T) {
 	got, err := Read(context.Background(),
 		strings.NewReader("Name 1\tfoo\t3:56\nName 2\tbar\t0:45\n"),
 		TSV, seed.RecordingEntity, []string{"name", "", "length"}, nil,
-		db.NewDB(db.DisallowQueries))
+		mbdb.NewDB(mbdb.DisallowQueries))
 	if err != nil {
 		t.Fatal("Read failed:", err)
 	}

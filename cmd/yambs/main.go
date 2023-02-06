@@ -19,7 +19,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/render"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/mp3"
@@ -126,7 +126,7 @@ func main() {
 		}
 
 		serverURL := "https://" + *server
-		db := db.NewDB(db.ServerURL(serverURL), db.Version(version))
+		db := mbdb.NewDB(mbdb.ServerURL(serverURL), mbdb.Version(version))
 		web.SetUserAgent(fmt.Sprintf("yambs/%s (+https://github.com/derat/yambs)", version))
 
 		var edits []seed.Edit

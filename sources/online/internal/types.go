@@ -7,7 +7,7 @@ package internal
 import (
 	"context"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/web"
 )
@@ -23,7 +23,7 @@ type Provider interface {
 	// Release extracts release information from the supplied page.
 	// If NeedsPage returns false, then the supplied page will be nil.
 	// The img return value is nil if a cover image is not found.
-	Release(ctx context.Context, page *web.Page, url string, db *db.DB, cfg *Config) (
+	Release(ctx context.Context, page *web.Page, url string, db *mbdb.DB, cfg *Config) (
 		rel *seed.Release, img *seed.Info, err error)
 	// ExampleURL returns an example URL that can be displayed to the user.
 	ExampleURL() string

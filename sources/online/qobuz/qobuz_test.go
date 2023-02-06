@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
@@ -21,7 +21,7 @@ import (
 
 func TestRelease(t *testing.T) {
 	ctx := context.Background()
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	var pr Provider
 
 	for _, tc := range []struct {

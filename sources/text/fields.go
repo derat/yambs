@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 )
 
@@ -148,7 +148,7 @@ func setStringSlice(dst *[]string, val, sep string) error {
 }
 
 func setMBID(dst *string, val string) error {
-	if !db.IsMBID(val) {
+	if !mbdb.IsMBID(val) {
 		return errors.New("not MBID")
 	}
 	return setString(dst, val)

@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
@@ -68,7 +68,7 @@ func (p *Provider) ExampleURL() string { return "https://www.qobuz.com/us-en/alb
 
 // Release extracts release information from the supplied Qobuz page.
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
-	db *db.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
+	db *mbdb.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
 	// Get the page title so it can be included in errors.
 	pageTitle, _ := page.Query("title").Text(true)
 

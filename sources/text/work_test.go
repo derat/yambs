@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/google/go-cmp/cmp"
 )
@@ -72,7 +72,7 @@ func TestRead_Work_All(t *testing.T) {
 		"url0_url",
 		"url0_type",
 		"type",
-	}, nil, db.NewDB(db.DisallowQueries))
+	}, nil, mbdb.NewDB(mbdb.DisallowQueries))
 	if err != nil {
 		t.Fatal("Read failed:", err)
 	}

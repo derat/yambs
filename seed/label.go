@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 )
 
 // Label holds data used to seed the "Add Label" form at https://musicbrainz.org/label/create
@@ -126,4 +126,4 @@ func (l *Label) Params() url.Values {
 
 func (l *Label) Method() string { return http.MethodGet }
 
-func (l *Label) Finish(ctx context.Context, db *db.DB) error { return nil }
+func (l *Label) Finish(ctx context.Context, db *mbdb.DB) error { return nil }

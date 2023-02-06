@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/internal"
 	"github.com/derat/yambs/web"
@@ -45,7 +45,7 @@ type Provider struct{}
 // Release generates a seeded release edit for the supplied Tidal album URL.
 // Tidal provides a JSON API, so the page parameter is not used.
 func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
-	db *db.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
+	db *mbdb.DB, cfg *internal.Config) (rel *seed.Release, img *seed.Info, err error) {
 	if cfg.DisallowNetwork {
 		return nil, nil, errors.New("network is disallowed")
 	}
@@ -55,7 +55,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 
 // getRelease is called by Release.
 // This helper function exists so that unit tests can inject fake apiCallers.
-func getRelease(ctx context.Context, pageURL string, api apiCaller, db *db.DB, cfg *internal.Config) (
+func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB, cfg *internal.Config) (
 	rel *seed.Release, img *seed.Info, err error) {
 	albumURL, err := cleanURL(pageURL)
 	if err != nil {
@@ -228,7 +228,7 @@ func (d jsonDate) String() string { return time.Time(d).String() }
 
 // makeArtistCredits constructs a slice of seed.ArtistCredit objects
 // based on the supplied artist list from the API.
-func makeArtistCredits(ctx context.Context, artists []artistData, db *db.DB) []seed.ArtistCredit {
+func makeArtistCredits(ctx context.Context, artists []artistData, db *mbdb.DB) []seed.ArtistCredit {
 	credits := make([]seed.ArtistCredit, len(artists))
 	for i, a := range artists {
 		credits[i].Name = a.Name

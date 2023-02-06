@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 )
 
 // Info wraps a URL containing extra information (e.g. cover art); it's not an actual edit.
@@ -27,9 +27,9 @@ func NewInfo(desc, rawURL string) (*Info, error) {
 	return &Info{desc: desc, url: u.String(), params: params}, nil
 }
 
-func (in *Info) Entity() Entity                              { return InfoEntity }
-func (in *Info) Description() string                         { return in.desc }
-func (in *Info) URL(serverURL string) string                 { return in.url }
-func (in *Info) Params() url.Values                          { return in.params }
-func (in *Info) Method() string                              { return http.MethodGet }
-func (in *Info) Finish(ctx context.Context, db *db.DB) error { return nil }
+func (in *Info) Entity() Entity                                { return InfoEntity }
+func (in *Info) Description() string                           { return in.desc }
+func (in *Info) URL(serverURL string) string                   { return in.url }
+func (in *Info) Params() url.Values                            { return in.params }
+func (in *Info) Method() string                                { return http.MethodGet }
+func (in *Info) Finish(ctx context.Context, db *mbdb.DB) error { return nil }

@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/internal"
 	"github.com/google/go-cmp/cmp"
@@ -24,7 +24,7 @@ func TestGetRelease(t *testing.T) {
 	api := &fakeAPICaller{}
 	cfg := &internal.Config{DisallowNetwork: true}
 
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	for url, mbid := range map[string]string{
 		// Add both tidal.com and stream.tidal.com URLs since both appear in the database.
 		"https://tidal.com/artist/608":            "4bd95eea-b9f6-4d70-a36c-cfea77431553",
@@ -206,7 +206,7 @@ var apiTracksRegexp = regexp.MustCompile(`^/v1/albums/(\d+)/tracks\?countryCode=
 
 func TestMakeArtistCredits(t *testing.T) {
 	ctx := context.Background()
-	db := db.NewDB(db.DisallowQueries)
+	db := mbdb.NewDB(mbdb.DisallowQueries)
 	for _, tc := range []struct {
 		artists []artistData
 		want    []seed.ArtistCredit

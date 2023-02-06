@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 )
 
 // Recording holds data used to seed the "Add Standalone Recording" form at
@@ -130,7 +130,7 @@ func (rec *Recording) Params() url.Values {
 // page to prevent XSRFs that the user needs to click through.
 func (rec *Recording) Method() string { return http.MethodGet }
 
-func (rec *Recording) Finish(ctx context.Context, db *db.DB) error {
+func (rec *Recording) Finish(ctx context.Context, db *mbdb.DB) error {
 	for i := range rec.Artists {
 		ac := &rec.Artists[i]
 		if ac.MBID != "" {

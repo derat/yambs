@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/google/go-cmp/cmp"
 )
@@ -58,7 +58,7 @@ edit_note=https://www.example.org/
 `
 	got, err := Read(context.Background(),
 		strings.NewReader(strings.TrimLeft(input, "\n")),
-		KeyVal, seed.ReleaseEntity, nil, nil, db.NewDB(db.DisallowQueries))
+		KeyVal, seed.ReleaseEntity, nil, nil, mbdb.NewDB(mbdb.DisallowQueries))
 	if err != nil {
 		t.Fatal("Read failed:", err)
 	}

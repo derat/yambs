@@ -8,7 +8,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/derat/yambs/db"
+	"github.com/derat/yambs/mbdb"
 	"github.com/derat/yambs/seed"
 	"github.com/derat/yambs/sources/online/bandcamp"
 	"github.com/derat/yambs/sources/online/internal"
@@ -37,7 +37,7 @@ func CleanURL(orig string) (string, error) {
 // Fetch generates seeded edits from the page at url.
 // If cfg is nil, a default configuration will be used.
 func Fetch(ctx context.Context, url string, rawSetCmds []string,
-	db *db.DB, cfg *Config) ([]seed.Edit, error) {
+	db *mbdb.DB, cfg *Config) ([]seed.Edit, error) {
 	if cfg == nil {
 		cfg = &Config{}
 	}

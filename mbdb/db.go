@@ -1,8 +1,8 @@
 // Copyright 2022 Daniel Erat.
 // All rights reserved.
 
-// Package db contains functionality related to the MusicBrainz database.
-package db
+// Package mbdb contains functionality related to the MusicBrainz database.
+package mbdb
 
 import (
 	"context"
