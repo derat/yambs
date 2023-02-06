@@ -34,6 +34,10 @@ const (
 	defaultToken = "gsFXkJqGrUNoYMQPZe4k3WKwijnrp8iGSwn3bApe"
 	// defaultCountry is the default country code passed to the Tidal API.
 	defaultCountry = "US"
+	// apiTimeout is the maximum time for a request to the (unreliable) Tidal API.
+	apiTimeout = 5 * time.Second
+	// finishTime is reserved to finish creating edits after querying the MusicBrainz API.
+	finishTime = 3 * time.Second
 )
 
 // https://www.telegraph.co.uk/technology/news/11192375/Tidal-launches-lossless-music-streaming-in-UK-and-US.html
@@ -88,9 +92,15 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		return nil, nil, fmt.Errorf("API claimed album has %d track(s)", album.NumberOfTracks)
 	}
 
+	// Use a shortened context for querying MusicBrainz for artist MBIDs so we'll have a bit of time
+	// left to finish creating the edit even if we need to look up a bunch of different artists:
+	// https://github.com/derat/yambs/issues/19
+	shortCtx, shortCancel := mbdb.ShortenContext(ctx, finishTime)
+	defer shortCancel()
+
 	rel = &seed.Release{
 		Title:     album.Title,
-		Artists:   makeArtistCredits(ctx, album.Artists, db),
+		Artists:   makeArtistCredits(shortCtx, album.Artists, db),
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 	}
@@ -147,7 +157,7 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		}
 		// Don't assign artist credits to the track if they'd be identical to the album credits.
 		if !reflect.DeepEqual(tr.Artists, album.Artists) {
-			track.Artists = makeArtistCredits(ctx, tr.Artists, db)
+			track.Artists = makeArtistCredits(shortCtx, tr.Artists, db)
 		}
 		med := &rel.Mediums[len(rel.Mediums)-1]
 		med.Tracks = append(med.Tracks, track)
@@ -293,6 +303,9 @@ func newRealAPICaller(token string) *realAPICaller {
 }
 
 func (api *realAPICaller) call(ctx context.Context, path string) (io.ReadCloser, error) {
+	ctx, cancel := context.WithTimeout(ctx, apiTimeout)
+	defer cancel()
+
 	url := "https://api.tidal.com" + path
 	log.Print("Fetching ", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)

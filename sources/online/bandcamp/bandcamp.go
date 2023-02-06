@@ -23,6 +23,11 @@ import (
 	"golang.org/x/net/html"
 )
 
+const (
+	// finishTime is reserved to finish creating edits after querying the MusicBrainz API.
+	finishTime = 3 * time.Second
+)
+
 // Provider implements internal.Provider for Bandcamp.
 type Provider struct{}
 
@@ -63,10 +68,16 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 		return nil, nil, errors.New("track is part of " + embed.AlbumEmbedData.Linkback)
 	}
 
+	// Use a shortened context for querying MusicBrainz MBIDs so we'll have a bit of time left to
+	// finish creating the edit even if we need to look up a bunch of different artists:
+	// https://github.com/derat/yambs/issues/19
+	shortCtx, shortCancel := mbdb.ShortenContext(ctx, finishTime)
+	defer shortCancel()
+
 	// Try to find the artist's MBID from the URL.
 	baseURL := getBaseURL(pageURL)
 	if baseURL != "" {
-		if mbid, err := db.GetArtistMBIDFromURL(ctx, baseURL); err != nil {
+		if mbid, err := db.GetArtistMBIDFromURL(shortCtx, baseURL); err != nil {
 			log.Printf("Failed getting artist MBID from %v: %v", baseURL, err)
 		} else if mbid != "" {
 			rel.Artists[0].MBID = mbid
@@ -157,7 +168,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	if val, err := page.Query("a.back-to-label-link").Attr("href"); err == nil {
 		if labelURL, err := url.Parse(val); err == nil {
 			labelURL.RawQuery = "" // clear "?from=btl"
-			if labelMBID, err = db.GetLabelMBIDFromURL(ctx, labelURL.String()); err != nil {
+			if labelMBID, err = db.GetLabelMBIDFromURL(shortCtx, labelURL.String()); err != nil {
 				log.Printf("Failed getting label MBID from %s: %v", labelURL, err)
 			}
 		}
@@ -165,7 +176,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	// If we didn't find a label MBID yet and the base URL didn't correspond to an artist,
 	// check if it corresponds to a label instead.
 	if labelMBID == "" && baseURL != "" && rel.Artists[0].MBID == "" {
-		if labelMBID, err = db.GetLabelMBIDFromURL(ctx, baseURL); err != nil {
+		if labelMBID, err = db.GetLabelMBIDFromURL(shortCtx, baseURL); err != nil {
 			log.Printf("Failed getting label MBID from %s: %v", baseURL, err)
 		}
 	}
@@ -184,7 +195,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	}
 
 	// Fill unset fields where possible.
-	rel.Autofill(ctx, !cfg.DisallowNetwork)
+	rel.Autofill(shortCtx, !cfg.DisallowNetwork)
 
 	// Add an informational edit containing the full-resolution cover art to make it easy
 	// for the user to add it in a followup edit.

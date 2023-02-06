@@ -32,10 +32,11 @@ import (
 
 const (
 	// TODO: Figure out reasonable values for these.
-	maxReqBytes  = 128 * 1024
-	editsTimeout = 10 * time.Second
-	maxEdits     = 200
-	maxFields    = 1000
+	maxReqBytes        = 128 * 1024
+	textEditsTimeout   = 10 * time.Second
+	onlineEditsTimeout = time.Minute // can take longer due to MB API rate limit
+	maxEdits           = 200
+	maxFields          = 1000
 
 	editsDelay       = 3 * time.Second
 	editsRateMapSize = 256
@@ -89,11 +90,8 @@ func main() {
 
 	// Generate edits requested via the form.
 	http.HandleFunc("/edits", func(w http.ResponseWriter, req *http.Request) {
-		ctx, cancel := context.WithTimeout(req.Context(), editsTimeout)
-		defer cancel()
-
 		caddr := clientAddr(req)
-		infos, err := getEditsForRequest(ctx, w, req, serverURL, rm, db)
+		infos, err := getEditsForRequest(w, req, serverURL, rm, db)
 		if err != nil {
 			var msg string
 			code := http.StatusInternalServerError
@@ -172,9 +170,8 @@ func httpErrorf(code int, format string, args ...interface{}) *httpError {
 }
 
 // getEditsForRequest generates render.EditInfo objects in response to an /edits request to the server.
-func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Request,
-	serverURL string, rm *rateMap, db *mbdb.DB) (
-	[]*render.EditInfo, error) {
+func getEditsForRequest(w http.ResponseWriter, req *http.Request,
+	serverURL string, rm *rateMap, db *mbdb.DB) ([]*render.EditInfo, error) {
 	if req.Method != http.MethodPost {
 		return nil, httpErrorf(http.StatusMethodNotAllowed, "bad method %q", req.Method)
 	}
@@ -207,6 +204,8 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 	var edits []seed.Edit
 	switch src {
 	case "online":
+		ctx, cancel := context.WithTimeout(req.Context(), onlineEditsTimeout)
+		defer cancel()
 		cfg := online.Config{
 			CountryCode:         req.FormValue("country"),
 			ExtractTrackArtists: req.FormValue("extractTrackArtists") == "1",
@@ -233,6 +232,8 @@ func getEditsForRequest(ctx context.Context, w http.ResponseWriter, req *http.Re
 		}
 
 	case "text":
+		ctx, cancel := context.WithTimeout(req.Context(), textEditsTimeout)
+		defer cancel()
 		// Sigh, so dumb.
 		allowedTypes := make([]interface{}, len(seed.EntityTypes))
 		for i, t := range seed.EntityTypes {

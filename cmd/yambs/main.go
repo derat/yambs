@@ -66,14 +66,13 @@ func main() {
 	listFields := flag.Bool("list-fields", false, "Print available fields for -type and exit")
 	server := flag.String("server", "musicbrainz.org", "MusicBrainz server hostname")
 	flag.Var(&setCmds, "set", `Set a field for all entities (e.g. "edit_note=from https://www.example.org")`)
+	timeout := flag.Duration("timeout", 0, `Timeout for generating edits (e.g. "30s" or "2m")`)
 	flag.Var(&entity, "type", fmt.Sprintf("Entity type for text or MP3 input (%v)", entity.allowedList()))
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	printVersion := flag.Bool("version", false, "Print the version and exit")
 	flag.Parse()
 
 	os.Exit(func() int {
-		ctx := context.Background()
-
 		if *printVersion {
 			fmt.Println("yambs " + version)
 			return 0
@@ -124,6 +123,15 @@ func main() {
 			flag.Usage()
 			return 2
 		}
+
+		var ctx context.Context
+		var cancel context.CancelFunc
+		if *timeout > 0 {
+			ctx, cancel = context.WithTimeout(context.Background(), *timeout)
+		} else {
+			ctx, cancel = context.WithCancel(context.Background())
+		}
+		defer cancel()
 
 		serverURL := "https://" + *server
 		db := mbdb.NewDB(mbdb.ServerURL(serverURL), mbdb.Version(version))
@@ -187,7 +195,9 @@ func main() {
 				fmt.Println(u.String())
 			}
 		case actionServe:
-			if err := render.OpenHTTP(ctx, *addr, edits, opts...); err != nil {
+			// Don't use ctx here; it's just for generating the edits.
+			// The local HTTP server needs to continue running until the user opens them.
+			if err := render.OpenHTTP(context.Background(), *addr, edits, opts...); err != nil {
 				fmt.Fprintln(os.Stderr, "Failed serving page:", err)
 				return 1
 			}

@@ -282,3 +282,13 @@ var mbidRegexp = regexp.MustCompile(
 // IsMBID returns true if mbid looks like a correctly-formatted MBID (i.e. a UUID).
 // Note that this method does not check that the MBID is actually assigned to anything.
 func IsMBID(mbid string) bool { return mbidRegexp.MatchString(mbid) }
+
+// ShortenContext returns a context derived from ctx with its deadline shortened by t.
+// If ctx does not have a deadline, a derived deadline-less context is returned.
+// The caller must call the returned cancel function to release resources.
+func ShortenContext(ctx context.Context, t time.Duration) (context.Context, context.CancelFunc) {
+	if dl, ok := ctx.Deadline(); ok {
+		return context.WithDeadline(ctx, dl.Add(-t))
+	}
+	return context.WithCancel(ctx)
+}

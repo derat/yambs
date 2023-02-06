@@ -77,6 +77,8 @@ Seeds MusicBrainz edits.
     	MusicBrainz server hostname (default "musicbrainz.org")
   -set value
     	Set a field for all entities (e.g. "edit_note=from https://www.example.org")
+  -timeout duration
+    	Timeout for generating edits (e.g. "30s" or "2m")
   -type value
     	Entity type for text or MP3 input (artist, label, recording, release, work)
   -verbose
