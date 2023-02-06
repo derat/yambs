@@ -49,10 +49,11 @@ type DB struct {
 	urlMBIDs    map[entityType]*cache.LRU // string URL to string MBID
 	urlMiss     map[entityType]*cache.LRU // string URL to time.Time of negative lookup
 
-	limiter         *rate.Limiter // rate-limits network requests
-	disallowQueries bool          // don't allow network traffic
-	serverURL       string        // base server URL without trailing slash
-	version         string        // included in User-Agent header
+	limiter         *rate.Limiter    // rate-limits network requests
+	disallowQueries bool             // don't allow network traffic
+	serverURL       string           // base server URL without trailing slash
+	version         string           // included in User-Agent header
+	now             func() time.Time // called to get current time
 }
 
 // NewDB returns a new DB object.
@@ -69,6 +70,7 @@ func NewDB(opts ...Option) *DB {
 		},
 		limiter:   rate.NewLimiter(maxQPS, rateBucketSize),
 		serverURL: defaultServerURL,
+		now:       time.Now,
 	}
 	for _, o := range opts {
 		o(&db)
@@ -90,6 +92,12 @@ func ServerURL(u string) Option { return func(db *DB) { db.serverURL = u } }
 // Version returns an Option that sets the application version for the
 // User-Agent header.
 func Version(v string) Option { return func(db *DB) { db.version = v } }
+
+// NowFunc injects a function that is called instead of time.Now to get the current time.
+func NowFunc(fn func() time.Time) Option { return func(db *DB) { db.now = fn } }
+
+// MaxQPS overrides the default QPS limit for testing.
+func MaxQPS(qps int) Option { return func(db *DB) { db.limiter.SetLimit(rate.Limit(qps)) } }
 
 // GetDatabaseID returns the database ID (e.g. artist.id) corresponding to
 // the entity with the specified MBID (e.g. artist.gid).
@@ -153,7 +161,7 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 
 	// Give up if we already checked recently.
 	missCache := db.urlMiss[entity]
-	if v, ok := missCache.Get(linkURL); ok && time.Now().Sub(v.(time.Time)) <= cacheMissTime {
+	if v, ok := missCache.Get(linkURL); ok && db.now().Sub(v.(time.Time)) <= cacheMissTime {
 		return "", nil
 	}
 
@@ -161,7 +169,7 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 	path := fmt.Sprintf("/ws/2/url?resource=%s&inc=%s-rels", url.QueryEscape(linkURL), entity)
 	r, err := db.doQuery(ctx, path)
 	if err == notFoundError {
-		missCache.Set(linkURL, time.Now())
+		missCache.Set(linkURL, db.now())
 		return "", nil
 	} else if err != nil {
 		return "", err
