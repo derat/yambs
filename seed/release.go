@@ -245,6 +245,11 @@ func removeExtraTitleInfo(title string) string {
 // the final redirect URL.
 const AddCoverArtRedirectURI = "https://yambs.erat.org/redirect-add-cover-art"
 
+// NewAddCoverArtEdit returns an informational edit linking to mbid's add-cover-art page.
+func NewAddCoverArtEdit(desc, mbid string) (*Info, error) {
+	return NewInfo(desc, "/release/"+mbid+"/add-cover-art")
+}
+
 // ReleaseEvent contains an event corresponding to a release. Unknown fields can be omitted.
 type ReleaseEvent struct {
 	// Date contains the event's date.

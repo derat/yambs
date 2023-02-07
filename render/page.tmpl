@@ -175,6 +175,7 @@
         border-radius: var(--control-radius);
         box-sizing: border-box; /* include padding and border */
         color: var(--text-color);
+        max-width: 100%;
       }
       input[type='text'] {
         padding: 2px 4px;
@@ -246,24 +247,24 @@
         margin-bottom: calc(2 * var(--margin));
       }
       #form-online-url-input {
-        max-width: 100%;
         width: 600px;
+      }
+      #form-online-mbid-input {
+        margin-left: var(--margin);
+        width: 36ch;
       }
       #form-online-country-input {
         margin-left: var(--margin);
-        max-width: 100%;
         width: 2.5em;
       }
       #form-text-fields-input {
         display: block;
         font-family: monospace;
-        max-width: 100%;
         padding-top: 4px;
         width: 600px;
       }
       #form-text-set-textarea {
         display: block;
-        max-width: 100%;
         height: 80px;
         width: 600px;
       }
@@ -274,7 +275,6 @@
       #form-text-input-textarea {
         display: block;
         height: 300px;
-        max-width: 100%;
         width: 800px;
       }
       #form-text-input-file-input {
@@ -343,6 +343,12 @@
             type="text"
             placeholder="https://example.bandcamp.com/album/some-album"
           />
+        </div>
+        <div class="form-row">
+          <label for="form-online-mbid-input" title="Optional MBID of existing entity to edit">
+            Existing MBID:
+          </label>
+          <input id="form-online-mbid-input" type="text" />
         </div>
         <div class="form-row">
           <label
@@ -502,6 +508,7 @@
     const uiStateKey = 'uiState';
     const formSourceSelect = $('form-source-select');
     const formOnlineUrlInput = $('form-online-url-input');
+    const formOnlineMbidInput = $('form-online-mbid-input');
     const formOnlineCountryInput = $('form-online-country-input');
     const formOnlineExtractArtistsCheckbox = $('form-online-extract-artists-checkbox');
     const formTextFormatSelect = $('form-text-format-select');
@@ -646,6 +653,7 @@
     // Clears form fields. Select elements are left unchanged.
     function clearFormFields() {
       formOnlineUrlInput.value = '';
+      formOnlineMbidInput.value = '';
       formOnlineCountryInput.value = '';
       formOnlineExtractArtistsCheckbox.checked = false;
       formTextFieldsInput.value = '';
@@ -716,11 +724,10 @@
           break;
 
         case 'online':
-          // TODO: Let the user supply set commands and pass them as a "set" param, maybe.
-          // We'd also need to add a "Show available fields" button in the Online
-          // section that displays the fields for releases.
           body.set('source', 'online');
           body.set('url', formOnlineUrlInput.value.trim());
+          const mbid = formOnlineMbidInput.value.trim().toLowerCase();
+          if (mbid !== '') body.append('set', `mbid=${mbid}`);
           body.set('country', formOnlineCountryInput.value.trim().toUpperCase());
           if (formOnlineExtractArtistsCheckbox.checked) body.set('extractTrackArtists', '1');
           break;
@@ -781,7 +788,7 @@
       });
 
       // Let the user submit URLs by pressing Enter.
-      for (const el of [formOnlineUrlInput, formOnlineCountryInput]) {
+      for (const el of [formOnlineUrlInput, formOnlineMbidInput, formOnlineCountryInput]) {
         el.addEventListener('keypress', (e) => {
           if (e.key === 'Enter') {
             formGenButton.click();

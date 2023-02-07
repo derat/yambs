@@ -171,5 +171,20 @@ func TestRelease_Params(t *testing.T) {
 	if diff := cmp.Diff(want, rel.Params()); diff != "" {
 		t.Error("Incorrect query params:\n" + diff)
 	}
+}
 
+func TestNewAddCoverArtEdit(t *testing.T) {
+	const (
+		desc = "[test]"
+		mbid = "43bcfb95-f26c-4f8d-84f8-7b2ac5b8ab72"
+		srv  = "https://test.musicbrainz.org"
+		want = srv + "/release/" + mbid + "/add-cover-art"
+	)
+	info, err := NewAddCoverArtEdit(desc, mbid)
+	if err != nil {
+		t.Fatalf("NewAddCoverArtEdit(%q, %q) failed: %v", desc, mbid, err)
+	}
+	if got := info.URL(srv); got != want {
+		t.Errorf("NewAddCoverArtEdit(%q, %q) = %q; want %q", desc, mbid, got, want)
+	}
 }

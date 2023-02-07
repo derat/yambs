@@ -71,8 +71,18 @@ func Fetch(ctx context.Context, url string, rawSetCmds []string,
 	edits := []seed.Edit{rel}
 
 	if img != nil {
+		if rel.MBID != "" {
+			// If we're editing an existing release, we can link directly to its add-cover-art page.
+			addCover, err := seed.NewAddCoverArtEdit("[add cover art]", rel.MBID)
+			if err != nil {
+				return nil, err
+			}
+			edits = append(edits, addCover)
+		} else {
+			// Otherwise, redirect when we get the new MBID after the edit is complete.
+			rel.RedirectURI = seed.AddCoverArtRedirectURI
+		}
 		edits = append(edits, img)
-		rel.RedirectURI = seed.AddCoverArtRedirectURI
 	}
 	return edits, nil
 }
