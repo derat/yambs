@@ -266,7 +266,7 @@ func (p *Provider) ExampleURL() string { return "https://tidal.com/album/…" }
 func makeCountriesAnnotation(countries []string, now time.Time) string {
 	vals := make([]string, len(countries))
 	for i, c := range countries {
-		vals[i] = fmt.Sprintf("* %s (%s)", allCountries[c], c)
+		vals[i] = fmt.Sprintf("    * %s (%s)", allCountries[c], c)
 	}
 	sort.Strings(vals)
 	date := now.UTC().Format("2006-01-02")
