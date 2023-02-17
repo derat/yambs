@@ -293,7 +293,7 @@ var allCountries = map[string]string{
 	"CA": "Canada",
 	"CL": "Chile",
 	"CO": "Colombia",
-	"HR": "Crotia", // unsupported?
+	"HR": "Croatia", // unsupported?
 	"CY": "Cyprus",
 	"CZ": "Czech Republic",
 	"DK": "Denmark",
