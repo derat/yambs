@@ -56,7 +56,7 @@ func TestGetRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:      "Step Up 2 The Streets Original Motion Picture Soundtrack",
 				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Annotation: "Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n* Norway (NO)\n* Sweden (SE)",
+				Annotation: "Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n    * Norway (NO)\n    * Sweden (SE)",
 				Script:     "Latn",
 				Status:     "Official",
 				Packaging:  "None",
