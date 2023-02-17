@@ -2,6 +2,7 @@ steps:
   - name: golang
     entrypoint: sh
     args:
+      - '-e'
       - '-c'
       - |
         go test -v ./...
