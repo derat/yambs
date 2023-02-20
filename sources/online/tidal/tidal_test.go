@@ -57,6 +57,7 @@ func TestGetRelease(t *testing.T) {
 				Title:      "Step Up 2 The Streets Original Motion Picture Soundtrack",
 				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
 				Annotation: "Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n    * Norway (NO)\n    * Sweden (SE)",
+				Barcode:    "075679994264",
 				Script:     "Latn",
 				Status:     "Official",
 				Packaging:  "None",
@@ -97,6 +98,7 @@ func TestGetRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Sap",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_EP},
+				Barcode:   "884977869965",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -123,6 +125,7 @@ func TestGetRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Junk",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+				Barcode:   "724596964057",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,
@@ -181,6 +184,7 @@ func TestGetRelease(t *testing.T) {
 			rel: &seed.Release{
 				Title:     "Never Fade",
 				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Barcode:   "4050538433197",
 				Script:    "Latn",
 				Status:    seed.ReleaseStatus_Official,
 				Packaging: seed.ReleasePackaging_None,

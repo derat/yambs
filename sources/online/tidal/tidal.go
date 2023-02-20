@@ -95,6 +95,7 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		Artists:   makeArtistCredits(shortCtx, album.Artists, db),
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
+		Barcode:   album.UPC,
 	}
 
 	switch album.Type {
