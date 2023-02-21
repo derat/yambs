@@ -161,8 +161,9 @@ type albumData struct {
 	AllowStreaming bool         `json:"allowStreaming"`
 	NumberOfTracks int          `json:"numberOfTracks"`
 	ReleaseDate    jsonDate     `json:"releaseDate"` // e.g. "2016-06-24"
-	Type           string       `json:"type"`        // "ALBUM", "EP", "SINGLE"
-	Cover          string       `json:"cover"`       // UUID
+	Copyright      string       `json:"copyright"`
+	Type           string       `json:"type"`  // "ALBUM", "EP", "SINGLE"
+	Cover          string       `json:"cover"` // UUID
 	UPC            string       `json:"upc"`
 	Artist         artistData   `json:"artist"`
 	Artists        []artistData `json:"artists"`

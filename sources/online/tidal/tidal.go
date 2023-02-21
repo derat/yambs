@@ -111,6 +111,22 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		rel.Events = []seed.ReleaseEvent{{Date: seed.DateFromTime(date)}}
 	}
 
+	var annotations []string
+
+	if cp := strings.TrimSpace(album.Copyright); cp != "" {
+		// The copyright field is a mess; I've seen all of the following:
+		//  (P) 1992 Sony Music Entertainment
+		//  2016 M83 Recording Inc. under exclusive license to Mute for North America
+		//  © 2018 AIC Entertainment, LLC under exclusive license to BMG Rights Management (US) LLC
+		//  © 2008 Atlantic Recording Corporation for the United States and WEA International Inc.
+		//    for the world outside of the United States.
+		// Prepend the word "Copyright" if there's nothing making it clear that this is a copyright.
+		if !hasCopyright(cp) {
+			cp = "Copyright " + cp
+		}
+		annotations = append(annotations, cp)
+	}
+
 	var tracklist *tracklistData
 	if cfg.CountryCode != AllCountriesCode {
 		tracklist, err = fetchTracklist(ctx, api, albumID, country)
@@ -139,8 +155,12 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 			return nil, nil, fmt.Errorf("no country has full tracklist with %d track(s)", album.NumberOfTracks)
 		}
 		if len(fullCountries) <= maxCountriesForAnnotation {
-			rel.Annotation = makeCountriesAnnotation(fullCountries, now)
+			annotations = append(annotations, makeCountriesAnnotation(fullCountries, now))
 		}
+	}
+
+	if len(annotations) > 0 {
+		rel.Annotation = strings.Join(annotations, "\n\n")
 	}
 
 	var vol int // last-seen volume number
@@ -261,6 +281,24 @@ var pathRegexp = regexp.MustCompile(`^(?:/browse)?(/album/\d+)$`)
 
 func (p *Provider) NeedsPage() bool    { return false }
 func (p *Provider) ExampleURL() string { return "https://tidal.com/album/…" }
+
+// hasCopyright returns true if s contains a copyright or phonogram symbol
+// or the word "copyright".
+func hasCopyright(s string) bool {
+	ls := strings.ToLower(s)
+	for _, sym := range []string{
+		"©",
+		"℗",
+		"(c)",
+		"(p)",
+		"copyright",
+	} {
+		if strings.Contains(ls, sym) {
+			return true
+		}
+	}
+	return false
+}
 
 // makeCountriesAnnotation returns a string for seed.Release's Annotation field
 // containing the supplied list of countries where an album is available.

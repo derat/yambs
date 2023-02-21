@@ -54,14 +54,18 @@ func TestGetRelease(t *testing.T) {
 			url:     "https://tidal.com/album/1588184",
 			country: "XW",
 			rel: &seed.Release{
-				Title:      "Step Up 2 The Streets Original Motion Picture Soundtrack",
-				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Annotation: "Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n    * Norway (NO)\n    * Sweden (SE)",
-				Barcode:    "075679994264",
-				Script:     "Latn",
-				Status:     "Official",
-				Packaging:  "None",
-				Artists:    []seed.ArtistCredit{{Name: "Step Up 2 The Streets"}},
+				Title: "Step Up 2 The Streets Original Motion Picture Soundtrack",
+				Types: []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+				Annotation: "© 2008 Atlantic Recording Corporation for the United States and " +
+					"WEA International Inc. for the world outside of the United States.\n\n" +
+					"Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n" +
+					"    * Norway (NO)\n" +
+					"    * Sweden (SE)",
+				Barcode:   "075679994264",
+				Script:    "Latn",
+				Status:    "Official",
+				Packaging: "None",
+				Artists:   []seed.ArtistCredit{{Name: "Step Up 2 The Streets"}},
 				URLs: []seed.URL{{
 					URL:      "https://tidal.com/album/1588184",
 					LinkType: seed.LinkType_Streaming_Release_URL,
@@ -96,13 +100,14 @@ func TestGetRelease(t *testing.T) {
 		{
 			url: "https://tidal.com/album/24700142",
 			rel: &seed.Release{
-				Title:     "Sap",
-				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_EP},
-				Barcode:   "884977869965",
-				Script:    "Latn",
-				Status:    seed.ReleaseStatus_Official,
-				Packaging: seed.ReleasePackaging_None,
-				Artists:   []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
+				Title:      "Sap",
+				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_EP},
+				Annotation: "(P) 1992 Sony Music Entertainment",
+				Barcode:    "884977869965",
+				Script:     "Latn",
+				Status:     seed.ReleaseStatus_Official,
+				Packaging:  seed.ReleasePackaging_None,
+				Artists:    []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
@@ -123,14 +128,15 @@ func TestGetRelease(t *testing.T) {
 		{
 			url: "https://tidal.com/album/58823194",
 			rel: &seed.Release{
-				Title:     "Junk",
-				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
-				Barcode:   "724596964057",
-				Script:    "Latn",
-				Status:    seed.ReleaseStatus_Official,
-				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2016, 4, 8)}},
-				Artists:   []seed.ArtistCredit{{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd"}},
+				Title:      "Junk",
+				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_Album},
+				Annotation: "Copyright 2016 M83 Recording Inc. under exclusive license to Mute for North America",
+				Barcode:    "724596964057",
+				Script:     "Latn",
+				Status:     seed.ReleaseStatus_Official,
+				Packaging:  seed.ReleasePackaging_None,
+				Events:     []seed.ReleaseEvent{{Date: seed.MakeDate(2016, 4, 8)}},
+				Artists:    []seed.ArtistCredit{{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{
@@ -182,14 +188,15 @@ func TestGetRelease(t *testing.T) {
 		{
 			url: "https://tidal.com/album/93071188",
 			rel: &seed.Release{
-				Title:     "Never Fade",
-				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
-				Barcode:   "4050538433197",
-				Script:    "Latn",
-				Status:    seed.ReleaseStatus_Official,
-				Packaging: seed.ReleasePackaging_None,
-				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2018, 8, 10)}},
-				Artists:   []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
+				Title:      "Never Fade",
+				Types:      []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Annotation: "© 2018 AIC Entertainment, LLC under exclusive license to BMG Rights Management (US) LLC",
+				Barcode:    "4050538433197",
+				Script:     "Latn",
+				Status:     seed.ReleaseStatus_Official,
+				Packaging:  seed.ReleasePackaging_None,
+				Events:     []seed.ReleaseEvent{{Date: seed.MakeDate(2018, 8, 10)}},
+				Artists:    []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
 					Tracks: []seed.Track{{Title: "Never Fade", Length: sec(280)}},
