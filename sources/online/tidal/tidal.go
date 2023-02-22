@@ -223,7 +223,7 @@ func makeArtistCredits(ctx context.Context, artists []artistData, db *mbdb.DB) [
 				fmt.Sprintf("https://stream.tidal.com/artist/%d", a.ID),
 			} {
 				var err error
-				if credits[i].MBID, err = db.GetArtistMBIDFromURL(ctx, aurl); err != nil {
+				if credits[i].MBID, err = db.GetArtistMBIDFromURL(ctx, aurl, a.Name); err != nil {
 					log.Printf("Failed getting MBID for %v: %v", aurl, err)
 				} else if credits[i].MBID != "" {
 					break

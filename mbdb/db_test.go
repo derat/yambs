@@ -42,29 +42,46 @@ func TestDB_GetDatabaseID(t *testing.T) {
 
 func TestDB_GetArtistMBIDFromURL(t *testing.T) {
 	const (
-		goodURL = "https://listen.tidal.com/artist/3634161"
+		singleURL = "https://listen.tidal.com/artist/3634161"
 		// https://musicbrainz.org/ws/2/url?resource=https%3A%2F%2Flisten.tidal.com%2Fartist%2F3634161&inc=artist-rels
-		// fetched on 2022-02-06.
-		goodData = `<?xml version="1.0" encoding="UTF-8"?>
+		// fetched on 2023-02-06.
+		singleData = `<?xml version="1.0" encoding="UTF-8"?>
 <metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#"><url id="a5d16dcf-6b6f-4480-9791-a43272e984b8"><resource>https://listen.tidal.com/artist/3634161</resource><relation-list target-type="artist"><relation type="streaming" type-id="63cc5d1f-f096-4c94-a43f-ecb32ea94161"><target>b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d</target><direction>backward</direction><artist id="b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d" type="Group" type-id="e431f5f6-b5d2-343d-8b36-72607fffb74b"><name>The Beatles</name><sort-name>Beatles, The</sort-name></artist></relation></relation-list></url></metadata>`
-		goodMBID = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
+		singleName = "The Beatles"
+		singleMBID = "b10bbbfc-cf9e-42e0-be17-e2c3e1d2600d"
 
-		badURL  = "http://example.org/bogus-url"
-		badData = `<?xml version="1.0" encoding="UTF-8"?>
+		multiURL = "https://mpsc.bandcamp.com"
+		// https://musicbrainz.org/ws/2/url?resource=https%3A%2F%2Fmpsc.bandcamp.com%2F&inc=artist-rels
+		// fetched on 2023-02-21.
+		multiData = `<?xml version="1.0" encoding="UTF-8"?>
+<metadata xmlns="http://musicbrainz.org/ns/mmd-2.0#"><url id="726abe3f-03e8-479a-8fff-237be75b78e9"><resource>https://mpsc.bandcamp.com/</resource><relation-list target-type="artist"><relation type="bandcamp" type-id="c550166e-0548-4a18-b1d4-e2ae423a3e88"><target>4e1a1a2c-32c5-4013-9264-61b92e06b7d4</target><direction>backward</direction><artist id="4e1a1a2c-32c5-4013-9264-61b92e06b7d4" type="Group" type-id="e431f5f6-b5d2-343d-8b36-72607fffb74b"><name>Hanz Mambo &amp; his Cigarettes</name><sort-name>Hanz Mambo &amp; his Cigarettes</sort-name><disambiguation>aka Misha Panfilov Sound Combo</disambiguation></artist></relation><relation type="bandcamp" type-id="c550166e-0548-4a18-b1d4-e2ae423a3e88"><target>c6d215c4-c718-4bb6-a54a-4c1eee8bc068</target><direction>backward</direction><artist id="c6d215c4-c718-4bb6-a54a-4c1eee8bc068" type="Group" type-id="e431f5f6-b5d2-343d-8b36-72607fffb74b"><name>Misha Panfilov Sound Combo</name><sort-name>Misha Panfilov Sound Combo</sort-name></artist></relation><relation type="bandcamp" type-id="c550166e-0548-4a18-b1d4-e2ae423a3e88"><target>eef9b345-2daa-4209-b595-a3e290335f64</target><direction>backward</direction><artist id="eef9b345-2daa-4209-b595-a3e290335f64" type="Person" type-id="b6e035f4-3ce9-331c-97df-83397230b0df"><name>Misha Panfilov</name><sort-name>Panfilov, Misha</sort-name></artist></relation></relation-list></url></metadata>`
+		multiName1 = "Hanz Mambo & his Cigarettes"
+		multiName2 = "Misha Panfilov Sound Combo"
+		multiName3 = "Misha Panfilov"
+		multiMBID1 = "4e1a1a2c-32c5-4013-9264-61b92e06b7d4"
+		multiMBID2 = "c6d215c4-c718-4bb6-a54a-4c1eee8bc068"
+		multiMBID3 = "eef9b345-2daa-4209-b595-a3e290335f64"
+
+		missingURL  = "http://example.org/bogus-url"
+		missingName = "foo"
+		missingData = `<?xml version="1.0" encoding="UTF-8"?>
 <error><text>Not Found</text><text>For usage, please see: https://musicbrainz.org/development/mmd</text></error>`
 	)
 
-	goodPath := "/ws/2/url?resource=" + url.QueryEscape(goodURL) + "&inc=artist-rels"
-	badPath := "/ws/2/url?resource=" + url.QueryEscape(badURL) + "&inc=artist-rels"
+	singlePath := "/ws/2/url?resource=" + url.QueryEscape(singleURL) + "&inc=artist-rels"
+	multiPath := "/ws/2/url?resource=" + url.QueryEscape(multiURL) + "&inc=artist-rels"
+	missingPath := "/ws/2/url?resource=" + url.QueryEscape(missingURL) + "&inc=artist-rels"
 
 	reqs := make(map[string]int) // path with query to request count
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		p := r.URL.Path + "?" + r.URL.RawQuery
 		switch p {
-		case goodPath:
-			io.WriteString(w, goodData)
-		case badPath:
-			http.Error(w, badData, http.StatusNotFound)
+		case singlePath:
+			io.WriteString(w, singleData)
+		case multiPath:
+			io.WriteString(w, multiData)
+		case missingPath:
+			http.Error(w, missingData, http.StatusNotFound)
 		default:
 			t.Fatalf("Got request for %q", p)
 		}
@@ -76,32 +93,42 @@ func TestDB_GetArtistMBIDFromURL(t *testing.T) {
 	now := time.Unix(0, 0)
 	nowFunc := func() time.Time { return now }
 	db := NewDB(ServerURL(srv.URL), MaxQPS(999), NowFunc(nowFunc))
-	for _, tc := range []struct{ url, want string }{
-		{goodURL, goodMBID},
-		{goodURL, goodMBID},
-		{badURL, ""},
-		{badURL, ""},
+	for _, tc := range []struct{ url, name, want string }{
+		{singleURL, singleName, singleMBID},
+		{singleURL, singleName, singleMBID},
+		{multiURL, multiName1, multiMBID1},
+		{multiURL, multiName2, multiMBID2},
+		{multiURL, multiName3, multiMBID3},
+		{multiURL, multiName1, multiMBID1},
+		{multiURL, multiName2, multiMBID2},
+		{multiURL, multiName3, multiMBID3},
+		{missingURL, missingName, ""},
+		{missingURL, missingName, ""},
 	} {
-		if got, err := db.GetArtistMBIDFromURL(ctx, tc.url); err != nil {
-			t.Errorf("GetArtistMBIDFromURL(ctx, %q) failed: %v", tc.url, err)
+		if got, err := db.GetArtistMBIDFromURL(ctx, tc.url, tc.name); err != nil {
+			t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) failed: %v", tc.url, tc.name, err)
 		} else if got != tc.want {
-			t.Errorf("GetArtistMBIDFromURL(ctx, %q) = %q; want %q", tc.url, got, tc.want)
+			t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) = %q; want %q", tc.url, tc.name, got, tc.want)
 		}
 	}
 
 	// Check that positive and negative results were cached.
-	if want := map[string]int{goodPath: 1, badPath: 1}; !reflect.DeepEqual(reqs, want) {
+	if want := map[string]int{
+		singlePath:  1,
+		multiPath:   1,
+		missingPath: 1,
+	}; !reflect.DeepEqual(reqs, want) {
 		t.Errorf("Got %v; want %v", reqs, want)
 	}
 
 	// Verify that cached misses expire.
 	now = now.Add(cacheMissTime + time.Second)
-	if got, err := db.GetArtistMBIDFromURL(ctx, badURL); err != nil {
-		t.Errorf("GetArtistMBIDFromURL(ctx, %q) failed: %v", badURL, err)
+	if got, err := db.GetArtistMBIDFromURL(ctx, missingURL, missingName); err != nil {
+		t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) failed: %v", missingURL, missingName, err)
 	} else if got != "" {
-		t.Errorf("GetArtistMBIDFromURL(ctx, %q) = %q; want %q", badURL, got, "")
+		t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) = %q; want %q", missingURL, missingName, got, "")
 	}
-	if cnt := reqs[badPath]; cnt != 2 {
-		t.Errorf("Got %d request(s) for %q; want 2", cnt, badPath)
+	if cnt := reqs[missingPath]; cnt != 2 {
+		t.Errorf("Got %d request(s) for %q; want 2", cnt, missingPath)
 	}
 }

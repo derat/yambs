@@ -46,7 +46,7 @@ const (
 // See https://musicbrainz.org/doc/MusicBrainz_API.
 type DB struct {
 	databaseIDs *cache.LRU                // string MBID to int32 database ID
-	urlMBIDs    map[entityType]*cache.LRU // string URL to string MBID
+	urlRels     map[entityType]*cache.LRU // string URL to []urlRel
 	urlMiss     map[entityType]*cache.LRU // string URL to time.Time of negative lookup
 
 	limiter         *rate.Limiter    // rate-limits network requests
@@ -56,11 +56,17 @@ type DB struct {
 	now             func() time.Time // called to get current time
 }
 
+// urlRel holds details about an entity related to a URL.
+type urlRel struct {
+	mbid string
+	name string // name of artist/label/etc. in MB
+}
+
 // NewDB returns a new DB object.
 func NewDB(opts ...Option) *DB {
 	db := DB{
 		databaseIDs: cache.NewLRU(cacheSize),
-		urlMBIDs: map[entityType]*cache.LRU{
+		urlRels: map[entityType]*cache.LRU{
 			artistType: cache.NewLRU(cacheSize),
 			labelType:  cache.NewLRU(cacheSize),
 		},
@@ -89,8 +95,7 @@ var DisallowQueries = func(db *DB) { db.disallowQueries = true }
 // base server URL, e.g. "https://musicbrains.org" or "https://test.musicbrainz.org".
 func ServerURL(u string) Option { return func(db *DB) { db.serverURL = u } }
 
-// Version returns an Option that sets the application version for the
-// User-Agent header.
+// Version returns an Option that sets the application version for the User-Agent header.
 func Version(v string) Option { return func(db *DB) { db.version = v } }
 
 // NowFunc injects a function that is called instead of time.Now to get the current time.
@@ -134,45 +139,69 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 }
 
 // GetArtistMBIDFromURL returns the MBID of the artist related to linkURL.
+// The supplied artist name is used to choose an entity if multiple entities are related to the URL.
 // If no artist is related to the URL, an empty string is returned.
-func (db *DB) GetArtistMBIDFromURL(ctx context.Context, linkURL string) (string, error) {
-	return db.getMBIDFromURL(ctx, linkURL, artistType)
+func (db *DB) GetArtistMBIDFromURL(ctx context.Context, linkURL, name string) (string, error) {
+	return db.getMBIDFromURL(ctx, linkURL, artistType, name)
 }
 
 // GetLabelMBIDFromURL returns the MBID of the label related to linkURL.
+// The supplied label name is used to choose an entity if multiple entities are related to the URL.
 // If no label is related to the URL, an empty string is returned.
-func (db *DB) GetLabelMBIDFromURL(ctx context.Context, linkURL string) (string, error) {
-	return db.getMBIDFromURL(ctx, linkURL, labelType)
+func (db *DB) GetLabelMBIDFromURL(ctx context.Context, linkURL, name string) (string, error) {
+	return db.getMBIDFromURL(ctx, linkURL, labelType, name)
 }
 
 // getMBIDFromURL returns the MBID of the specified entity type related to linkURL.
+// The supplied name is used to choose an entity if multiple entities are related to the URL.
 // An empty string is returned if no relations are found.
-func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityType) (string, error) {
+func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityType, name string) (string, error) {
+	rels, err := db.getURLRels(ctx, linkURL, entity)
+	if err != nil {
+		return "", err
+	}
+	var mbid string
+	var dist int
+	for _, rel := range rels {
+		// If there are multiple relations, choose the one with the shortest edit distance from the passed-in name.
+		if d := levenshtein(name, rel.name).dist(); mbid == "" || d < dist {
+			mbid = rel.mbid
+			dist = d
+		}
+	}
+	if mbid != "" {
+		log.Printf("Using MBID %v for %v (%q)", mbid, linkURL, name)
+	}
+	return mbid, nil
+}
+
+// getURLRels returns entities of the specified type related to linkURL.
+func (db *DB) getURLRels(ctx context.Context, linkURL string, entity entityType) ([]urlRel, error) {
 	// Check the cache first.
-	cache := db.urlMBIDs[entity]
-	if mbid, ok := cache.Get(linkURL); ok {
-		return mbid.(string), nil
+	cache := db.urlRels[entity]
+	if rels, ok := cache.Get(linkURL); ok {
+		return rels.([]urlRel), nil
 	}
 
 	// If we're being called from a test, just pretend like the URL is missing.
 	if db.disallowQueries {
-		return "", nil
+		return nil, nil
 	}
 
 	// Give up if we already checked recently.
 	missCache := db.urlMiss[entity]
 	if v, ok := missCache.Get(linkURL); ok && db.now().Sub(v.(time.Time)) <= cacheMissTime {
-		return "", nil
+		return nil, nil
 	}
 
-	log.Printf("Requesting %v MBID for %v", entity, linkURL)
+	log.Printf("Requesting %v relations for %v", entity, linkURL)
 	path := fmt.Sprintf("/ws/2/url?resource=%s&inc=%s-rels", url.QueryEscape(linkURL), entity)
 	r, err := db.doQuery(ctx, path)
 	if err == notFoundError {
 		missCache.Set(linkURL, db.now())
-		return "", nil
+		return nil, nil
 	} else if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer r.Close()
 
@@ -197,34 +226,44 @@ func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityT
 	var md struct {
 		XMLName       xml.Name `xml:"metadata"`
 		RelationLists []struct {
-			TargetType string   `xml:"target-type,attr"`
-			Relations  []string `xml:"relation>target"`
+			TargetType string `xml:"target-type,attr"`
+			Relations  []struct {
+				Target     string `xml:"target"`
+				ArtistName string `xml:"artist>name"`
+				LabelName  string `xml:"label>name"`
+			} `xml:"relation"`
 		} `xml:"url>relation-list"`
 	}
 	if err := xml.NewDecoder(r).Decode(&md); err != nil {
-		return "", err
+		return nil, err
 	}
+
+	var rels []urlRel
 	for _, list := range md.RelationLists {
 		if entityType(list.TargetType) != entity {
 			continue
 		}
-		// TODO: Figure out a better way to handle multiple relations.
-		if nr := len(list.Relations); nr != 1 {
-			return "", fmt.Errorf("got %d relations for URL", nr)
+		for _, rel := range list.Relations {
+			var name string
+			switch entity {
+			case artistType:
+				name = rel.ArtistName
+			case labelType:
+				name = rel.LabelName
+			}
+			rels = append(rels, urlRel{mbid: rel.Target, name: name})
 		}
-		mbid := list.Relations[0]
-		log.Print("Got MBID ", mbid)
-		cache.Set(linkURL, mbid)
-		return mbid, nil
 	}
-	return "", nil
+	log.Printf("Got %d relation(s) for %v", len(rels), linkURL)
+	cache.Set(linkURL, rels)
+	return rels, nil
 }
 
 // notFoundError is returned by doQuery if a 404 error was received.
 var notFoundError = errors.New("not found")
 
 // doQuery sends a GET request for path and returns the response body.
-// The caller should close the body if error is non-nil.
+// The caller is responsible for closing the body if the error is non-nil.
 func (db *DB) doQuery(ctx context.Context, path string) (io.ReadCloser, error) {
 	if db.disallowQueries {
 		return nil, errors.New("querying not allowed")
@@ -267,12 +306,12 @@ func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {
 
 // SetArtistMBIDFromURLForTest hardcodes an MBID for GetArtistMBIDFromURL to return.
 func (db *DB) SetArtistMBIDFromURLForTest(url, mbid string) {
-	db.urlMBIDs[artistType].Set(url, mbid)
+	db.urlRels[artistType].Set(url, []urlRel{{mbid, ""}})
 }
 
 // SetLabelMBIDFromURLForTest hardcodes an MBID for GetLabelMBIDFromURL to return.
 func (db *DB) SetLabelMBIDFromURLForTest(url, mbid string) {
-	db.urlMBIDs[labelType].Set(url, mbid)
+	db.urlRels[labelType].Set(url, []urlRel{{mbid, ""}})
 }
 
 // mbidRegexp matches a MusicBrainz ID (i.e. a UUID).
