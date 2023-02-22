@@ -262,7 +262,7 @@ and maps the third column to `length`.
 
 ---
 
-You can pass Bandcamp or Qobuz album URLs to seed release edits:
+You can pass Bandcamp, Qobuz, or Tidal album URLs to seed release edits:
 
 ```sh
 yambs https://austinwintory.bandcamp.com/album/journey
@@ -270,6 +270,10 @@ yambs https://austinwintory.bandcamp.com/album/journey
 
 ```sh
 yambs https://www.qobuz.com/us-en/album/the-dark-side-of-the-moon-pink-floyd/xggxq5w5dmljb
+```
+
+```sh
+yambs https://tidal.com/browse/album/55391786
 ```
 
 The page that is opened will include a link to the album's highest-resolution
