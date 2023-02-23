@@ -26,11 +26,11 @@ func TestGetRelease(t *testing.T) {
 
 	db := mbdb.NewDB(mbdb.DisallowQueries)
 	for url, mbid := range map[string]string{
-		// Add both tidal.com and stream.tidal.com URLs since both appear in the database.
+		// Add both tidal.com and listen.tidal.com URLs since both appear in the database.
 		"https://tidal.com/artist/608":            "4bd95eea-b9f6-4d70-a36c-cfea77431553",
-		"https://stream.tidal.com/artist/9091":    "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd",
+		"https://listen.tidal.com/artist/9091":    "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd",
 		"https://tidal.com/artist/24905":          "309c62ba-7a22-4277-9f67-4a162526d18a",
-		"https://stream.tidal.com/artist/5483069": "65b1de19-50cb-49fe-b802-d1d8616f9ebe",
+		"https://listen.tidal.com/artist/5483069": "65b1de19-50cb-49fe-b802-d1d8616f9ebe",
 	} {
 		db.SetArtistMBIDFromURLForTest(url, mbid)
 	}
