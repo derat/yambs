@@ -1,5 +1,4 @@
-# The "embed" package was introduced in Go 1.16.
-runtime: go116
+runtime: go119
 
 # app.yaml is supposed to be in the same directory as go.mod.
 main: cmd/yambsd
