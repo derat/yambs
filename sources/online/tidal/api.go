@@ -97,12 +97,21 @@ func fetchAlbum(ctx context.Context, api apiCaller, albumID int, country string)
 	var album albumData
 	if b, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d?countryCode=%s", albumID, country)); err != nil {
 		return nil, err
-	} else {
-		if err := json.Unmarshal(b, &album); err != nil {
-			return nil, err
-		}
+	} else if err := json.Unmarshal(b, &album); err != nil {
+		return nil, err
 	}
 	return &album, nil
+}
+
+// fetchCredits fetches information about the specified album's credits using api.
+func fetchCredits(ctx context.Context, api apiCaller, albumID int, country string) (creditsData, error) {
+	var credits creditsData
+	if b, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d/credits?countryCode=%s", albumID, country)); err != nil {
+		return nil, err
+	} else if err := json.Unmarshal(b, &credits); err != nil {
+		return nil, err
+	}
+	return credits, nil
 }
 
 // fetchTracklist fetches information about the specified album's tracklist using api.
@@ -110,10 +119,8 @@ func fetchTracklist(ctx context.Context, api apiCaller, albumID int, country str
 	var tracklist tracklistData
 	if b, err := api.call(ctx, fmt.Sprintf("/v1/albums/%d/tracks?countryCode=%s", albumID, country)); err != nil {
 		return nil, err
-	} else {
-		if err := json.Unmarshal(b, &tracklist); err != nil {
-			return nil, err
-		}
+	} else if err := json.Unmarshal(b, &tracklist); err != nil {
+		return nil, err
 	}
 	sort.Slice(tracklist.Items, func(i, j int) bool {
 		ti, tj := tracklist.Items[i], tracklist.Items[j]
@@ -173,6 +180,15 @@ type artistData struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 	Type string `json:"type"` // e.g. "MAIN", "FEATURED"
+}
+
+// creditsData is the toplevel object returned by /v1/albums/<id>/credits.
+type creditsData []struct {
+	Type         string `json:"type"` // e.g. "Producer", "Composer", "Record Label", etc.
+	Contributors []struct {
+		Name string `json:"name"`
+		ID   int    `json:"id"`
+	} `json:"contributors"`
 }
 
 // tracklistData is the toplevel object returned by /v1/albums/<id>/tracks.

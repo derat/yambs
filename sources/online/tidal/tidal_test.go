@@ -65,6 +65,7 @@ func TestGetRelease(t *testing.T) {
 				Script:    "Latn",
 				Status:    "Official",
 				Packaging: "None",
+				Labels:    []seed.ReleaseLabel{{Name: "Atlantic"}},
 				Artists:   []seed.ArtistCredit{{Name: "Step Up 2 The Streets"}},
 				URLs: []seed.URL{{
 					URL:      "https://tidal.com/album/1588184",
@@ -107,6 +108,7 @@ func TestGetRelease(t *testing.T) {
 				Script:     "Latn",
 				Status:     seed.ReleaseStatus_Official,
 				Packaging:  seed.ReleasePackaging_None,
+				Labels:     []seed.ReleaseLabel{{Name: "Columbia"}, {Name: "Sbme Special Mkts."}},
 				Artists:    []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
@@ -136,6 +138,7 @@ func TestGetRelease(t *testing.T) {
 				Status:     seed.ReleaseStatus_Official,
 				Packaging:  seed.ReleasePackaging_None,
 				Events:     []seed.ReleaseEvent{{Date: seed.MakeDate(2016, 4, 8)}},
+				Labels:     []seed.ReleaseLabel{{Name: "Mute"}},
 				Artists:    []seed.ArtistCredit{{Name: "M83", MBID: "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
@@ -196,6 +199,7 @@ func TestGetRelease(t *testing.T) {
 				Status:     seed.ReleaseStatus_Official,
 				Packaging:  seed.ReleasePackaging_None,
 				Events:     []seed.ReleaseEvent{{Date: seed.MakeDate(2018, 8, 10)}},
+				Labels:     []seed.ReleaseLabel{{Name: "BMG"}},
 				Artists:    []seed.ArtistCredit{{Name: "Alice In Chains", MBID: "4bd95eea-b9f6-4d70-a36c-cfea77431553"}},
 				Mediums: []seed.Medium{{
 					Format: seed.MediumFormat_DigitalMedia,
@@ -271,6 +275,8 @@ func (*fakeAPICaller) call(ctx context.Context, path string) ([]byte, error) {
 
 	if ms := apiAlbumRegexp.FindStringSubmatch(path); ms != nil {
 		return read(filepath.Join("testdata", "album_"+ms[1]+"_"+ms[2]+".json"))
+	} else if ms := apiCreditsRegexp.FindStringSubmatch(path); ms != nil {
+		return read(filepath.Join("testdata", "credits_"+ms[1]+"_"+ms[2]+".json"))
 	} else if ms := apiTracksRegexp.FindStringSubmatch(path); ms != nil {
 		return read(filepath.Join("testdata", "tracks_"+ms[1]+"_"+ms[2]+".json"))
 	}
@@ -279,6 +285,7 @@ func (*fakeAPICaller) call(ctx context.Context, path string) ([]byte, error) {
 
 // These match API paths requested by getRelease().
 var apiAlbumRegexp = regexp.MustCompile(`^/v1/albums/(\d+)\?countryCode=([A-Z]{2})$`)
+var apiCreditsRegexp = regexp.MustCompile(`^/v1/albums/(\d+)/credits\?countryCode=([A-Z]{2})$`)
 var apiTracksRegexp = regexp.MustCompile(`^/v1/albums/(\d+)/tracks\?countryCode=([A-Z]{2})$`)
 
 func TestMakeArtistCredits(t *testing.T) {

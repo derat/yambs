@@ -127,6 +127,20 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		annotations = append(annotations, cp)
 	}
 
+	// TODO: Parallelize fetching album, credits, and tracklist.
+	credits, err := fetchCredits(ctx, api, albumID, country)
+	if err != nil {
+		return nil, nil, fmt.Errorf("fetching credits: %v", err)
+	}
+	for _, cred := range credits {
+		if cred.Type == "Record Label" {
+			for _, cont := range cred.Contributors {
+				rel.Labels = append(rel.Labels, seed.ReleaseLabel{Name: cont.Name})
+			}
+			break
+		}
+	}
+
 	var tracklist *tracklistData
 	if cfg.CountryCode != AllCountriesCode {
 		tracklist, err = fetchTracklist(ctx, api, albumID, country)
