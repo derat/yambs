@@ -13,6 +13,7 @@ import (
 	"log"
 	"net/http"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -159,6 +160,55 @@ func fetchAllTracklists(ctx context.Context, api apiCaller, albumID int) (map[st
 		}
 	}
 	return m, nil
+}
+
+// fetchAllData fetches all data related to albumID in parallel via api.
+// If country is AllCountriesCode, album and credits data are fetched for defaultCountry and
+// tracklists are fetched for all countries, with the returned map keyed by country code.
+// Otherwise, country is used for all requests and the map contains a single entry.
+func fetchAllData(ctx context.Context, api apiCaller, albumID int, country string) (
+	album *albumData, credits creditsData, tracklists map[string]*tracklistData, err error) {
+	var queryAll bool
+	if country == AllCountriesCode {
+		queryAll = true
+		country = defaultCountry
+	} else if _, ok := allCountries[country]; !ok {
+		return nil, nil, nil, errors.New("invalid country")
+	}
+
+	var wg sync.WaitGroup
+	start := func(fn func()) {
+		wg.Add(1)
+		go func() {
+			fn()
+			wg.Done()
+		}()
+	}
+
+	// TODO: I don't love this pattern (it seem too easy to forget to check an error),
+	// but I can't come up with anything better (since I want to prefix errors with
+	// a description of what was being queried).
+	var albumErr, creditsErr, tracklistsErr error
+	start(func() { album, albumErr = fetchAlbum(ctx, api, albumID, country) })
+	start(func() { credits, creditsErr = fetchCredits(ctx, api, albumID, country) })
+	start(func() {
+		if queryAll {
+			tracklists, tracklistsErr = fetchAllTracklists(ctx, api, albumID)
+		} else {
+			tracklists = make(map[string]*tracklistData)
+			tracklists[country], tracklistsErr = fetchTracklist(ctx, api, albumID, country)
+		}
+	})
+
+	wg.Wait()
+	if albumErr != nil {
+		return nil, nil, nil, fmt.Errorf("album: %v", albumErr)
+	} else if creditsErr != nil {
+		return nil, nil, nil, fmt.Errorf("credits: %v", creditsErr)
+	} else if tracklistsErr != nil {
+		return nil, nil, nil, fmt.Errorf("tracklist: %v", tracklistsErr)
+	}
+	return album, credits, tracklists, nil
 }
 
 // albumData is the toplevel object returned by /v1/albums/<id>.

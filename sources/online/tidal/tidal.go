@@ -68,31 +68,21 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		return nil, nil, fmt.Errorf("album ID: %v", err)
 	}
 
-	country := defaultCountry
-	if cfg.CountryCode != "" && cfg.CountryCode != AllCountriesCode {
-		if _, ok := allCountries[cfg.CountryCode]; !ok {
-			return nil, nil, errors.New("invalid country")
-		}
-		country = cfg.CountryCode
+	country := cfg.CountryCode
+	if country == "" {
+		country = defaultCountry
+	}
+	album, credits, countryTracklists, err := fetchAllData(ctx, api, albumID, country)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	album, err := fetchAlbum(ctx, api, albumID, country)
-	if err != nil {
-		return nil, nil, fmt.Errorf("fetching album: %v", err)
-	}
 	if album.NumberOfTracks <= 0 {
 		return nil, nil, fmt.Errorf("API claimed album has %d tracks", album.NumberOfTracks)
 	}
 
-	// Use a shortened context for querying MusicBrainz for artist MBIDs so we'll have a bit of time
-	// left to finish creating the edit even if we need to look up a bunch of different artists:
-	// https://github.com/derat/yambs/issues/19
-	shortCtx, shortCancel := mbdb.ShortenContext(ctx, finishTime)
-	defer shortCancel()
-
 	rel = &seed.Release{
 		Title:     album.Title,
-		Artists:   makeArtistCredits(shortCtx, album.Artists, db),
 		Status:    seed.ReleaseStatus_Official,
 		Packaging: seed.ReleasePackaging_None,
 		Barcode:   album.UPC,
@@ -127,11 +117,6 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		annotations = append(annotations, cp)
 	}
 
-	// TODO: Parallelize fetching album, credits, and tracklist.
-	credits, err := fetchCredits(ctx, api, albumID, country)
-	if err != nil {
-		return nil, nil, fmt.Errorf("fetching credits: %v", err)
-	}
 	for _, cred := range credits {
 		if cred.Type == "Record Label" {
 			for _, cont := range cred.Contributors {
@@ -141,21 +126,16 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		}
 	}
 
+	// Check that we have the full tracklist before going to the trouble of looking up artists.
 	var tracklist *tracklistData
-	if cfg.CountryCode != AllCountriesCode {
-		tracklist, err = fetchTracklist(ctx, api, albumID, country)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fetching tracklist: %v", err)
-		}
-		if len(tracklist.Items) != album.NumberOfTracks {
+	if country != AllCountriesCode {
+		if tracklist = countryTracklists[country]; tracklist == nil {
+			return nil, nil, errors.New("didn't get tracklist") // shouldn't happen
+		} else if len(tracklist.Items) != album.NumberOfTracks {
 			return nil, nil, fmt.Errorf("got %d track(s) instead of %d (is album unavailable in %q?)",
 				len(tracklist.Items), album.NumberOfTracks, country)
 		}
 	} else {
-		countryTracklists, err := fetchAllTracklists(ctx, api, albumID)
-		if err != nil {
-			return nil, nil, fmt.Errorf("fetching tracklists: %v", err)
-		}
 		var fullCountries []string
 		for c, tl := range countryTracklists {
 			if len(tl.Items) == album.NumberOfTracks {
@@ -176,6 +156,14 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 	if len(annotations) > 0 {
 		rel.Annotation = strings.Join(annotations, "\n\n")
 	}
+
+	// Use a shortened context for querying MusicBrainz for artist MBIDs so we'll have a bit of time
+	// left to finish creating the edit even if we need to look up a bunch of different artists:
+	// https://github.com/derat/yambs/issues/19
+	shortCtx, shortCancel := mbdb.ShortenContext(ctx, finishTime)
+	defer shortCancel()
+
+	rel.Artists = makeArtistCredits(shortCtx, album.Artists, db)
 
 	var vol int // last-seen volume number
 	for _, tr := range tracklist.Items {
