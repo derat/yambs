@@ -54,7 +54,7 @@ func init() {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]...\n"+
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %v [flag]...\n"+
 			"Runs a web server for seeding MusicBrainz edits.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}

@@ -56,7 +56,7 @@ go install -tags nogcp ./cmd/yambs
 ## Usage
 
 ```
-Usage yambs: [flag]... <FILE/URL>
+Usage: yambs [flag]... <FILE/URL>
 Seeds MusicBrainz edits.
 
   -action value

@@ -53,7 +53,7 @@ func main() {
 	var setCmds repeatedFlag
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "Usage %v: [flag]... <FILE/URL>\n"+
+		fmt.Fprintf(flag.CommandLine.Output(), "Usage: %v [flag]... <FILE/URL>\n"+
 			"Seeds MusicBrainz edits.\n\n", os.Args[0])
 		flag.PrintDefaults()
 	}
