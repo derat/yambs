@@ -163,17 +163,28 @@ func fetchAllTracklists(ctx context.Context, api apiCaller, albumID int) (map[st
 }
 
 // fetchAllData fetches all data related to albumID in parallel via api.
-// If country is AllCountriesCode, album and credits data are fetched for defaultCountry and
-// tracklists are fetched for all countries, with the returned map keyed by country code.
-// Otherwise, country is used for all requests and the map contains a single entry.
+// If country is AllCountriesCode, tracklists are fetched for all countries and the returned map is
+// keyed by country code. Otherwise, the supplied country is used for all requests and the map
+// contains a single entry.
 func fetchAllData(ctx context.Context, api apiCaller, albumID int, country string) (
 	album *albumData, credits creditsData, tracklists map[string]*tracklistData, err error) {
-	var queryAll bool
 	if country == AllCountriesCode {
-		// TODO: Find a way to choose a country where the album is available:
+		// If we're querying all countries, get the tracklists first so we can choose
+		// a country where the album is available for the album and credits queries:
 		// https://github.com/derat/yambs/issues/25
-		country = defaultCountry
-		queryAll = true
+		if tracklists, err = fetchAllTracklists(ctx, api, albumID); err != nil {
+			return nil, nil, nil, fmt.Errorf("tracklists: %v", err)
+		}
+		var numTracks int
+		for c, td := range tracklists {
+			if n := len(td.Items); n > numTracks {
+				country = c
+				numTracks = n
+			}
+		}
+		if numTracks == 0 {
+			return nil, nil, nil, errors.New("no country found with non-empty tracklist")
+		}
 	} else if _, ok := allCountries[country]; !ok {
 		return nil, nil, nil, errors.New("invalid country")
 	}
@@ -193,14 +204,12 @@ func fetchAllData(ctx context.Context, api apiCaller, albumID int, country strin
 	var albumErr, creditsErr, tracklistsErr error
 	start(func() { album, albumErr = fetchAlbum(ctx, api, albumID, country) })
 	start(func() { credits, creditsErr = fetchCredits(ctx, api, albumID, country) })
-	start(func() {
-		if queryAll {
-			tracklists, tracklistsErr = fetchAllTracklists(ctx, api, albumID)
-		} else {
-			tracklists = make(map[string]*tracklistData)
+	if tracklists == nil {
+		start(func() {
+			tracklists = make(map[string]*tracklistData, 1)
 			tracklists[country], tracklistsErr = fetchTracklist(ctx, api, albumID, country)
-		}
-	})
+		})
+	}
 
 	wg.Wait()
 	if albumErr == notFoundErr {

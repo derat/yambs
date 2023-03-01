@@ -212,6 +212,56 @@ func TestGetRelease(t *testing.T) {
 			},
 			img: "https://resources.tidal.com/images/f6a26633/8c97/4bce/9d29/a3f4ed9637e3/origin.jpg",
 		},
+		{
+			// This request should fail: the album is completely unavailable in the US.
+			url: "https://tidal.com/album/251633624",
+			rel: nil,
+			img: "",
+		},
+		{
+			// When querying all countries, NO (where the album is available) should be used
+			// for the album and credits queries: https://github.com/derat/yambs/issues/25
+			url:     "https://tidal.com/album/251633624",
+			country: "XW",
+			rel: &seed.Release{MBID: "",
+				Title: "Like Drawing Blood (Deluxe Version)",
+				Types: []seed.ReleaseGroupType{"Album"},
+				Annotation: "Copyright Lucky Number Music Limited\n\n" +
+					"Regions with all tracks on Tidal (as of 2015-02-10 UTC):\n" +
+					"    * Norway (NO)",
+				Barcode:   "5025425173233",
+				Script:    "Latn",
+				Status:    "Official",
+				Packaging: "None",
+				Artists:   []seed.ArtistCredit{{Name: "Gotye"}},
+				Mediums: []seed.Medium{{
+					Format: "Digital Media",
+					Tracks: []seed.Track{
+						track("Like Drawing Blood", sec(22)),
+						track("The Only Way", sec(284)),
+						track("Hearts A Mess", sec(365)),
+						track("Coming Back", sec(360)),
+						track("Thanks For Your Time", sec(260)),
+						track("Learnalilgivinanlovin", sec(173)),
+						track("Puzzle With A Piece Missing", sec(341)),
+						track("Seven Hours With A Backseat Driver", sec(283)),
+						track("The Only Thing I Know", sec(423)),
+						track("Night Drive", sec(310)),
+						track("Worn Out Blues", sec(38)),
+						track("Coming Back", sec(201), "Gotye", " & ", "Inga Liljestrom"),
+						track("Hearts A Mess", sec(499)),
+						track("Puzzle With A Piece Missing", sec(261)),
+						track("Learnalilgivinanlovin", sec(275)),
+						track("Thanks For Your Time", sec(252)),
+					},
+				}},
+				URLs: []seed.URL{{
+					URL:      "https://tidal.com/album/251633624",
+					LinkType: seed.LinkType_Streaming_Release_URL,
+				}},
+			},
+			img: "https://resources.tidal.com/images/32aaa3ef/9ae6/4f3b/ad8e/a68562087836/origin.jpg",
+		},
 	} {
 		t.Run(tc.url, func(t *testing.T) {
 			cfg := &internal.Config{
@@ -231,6 +281,8 @@ func TestGetRelease(t *testing.T) {
 			}
 			if diff := cmp.Diff(tc.rel, rel); diff != "" {
 				t.Error("Bad release data:\n" + diff)
+				// The next line can be uncommented when adding a new test to dump the raw struct.
+				//fmt.Printf("%#v\n", rel)
 			}
 			var imgURL string
 			if img != nil {
