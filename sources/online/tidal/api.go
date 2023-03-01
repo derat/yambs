@@ -170,8 +170,10 @@ func fetchAllData(ctx context.Context, api apiCaller, albumID int, country strin
 	album *albumData, credits creditsData, tracklists map[string]*tracklistData, err error) {
 	var queryAll bool
 	if country == AllCountriesCode {
-		queryAll = true
+		// TODO: Find a way to choose a country where the album is available:
+		// https://github.com/derat/yambs/issues/25
 		country = defaultCountry
+		queryAll = true
 	} else if _, ok := allCountries[country]; !ok {
 		return nil, nil, nil, errors.New("invalid country")
 	}
@@ -201,7 +203,9 @@ func fetchAllData(ctx context.Context, api apiCaller, albumID int, country strin
 	})
 
 	wg.Wait()
-	if albumErr != nil {
+	if albumErr == notFoundErr {
+		return nil, nil, nil, fmt.Errorf("album not found (unavailable in %v?)", country)
+	} else if albumErr != nil {
 		return nil, nil, nil, fmt.Errorf("album: %v", albumErr)
 	} else if creditsErr != nil {
 		return nil, nil, nil, fmt.Errorf("credits: %v", creditsErr)

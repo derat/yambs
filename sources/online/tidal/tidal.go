@@ -132,7 +132,7 @@ func getRelease(ctx context.Context, pageURL string, api apiCaller, db *mbdb.DB,
 		if tracklist = countryTracklists[country]; tracklist == nil {
 			return nil, nil, errors.New("didn't get tracklist") // shouldn't happen
 		} else if len(tracklist.Items) != album.NumberOfTracks {
-			return nil, nil, fmt.Errorf("got %d track(s) instead of %d (is album unavailable in %q?)",
+			return nil, nil, fmt.Errorf("got %d track(s) instead of %d (is album only partially-available in %q?)",
 				len(tracklist.Items), album.NumberOfTracks, country)
 		}
 	} else {
