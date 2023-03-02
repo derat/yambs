@@ -23,6 +23,10 @@ type Relationship struct {
 	// TypeUUID contains the UUID of the relationship type. It is only used if Type is unset.
 	// UUIDs can be found at https://musicbrainz.org/relationships.
 	TypeUUID string
+	// SourceCredit contains the way in which the source entity is credited in the relationship.
+	SourceCredit string
+	// TargetCredit contains the way in which Target is credited in the relationship.
+	TargetCredit string
 	// Attributes contains additional attributes associated with this relationship.
 	Attributes []RelationshipAttribute
 	// BeginDate contains the date when the relationship began.
@@ -52,6 +56,13 @@ func (rel *Relationship) setParams(vals url.Values, prefix string) {
 		vals.Set(prefix+"type", rel.TypeUUID)
 	}
 
+	if rel.SourceCredit != "" {
+		vals.Set(prefix+"source_credit", rel.SourceCredit)
+	}
+	if rel.TargetCredit != "" {
+		vals.Set(prefix+"target_credit", rel.TargetCredit)
+	}
+
 	for i, attr := range rel.Attributes {
 		attr.setParams(vals, prefix+fmt.Sprintf("attributes.%d.", i))
 	}
@@ -62,19 +73,17 @@ func (rel *Relationship) setParams(vals url.Values, prefix string) {
 	// e.g. --09-09 for a missing year or 1999---09 for a missing month."
 	// This doesn't seem to work, though (which seems fine, since it's pretty weird!).
 	setDate := func(name string, date Date) {
-		var s string
-		if date.Year > 0 {
-			s += fmt.Sprintf("%04d", date.Year)
-			if date.Month > 0 {
-				s += fmt.Sprintf("-%02d", date.Month)
-				if date.Day > 0 {
-					s += fmt.Sprintf("-%02d", date.Day)
-				}
+		if date.Year <= 0 {
+			return
+		}
+		s := fmt.Sprintf("%04d", date.Year)
+		if date.Month > 0 {
+			s += fmt.Sprintf("-%02d", date.Month)
+			if date.Day > 0 {
+				s += fmt.Sprintf("-%02d", date.Day)
 			}
 		}
-		if s != "" {
-			vals.Set(prefix+name, s)
-		}
+		vals.Set(prefix+name, s)
 	}
 	setDate("begin_date", rel.BeginDate)
 	setDate("end_date", rel.EndDate)

@@ -18,32 +18,34 @@ import (
 
 func TestRead_Artist_All(t *testing.T) {
 	const (
-		areaName      = "New York"
-		artistType    = seed.ArtistType_Person
-		beginAreaName = "Kentucky"
-		beginYear     = 1956
-		beginMonth    = 4
-		beginDay      = 5
-		disambig      = "this one"
-		editNote      = "here's my edit"
-		endAreaName   = "France"
-		endYear       = 2018
-		endMonth      = 12
-		endDay        = 31
-		gender        = seed.Gender_Female
-		ipi1          = "123456789"
-		ipi2          = "987654321"
-		isni1         = "1234567899999799"
-		isni2         = "000000012146438X"
-		mbid          = "0096a0bf-804e-4e47-bf2a-e0878dbb3eb7"
-		name          = "Ms. Musician"
-		relTarget     = "65389277-491a-4055-8e71-0a9be1c9c99c"
-		relType       = seed.LinkType_Arranger_Artist_Release
-		relAttrText   = "4"
-		relAttrType   = seed.LinkAttributeType_Number
-		sortName      = "Musician, Ms."
-		url           = "https://example.bandcamp.com/"
-		urlType       = seed.LinkType_Bandcamp_Artist_URL
+		areaName        = "New York"
+		artistType      = seed.ArtistType_Person
+		beginAreaName   = "Kentucky"
+		beginYear       = 1956
+		beginMonth      = 4
+		beginDay        = 5
+		disambig        = "this one"
+		editNote        = "here's my edit"
+		endAreaName     = "France"
+		endYear         = 2018
+		endMonth        = 12
+		endDay          = 31
+		gender          = seed.Gender_Female
+		ipi1            = "123456789"
+		ipi2            = "987654321"
+		isni1           = "1234567899999799"
+		isni2           = "000000012146438X"
+		mbid            = "0096a0bf-804e-4e47-bf2a-e0878dbb3eb7"
+		name            = "Ms. Musician"
+		relSourceCredit = "Source Credit"
+		relTarget       = "65389277-491a-4055-8e71-0a9be1c9c99c"
+		relTargetCredit = "Target Credit"
+		relType         = seed.LinkType_Arranger_Artist_Release
+		relAttrText     = "4"
+		relAttrType     = seed.LinkAttributeType_Number
+		sortName        = "Musician, Ms."
+		url             = "https://example.bandcamp.com/"
+		urlType         = seed.LinkType_Bandcamp_Artist_URL
 	)
 
 	var input bytes.Buffer
@@ -64,6 +66,8 @@ func TestRead_Artist_All(t *testing.T) {
 		sortName,
 		relTarget,
 		strconv.Itoa(int(relType)),
+		relSourceCredit,
+		relTargetCredit,
 		relAttrText,
 		strconv.Itoa(int(relAttrType)),
 		url,
@@ -89,6 +93,8 @@ func TestRead_Artist_All(t *testing.T) {
 		"sort_name",
 		"rel0_target",
 		"rel0_type",
+		"rel0_source_credit",
+		"rel0_target_credit",
 		"rel0_attr0_text",
 		"rel0_attr0_type",
 		"url0_url",
@@ -115,8 +121,10 @@ func TestRead_Artist_All(t *testing.T) {
 			MBID:           mbid,
 			Name:           name,
 			Relationships: []seed.Relationship{{
-				Target: relTarget,
-				Type:   relType,
+				Target:       relTarget,
+				Type:         relType,
+				SourceCredit: relSourceCredit,
+				TargetCredit: relTargetCredit,
 				Attributes: []seed.RelationshipAttribute{{
 					TextValue: relAttrText,
 					Type:      relAttrType,

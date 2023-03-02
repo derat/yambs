@@ -39,8 +39,10 @@ func TestArtist_Params(t *testing.T) {
 		EndDate:        Date{2005, 4, 23},
 		Ended:          true,
 		Relationships: []Relationship{{
-			Target: "0f50beab-d77d-4f0f-ac26-0b87d3e9b11b",
-			Type:   LinkType_ArrangedFor_Label_Release,
+			Target:       "0f50beab-d77d-4f0f-ac26-0b87d3e9b11b",
+			Type:         LinkType_ArrangedFor_Label_Release,
+			SourceCredit: "Source Credit",
+			TargetCredit: "Target Credit",
 		}},
 		URLs: []URL{{
 			URL:      "https://artist.bandcamp.com/",
@@ -69,7 +71,9 @@ func TestArtist_Params(t *testing.T) {
 		"edit-artist.period.end_date.month":   {strconv.Itoa(artist.EndDate.Month)},
 		"edit-artist.period.end_date.day":     {strconv.Itoa(artist.EndDate.Day)},
 		"edit-artist.period.ended":            {"1"},
+		"rels.0.source_credit":                {rel.SourceCredit},
 		"rels.0.target":                       {rel.Target},
+		"rels.0.target_credit":                {rel.TargetCredit},
 		"rels.0.type":                         {strconv.Itoa(int(rel.Type))},
 		"edit-artist.url.0.text":              {artist.URLs[0].URL},
 		"edit-artist.url.0.link_type_id":      {strconv.Itoa(int(artist.URLs[0].LinkType))},

@@ -59,9 +59,17 @@ func addRelationshipFields(fields map[string]fieldInfo, fn func(relFunc) interfa
 		`Whether the relationship has ended ("1" or "true" if true)`,
 		fn(func(rel *seed.Relationship, k, v string) error { return setBool(&rel.Ended, v) }),
 	}
+	fields["rel*_source_credit"] = fieldInfo{
+		"Source entity's name as credited in relationship",
+		fn(func(rel *seed.Relationship, k, v string) error { return setString(&rel.SourceCredit, v) }),
+	}
 	fields["rel*_target"] = fieldInfo{
 		"MBID or name of entity at other end of relationship",
 		fn(func(rel *seed.Relationship, k, v string) error { return setString(&rel.Target, v) }),
+	}
+	fields["rel*_target_credit"] = fieldInfo{
+		"Target entity's name as credited in relationship",
+		fn(func(rel *seed.Relationship, k, v string) error { return setString(&rel.TargetCredit, v) }),
 	}
 	fields["rel*_type"] = fieldInfo{
 		"Integer [link type](" + linkTypeURL + ") or UUID describing the relationship type",
