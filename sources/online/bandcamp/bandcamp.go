@@ -173,9 +173,10 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 			}
 		}
 	}
-	// If we didn't find a label MBID yet and the base URL didn't correspond to an artist,
-	// check if it corresponds to a label instead.
-	if labelMBID == "" && baseURL != "" && rel.Artists[0].MBID == "" {
+	// If we didn't find a label MBID yet, check if the base URL corresponds to a label.
+	// Do this even if it already got matched to an artist, since sometimes the same Bandcamp
+	// page gets used for an artist-owned label.
+	if labelMBID == "" && baseURL != "" {
 		if labelMBID, err = db.GetLabelMBIDFromURL(shortCtx, baseURL, labelName); err != nil {
 			log.Printf("Failed getting label MBID from %s: %v", baseURL, err)
 		}
