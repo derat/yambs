@@ -8,7 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"reflect"
 	"regexp"
@@ -224,10 +223,7 @@ func makeArtistCredits(ctx context.Context, artists []artistData, db *mbdb.DB) [
 				fmt.Sprintf("https://tidal.com/artist/%d", a.ID),
 				fmt.Sprintf("https://listen.tidal.com/artist/%d", a.ID),
 			} {
-				var err error
-				if credits[i].MBID, err = db.GetArtistMBIDFromURL(ctx, aurl, a.Name); err != nil {
-					log.Printf("Failed getting MBID for %v: %v", aurl, err)
-				} else if credits[i].MBID != "" {
+				if credits[i].MBID = internal.GetArtistMBIDFromURL(ctx, db, aurl, a.Name); credits[i].MBID != "" {
 					break
 				}
 			}

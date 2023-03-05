@@ -25,14 +25,15 @@ func TestGetRelease(t *testing.T) {
 	now := time.Date(2015, 2, 10, 0, 0, 0, 0, time.UTC)
 
 	db := mbdb.NewDB(mbdb.DisallowQueries)
-	for url, mbid := range map[string]string{
+	mkInfos := mbdb.MakeEntityInfosForTest
+	for url, artists := range map[string][]mbdb.EntityInfo{
 		// Add both tidal.com and listen.tidal.com URLs since both appear in the database.
-		"https://tidal.com/artist/608":            "4bd95eea-b9f6-4d70-a36c-cfea77431553",
-		"https://listen.tidal.com/artist/9091":    "6d7b7cd4-254b-4c25-83f6-dd20f98ceacd",
-		"https://tidal.com/artist/24905":          "309c62ba-7a22-4277-9f67-4a162526d18a",
-		"https://listen.tidal.com/artist/5483069": "65b1de19-50cb-49fe-b802-d1d8616f9ebe",
+		"https://tidal.com/artist/608":            mkInfos("4bd95eea-b9f6-4d70-a36c-cfea77431553", "Alice In Chains"),
+		"https://listen.tidal.com/artist/9091":    mkInfos("6d7b7cd4-254b-4c25-83f6-dd20f98ceacd", "M83"),
+		"https://tidal.com/artist/24905":          mkInfos("309c62ba-7a22-4277-9f67-4a162526d18a", "Beck"),
+		"https://listen.tidal.com/artist/5483069": mkInfos("65b1de19-50cb-49fe-b802-d1d8616f9ebe", "Mai Lan"),
 	} {
-		db.SetArtistMBIDFromURLForTest(url, mbid)
+		db.SetArtistsFromURLForTest(url, artists)
 	}
 
 	for _, tc := range []struct {

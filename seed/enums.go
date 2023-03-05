@@ -35,8 +35,7 @@ const (
 	ArtistType_Choir ArtistType = 6
 )
 
-// Gender describes how the artist (if a person or character) describes
-// themselves.
+// Gender describes how the artist (if a person or character) identifies.
 type Gender int
 
 const (

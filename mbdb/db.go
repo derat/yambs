@@ -46,7 +46,7 @@ const (
 // See https://musicbrainz.org/doc/MusicBrainz_API.
 type DB struct {
 	databaseIDs *cache.LRU                // string MBID to int32 database ID
-	urlRels     map[entityType]*cache.LRU // string URL to []urlRel
+	urlRels     map[entityType]*cache.LRU // string URL to []EntityInfo
 	urlMiss     map[entityType]*cache.LRU // string URL to time.Time of negative lookup
 
 	limiter         *rate.Limiter    // rate-limits network requests
@@ -54,12 +54,6 @@ type DB struct {
 	serverURL       string           // base server URL without trailing slash
 	version         string           // included in User-Agent header
 	now             func() time.Time // called to get current time
-}
-
-// urlRel holds details about an entity related to a URL.
-type urlRel struct {
-	mbid string
-	name string // name of artist/label/etc. in MB
 }
 
 // NewDB returns a new DB object.
@@ -138,49 +132,32 @@ func (db *DB) GetDatabaseID(ctx context.Context, mbid string) (int32, error) {
 	return data.ID, nil
 }
 
-// GetArtistMBIDFromURL returns the MBID of the artist related to linkURL.
-// The supplied artist name is used to choose an entity if multiple entities are related to the URL.
-// If no artist is related to the URL, an empty string is returned.
-func (db *DB) GetArtistMBIDFromURL(ctx context.Context, linkURL, name string) (string, error) {
-	return db.getMBIDFromURL(ctx, linkURL, artistType, name)
+// EntityInfo contains high-level information about an entity (e.g. artist or label).
+type EntityInfo struct {
+	// MBID contains the entity's UUID.
+	MBID string
+	// Name contains the entity's name as it appears in the database.
+	Name string
 }
 
-// GetLabelMBIDFromURL returns the MBID of the label related to linkURL.
-// The supplied label name is used to choose an entity if multiple entities are related to the URL.
-// If no label is related to the URL, an empty string is returned.
-func (db *DB) GetLabelMBIDFromURL(ctx context.Context, linkURL, name string) (string, error) {
-	return db.getMBIDFromURL(ctx, linkURL, labelType, name)
+// GetArtistsFromURL returns artists related to linkURL.
+// If no artist is related to the URL, an empty slice is returned.
+func (db *DB) GetArtistsFromURL(ctx context.Context, linkURL string) ([]EntityInfo, error) {
+	return db.getURLRels(ctx, linkURL, artistType)
 }
 
-// getMBIDFromURL returns the MBID of the specified entity type related to linkURL.
-// The supplied name is used to choose an entity if multiple entities are related to the URL.
-// An empty string is returned if no relations are found.
-func (db *DB) getMBIDFromURL(ctx context.Context, linkURL string, entity entityType, name string) (string, error) {
-	rels, err := db.getURLRels(ctx, linkURL, entity)
-	if err != nil {
-		return "", err
-	}
-	var mbid string
-	var dist int
-	for _, rel := range rels {
-		// If there are multiple relations, choose the one with the shortest edit distance from the passed-in name.
-		if d := levenshtein(name, rel.name).dist(); mbid == "" || d < dist {
-			mbid = rel.mbid
-			dist = d
-		}
-	}
-	if mbid != "" {
-		log.Printf("Using MBID %v for %v (%q)", mbid, linkURL, name)
-	}
-	return mbid, nil
+// GetLabelsFromURL returns labels related to linkURL.
+// If no label is related to the URL, an empty slice is returned.
+func (db *DB) GetLabelsFromURL(ctx context.Context, linkURL string) ([]EntityInfo, error) {
+	return db.getURLRels(ctx, linkURL, labelType)
 }
 
 // getURLRels returns entities of the specified type related to linkURL.
-func (db *DB) getURLRels(ctx context.Context, linkURL string, entity entityType) ([]urlRel, error) {
+func (db *DB) getURLRels(ctx context.Context, linkURL string, entity entityType) ([]EntityInfo, error) {
 	// Check the cache first.
 	cache := db.urlRels[entity]
-	if rels, ok := cache.Get(linkURL); ok {
-		return rels.([]urlRel), nil
+	if infos, ok := cache.Get(linkURL); ok {
+		return infos.([]EntityInfo), nil
 	}
 
 	// If we're being called from a test, just pretend like the URL is missing.
@@ -238,7 +215,7 @@ func (db *DB) getURLRels(ctx context.Context, linkURL string, entity entityType)
 		return nil, err
 	}
 
-	var rels []urlRel
+	var infos []EntityInfo
 	for _, list := range md.RelationLists {
 		if entityType(list.TargetType) != entity {
 			continue
@@ -251,12 +228,12 @@ func (db *DB) getURLRels(ctx context.Context, linkURL string, entity entityType)
 			case labelType:
 				name = rel.LabelName
 			}
-			rels = append(rels, urlRel{mbid: rel.Target, name: name})
+			infos = append(infos, EntityInfo{MBID: rel.Target, Name: name})
 		}
 	}
-	log.Printf("Got %d relation(s) for %v", len(rels), linkURL)
-	cache.Set(linkURL, rels)
-	return rels, nil
+	log.Printf("Got %d %v relation(s) for %v", len(infos), entity, linkURL)
+	cache.Set(linkURL, infos)
+	return infos, nil
 }
 
 // notFoundError is returned by doQuery if a 404 error was received.
@@ -304,14 +281,28 @@ func (db *DB) SetDatabaseIDForTest(mbid string, id int32) {
 	db.databaseIDs.Set(mbid, id)
 }
 
-// SetArtistMBIDFromURLForTest hardcodes an MBID for GetArtistMBIDFromURL to return.
-func (db *DB) SetArtistMBIDFromURLForTest(url, mbid string) {
-	db.urlRels[artistType].Set(url, []urlRel{{mbid, ""}})
+// SetArtistsFromURLForTest hardcodes artists for GetArtistsFromURL to return.
+func (db *DB) SetArtistsFromURLForTest(url string, artists []EntityInfo) {
+	db.urlRels[artistType].Set(url, artists)
 }
 
-// SetLabelMBIDFromURLForTest hardcodes an MBID for GetLabelMBIDFromURL to return.
-func (db *DB) SetLabelMBIDFromURLForTest(url, mbid string) {
-	db.urlRels[labelType].Set(url, []urlRel{{mbid, ""}})
+// SetLabelsFromURLForTest hardcodes labels for GetLabelsFromURL to return.
+func (db *DB) SetLabelsFromURLForTest(url string, labels []EntityInfo) {
+	db.urlRels[labelType].Set(url, labels)
+}
+
+// MakeEntityInfosForTest is a helper function for tests that creates EntityInfo objects given a
+// sequence of MBID and name pairs.
+func MakeEntityInfosForTest(mbidNamePairs ...string) []EntityInfo {
+	if len(mbidNamePairs)%2 != 0 {
+		panic(fmt.Sprintf("Need mbid/name pairs but got %q", mbidNamePairs))
+	}
+	infos := make([]EntityInfo, len(mbidNamePairs)/2)
+	for i := 0; i < len(mbidNamePairs)/2; i++ {
+		infos[i].MBID = mbidNamePairs[i*2]
+		infos[i].Name = mbidNamePairs[i*2+1]
+	}
+	return infos
 }
 
 // mbidRegexp matches a MusicBrainz ID (i.e. a UUID).

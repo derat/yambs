@@ -40,7 +40,7 @@ func TestDB_GetDatabaseID(t *testing.T) {
 	}
 }
 
-func TestDB_GetArtistMBIDFromURL(t *testing.T) {
+func TestDB_GetArtistsFromURL(t *testing.T) {
 	const (
 		singleURL = "https://listen.tidal.com/artist/3634161"
 		// https://musicbrainz.org/ws/2/url?resource=https%3A%2F%2Flisten.tidal.com%2Fartist%2F3634161&inc=artist-rels
@@ -93,22 +93,21 @@ func TestDB_GetArtistMBIDFromURL(t *testing.T) {
 	now := time.Unix(0, 0)
 	nowFunc := func() time.Time { return now }
 	db := NewDB(ServerURL(srv.URL), MaxQPS(999), NowFunc(nowFunc))
-	for _, tc := range []struct{ url, name, want string }{
-		{singleURL, singleName, singleMBID},
-		{singleURL, singleName, singleMBID},
-		{multiURL, multiName1, multiMBID1},
-		{multiURL, multiName2, multiMBID2},
-		{multiURL, multiName3, multiMBID3},
-		{multiURL, multiName1, multiMBID1},
-		{multiURL, multiName2, multiMBID2},
-		{multiURL, multiName3, multiMBID3},
-		{missingURL, missingName, ""},
-		{missingURL, missingName, ""},
+	for _, tc := range []struct {
+		url  string
+		want []EntityInfo
+	}{
+		{singleURL, []EntityInfo{{singleMBID, singleName}}},
+		{singleURL, []EntityInfo{{singleMBID, singleName}}},
+		{multiURL, []EntityInfo{{multiMBID1, multiName1}, {multiMBID2, multiName2}, {multiMBID3, multiName3}}},
+		{multiURL, []EntityInfo{{multiMBID1, multiName1}, {multiMBID2, multiName2}, {multiMBID3, multiName3}}},
+		{missingURL, nil},
+		{missingURL, nil},
 	} {
-		if got, err := db.GetArtistMBIDFromURL(ctx, tc.url, tc.name); err != nil {
-			t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) failed: %v", tc.url, tc.name, err)
-		} else if got != tc.want {
-			t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) = %q; want %q", tc.url, tc.name, got, tc.want)
+		if got, err := db.GetArtistsFromURL(ctx, tc.url); err != nil {
+			t.Errorf("GetArtistsFromURL(ctx, %q) failed: %v", tc.url, err)
+		} else if !reflect.DeepEqual(got, tc.want) {
+			t.Errorf("GetArtistsFromURL(ctx, %q) = %v; want %v", tc.url, got, tc.want)
 		}
 	}
 
@@ -123,10 +122,10 @@ func TestDB_GetArtistMBIDFromURL(t *testing.T) {
 
 	// Verify that cached misses expire.
 	now = now.Add(cacheMissTime + time.Second)
-	if got, err := db.GetArtistMBIDFromURL(ctx, missingURL, missingName); err != nil {
-		t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) failed: %v", missingURL, missingName, err)
-	} else if got != "" {
-		t.Errorf("GetArtistMBIDFromURL(ctx, %q, %q) = %q; want %q", missingURL, missingName, got, "")
+	if got, err := db.GetArtistsFromURL(ctx, missingURL); err != nil {
+		t.Errorf("GetArtistsFromURL(ctx, %q) failed: %v", missingURL, err)
+	} else if !reflect.DeepEqual(got, []EntityInfo(nil)) {
+		t.Errorf("GetArtistsFromURL(ctx, %q) = %v; want %v", missingURL, got, nil)
 	}
 	if cnt := reqs[missingPath]; cnt != 2 {
 		t.Errorf("Got %d request(s) for %q; want 2", cnt, missingPath)

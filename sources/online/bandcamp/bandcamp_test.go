@@ -26,22 +26,24 @@ func TestRelease(t *testing.T) {
 	var pr Provider
 
 	// Add canned MBIDs for artists and label lookups.
-	for url, mbid := range map[string]string{
-		"https://anti-mass.bandcamp.com/":       "7fa907c9-35a0-40dd-b926-8c962782ba1d",
-		"https://louiezong.bandcamp.com/":       "0e2c603f-fd71-4ab6-af96-92c3e936586d",
-		"https://louiscole.bandcamp.com/":       "525ef747-abf6-423c-98b4-cd49c0c07927",
-		"https://pillarsinthesky.bandcamp.com/": "7ba8b326-34ba-472b-b710-b01dc1f14f94",
-		"https://thelovelymoon.bandcamp.com/":   "f34ae170-055d-46bc-9208-a750a646481b",
+	mkInfos := mbdb.MakeEntityInfosForTest
+	for url, artists := range map[string][]mbdb.EntityInfo{
+		"https://aartijadu.bandcamp.com/":       mkInfos("76cb3647-7a02-4f1d-9eef-8a6e99ce022d", "Aarti Jadu"),
+		"https://anti-mass.bandcamp.com/":       mkInfos("7fa907c9-35a0-40dd-b926-8c962782ba1d", "ANTI-MASS"),
+		"https://louiezong.bandcamp.com/":       mkInfos("0e2c603f-fd71-4ab6-af96-92c3e936586d", "louie zong"),
+		"https://louiscole.bandcamp.com/":       mkInfos("525ef747-abf6-423c-98b4-cd49c0c07927", "Louis Cole"),
+		"https://pillarsinthesky.bandcamp.com/": mkInfos("7ba8b326-34ba-472b-b710-b01dc1f14f94", "Pillars in the Sky"),
+		"https://thelovelymoon.bandcamp.com/":   mkInfos("f34ae170-055d-46bc-9208-a750a646481b", "The Lovely Moon"),
 		// "https://volaband.bandcamp.com/album/live-from-the-pool" omitted
 	} {
-		db.SetArtistMBIDFromURLForTest(url, mbid)
+		db.SetArtistsFromURLForTest(url, artists)
 	}
-	for url, mbid := range map[string]string{
-		"https://brainfeeder.bandcamp.com/": "20b3d6f9-9086-48d9-802f-5f808456a0ef",
+	for url, labels := range map[string][]mbdb.EntityInfo{
+		"https://brainfeeder.bandcamp.com/": mkInfos("20b3d6f9-9086-48d9-802f-5f808456a0ef", "Brainfeeder"),
 		// "https://mascotlabelgroup.bandcamp.com/" omitted
-		"https://syssistersounds.bandcamp.com/": "2583b10d-0528-4281-8d2f-31d9a64a570c",
+		"https://syssistersounds.bandcamp.com/": mkInfos("2583b10d-0528-4281-8d2f-31d9a64a570c", "SYS Sister Sounds"),
 	} {
-		db.SetLabelMBIDFromURLForTest(url, mbid)
+		db.SetLabelsFromURLForTest(url, labels)
 	}
 
 	for _, tc := range []struct {
@@ -50,6 +52,33 @@ func TestRelease(t *testing.T) {
 		rel                 *seed.Release
 		img                 string
 	}{
+		{
+			// This album was released on a subdomain that's linked to an artist, but the artist's
+			// MBID shouldn't be seeded since the credited name is very different from the name in
+			// the DB: https://github.com/derat/yambs/issues/26
+			url: "https://aartijadu.bandcamp.com/track/just-eyes",
+			rel: &seed.Release{
+				Title:     "Just Eyes",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2019, 4, 6), Country: "XW"}},
+				Artists:   []seed.ArtistCredit{{Name: "Aarti Jadu & Matthew Hayes"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Just Eyes", Length: sec(401.01)},
+					},
+				}},
+				URLs: urlLinks("https://aartijadu.bandcamp.com/track/just-eyes",
+					seed.LinkType_DownloadForFree_Release_URL,
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
+			},
+			img: "https://f4.bcbits.com/img/a3258735142_0.jpg",
+		},
 		{
 			// This is a compilation album with artist name(s) at the beginning of each track.
 			// Check that they get extracted when ExtractTrackArtists is true.
@@ -77,16 +106,10 @@ func TestRelease(t *testing.T) {
 						{Title: "Sabula", Artists: artists("Authentically Plastic"), Length: sec(234)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://anti-mass.bandcamp.com/album/doxa",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-					{
-						URL:      "https://anti-mass.bandcamp.com/album/doxa",
-						LinkType: seed.LinkType_FreeStreaming_Release_URL,
-					},
-				},
+				URLs: urlLinks("https://anti-mass.bandcamp.com/album/doxa",
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
 			},
 			img: "https://f4.bcbits.com/img/a2017435297_0.jpg",
 		},
@@ -129,16 +152,10 @@ func TestRelease(t *testing.T) {
 						{Title: "[unknown]"}, // hidden track
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://louiezong.bandcamp.com/album/cartoon-funk",
-						LinkType: seed.LinkType_DownloadForFree_Release_URL,
-					},
-					{
-						URL:      "https://louiezong.bandcamp.com/album/cartoon-funk",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-				},
+				URLs: urlLinks("https://louiezong.bandcamp.com/album/cartoon-funk",
+					seed.LinkType_DownloadForFree_Release_URL,
+					seed.LinkType_PurchaseForDownload_Release_URL,
+				),
 			},
 			img: "https://f4.bcbits.com/img/a1689585732_0.jpg",
 		},
@@ -165,16 +182,10 @@ func TestRelease(t *testing.T) {
 						{Title: "Let it Happen", Length: sec(403)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://louiscole.bandcamp.com/album/let-it-happen",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-					{
-						URL:      "https://louiscole.bandcamp.com/album/let-it-happen",
-						LinkType: seed.LinkType_FreeStreaming_Release_URL,
-					},
-				},
+				URLs: urlLinks("https://louiscole.bandcamp.com/album/let-it-happen",
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
 			},
 			img: "https://f4.bcbits.com/img/a3000320182_0.jpg",
 		},
@@ -198,20 +209,11 @@ func TestRelease(t *testing.T) {
 						{Title: "Arcanum", Length: sec(341.294)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
-						LinkType: seed.LinkType_DownloadForFree_Release_URL,
-					},
-					{
-						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-					{
-						URL:      "https://pillarsinthesky.bandcamp.com/track/arcanum",
-						LinkType: seed.LinkType_FreeStreaming_Release_URL,
-					},
-				},
+				URLs: urlLinks("https://pillarsinthesky.bandcamp.com/track/arcanum",
+					seed.LinkType_DownloadForFree_Release_URL,
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
 			},
 			img: "https://f4.bcbits.com/img/a2320496643_0.jpg",
 		},
@@ -235,16 +237,10 @@ func TestRelease(t *testing.T) {
 						{Title: "Apsara", Length: sec(212.574)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://syssistersounds.bandcamp.com/track/apsara",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-					{
-						URL:      "https://syssistersounds.bandcamp.com/track/apsara",
-						LinkType: seed.LinkType_FreeStreaming_Release_URL,
-					},
-				},
+				URLs: urlLinks("https://syssistersounds.bandcamp.com/track/apsara",
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
 			},
 			img: "https://f4.bcbits.com/img/a0574189382_0.jpg",
 		},
@@ -269,24 +265,14 @@ func TestRelease(t *testing.T) {
 						{Title: "Cinnabar Sunset", Length: sec(1521.34)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
-						LinkType: seed.LinkType_DownloadForFree_Release_URL,
-					},
-					{
-						URL:      "https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-					{
-						URL:      "https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
-						LinkType: seed.LinkType_FreeStreaming_Release_URL,
-					},
-					{
-						URL:      "http://creativecommons.org/licenses/by-nc-sa/3.0/",
-						LinkType: seed.LinkType_License_Release_URL,
-					},
-				},
+				URLs: append(urlLinks("https://thelovelymoon.bandcamp.com/album/echoes-of-memories",
+					seed.LinkType_DownloadForFree_Release_URL,
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				), seed.URL{
+					URL:      "http://creativecommons.org/licenses/by-nc-sa/3.0/",
+					LinkType: seed.LinkType_License_Release_URL,
+				}),
 			},
 			img: "https://f4.bcbits.com/img/a2393960629_0.jpg",
 		},
@@ -320,16 +306,10 @@ func TestRelease(t *testing.T) {
 						{Title: "Stray The Skies (Live From The Pool)", Length: sec(257.853)},
 					},
 				}},
-				URLs: []seed.URL{
-					{
-						URL:      "https://volaband.bandcamp.com/album/live-from-the-pool",
-						LinkType: seed.LinkType_PurchaseForDownload_Release_URL,
-					},
-					{
-						URL:      "https://volaband.bandcamp.com/album/live-from-the-pool",
-						LinkType: seed.LinkType_FreeStreaming_Release_URL,
-					},
-				},
+				URLs: urlLinks("https://volaband.bandcamp.com/album/live-from-the-pool",
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
 			},
 			img: "https://f4.bcbits.com/img/a1079469134_0.jpg",
 		},
@@ -392,6 +372,15 @@ func artists(in ...string) []seed.ArtistCredit {
 		}
 	}
 	return credits
+}
+
+// urlLinks constructs seed.URL objects for the specified URL and link types.
+func urlLinks(url string, types ...seed.LinkType) []seed.URL {
+	urls := make([]seed.URL, len(types))
+	for i, t := range types {
+		urls[i] = seed.URL{URL: url, LinkType: t}
+	}
+	return urls
 }
 
 func TestExtractTrackArtists(t *testing.T) {

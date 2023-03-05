@@ -1,7 +1,7 @@
 // Copyright 2023 Daniel Erat.
 // All rights reserved.
 
-// Package internal defines internal types for online sources.
+// Package internal defines internal types and functions for online sources.
 package internal
 
 import (

@@ -5,7 +5,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -17,13 +16,10 @@ import (
 	"strconv"
 	"strings"
 	"text/template"
-	"unicode"
 
+	"github.com/derat/yambs/strutil"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -307,7 +303,7 @@ func main() {
 		// Preserve these in names ending in " ID".
 		var name string
 		if strings.HasSuffix(orig, " ID") {
-			name = normalize(orig) // needed for "MÜST ID"
+			name = strutil.Normalize(orig) // needed for "MÜST ID"
 			name = nonAlnumRegexp.ReplaceAllString(name, "_")
 		} else {
 			name = clean(orig)
@@ -543,27 +539,12 @@ var wordMap = map[string]string{
 var nonAlnumRegexp = regexp.MustCompile("[^a-zA-Z0-9]+")
 var splitRegexp = regexp.MustCompile("[-+ /]+")
 
-// https://go.dev/blog/normalization#performing-magic
-var normalizer = transform.Chain(norm.NFKD, runes.Remove(runes.In(unicode.Mn)))
-
-// normalize normalizes characters using NFKD form.
-// Unicode characters are decomposed (runes are broken into their components) and replaced for
-// compatibility equivalence (characters that represent the same characters but have different
-// visual representations, e.g. '9' and '⁹', are equal). Characters are also de-accented.
-func normalize(orig string) string {
-	b := make([]byte, len(orig))
-	if _, _, err := normalizer.Transform(b, []byte(orig), true); err != nil {
-		return orig
-	}
-	return string(bytes.TrimRight(b, "\x00"))
-}
-
 // clean attempts to transform orig into a string that can be used in an identifier.
 // Each word is capitalized.
 func clean(orig string) string {
 	var s string
 	for _, w := range splitRegexp.Split(orig, -1) {
-		w = strings.ToLower(normalize(w))
+		w = strings.ToLower(strutil.Normalize(w))
 		w = nonAlnumRegexp.ReplaceAllString(strings.ToLower(w), "")
 		if dst, ok := wordMap[w]; ok {
 			w = dst

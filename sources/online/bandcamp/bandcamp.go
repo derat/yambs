@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -77,11 +76,7 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	// Try to find the artist's MBID from the URL.
 	baseURL := getBaseURL(pageURL)
 	if baseURL != "" {
-		if mbid, err := db.GetArtistMBIDFromURL(shortCtx, baseURL, album.Artist); err != nil {
-			log.Printf("Failed getting artist MBID from %v: %v", baseURL, err)
-		} else if mbid != "" {
-			rel.Artists[0].MBID = mbid
-		}
+		rel.Artists[0].MBID = internal.GetArtistMBIDFromURL(shortCtx, db, baseURL, album.Artist)
 	}
 
 	// I'm guessing that the publish date is when the album was created in Bandcamp,
@@ -168,18 +163,14 @@ func (p *Provider) Release(ctx context.Context, page *web.Page, pageURL string,
 	if val, err := page.Query("a.back-to-label-link").Attr("href"); err == nil {
 		if labelURL, err := url.Parse(val); err == nil {
 			labelURL.RawQuery = "" // clear "?from=btl"
-			if labelMBID, err = db.GetLabelMBIDFromURL(shortCtx, labelURL.String(), labelName); err != nil {
-				log.Printf("Failed getting label MBID from %s: %v", labelURL, err)
-			}
+			labelMBID = internal.GetLabelMBIDFromURL(shortCtx, db, labelURL.String(), labelName)
 		}
 	}
 	// If we didn't find a label MBID yet, check if the base URL corresponds to a label.
 	// Do this even if it already got matched to an artist, since sometimes the same Bandcamp
 	// page gets used for an artist-owned label.
 	if labelMBID == "" && baseURL != "" {
-		if labelMBID, err = db.GetLabelMBIDFromURL(shortCtx, baseURL, labelName); err != nil {
-			log.Printf("Failed getting label MBID from %s: %v", baseURL, err)
-		}
+		labelMBID = internal.GetLabelMBIDFromURL(shortCtx, db, baseURL, labelName)
 	}
 	if labelName != "" || labelMBID != "" {
 		rel.Labels = append(rel.Labels, seed.ReleaseLabel{
