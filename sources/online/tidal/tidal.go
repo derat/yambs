@@ -214,19 +214,10 @@ func makeArtistCredits(ctx context.Context, artists []artistData, db *mbdb.DB) [
 	for i, a := range artists {
 		credits[i].Name = a.Name
 
-		// Try to look up the artist's MBID based on their URL. MusicBrainz appears to normalize
-		// Tidal URLs to tidal.com now, but I still see a lot of "Stream at Tidal" relationships
-		// with listen.tidal.com URLs. Look for both, I guess:
-		// https://github.com/derat/yambs/issues/20
+		// Try to look up the artist's MBID based on their canonical URL.
 		if a.ID != 0 {
-			for _, aurl := range []string{
-				fmt.Sprintf("https://tidal.com/artist/%d", a.ID),
-				fmt.Sprintf("https://listen.tidal.com/artist/%d", a.ID),
-			} {
-				if credits[i].MBID = internal.GetArtistMBIDFromURL(ctx, db, aurl, a.Name); credits[i].MBID != "" {
-					break
-				}
-			}
+			aurl := fmt.Sprintf("https://tidal.com/artist/%d", a.ID)
+			credits[i].MBID = internal.GetArtistMBIDFromURL(ctx, db, aurl, a.Name)
 		}
 
 		if i > 0 {
