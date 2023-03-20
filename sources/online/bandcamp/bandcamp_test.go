@@ -33,6 +33,7 @@ func TestRelease(t *testing.T) {
 		"https://louiezong.bandcamp.com/":       mkInfos("0e2c603f-fd71-4ab6-af96-92c3e936586d", "louie zong"),
 		"https://louiscole.bandcamp.com/":       mkInfos("525ef747-abf6-423c-98b4-cd49c0c07927", "Louis Cole"),
 		"https://pillarsinthesky.bandcamp.com/": mkInfos("7ba8b326-34ba-472b-b710-b01dc1f14f94", "Pillars in the Sky"),
+		"https://tauk.bandcamp.com/":            mkInfos("6f2adbd6-7685-47a9-932e-b1e450a561a3", "TAUK"),
 		"https://thelovelymoon.bandcamp.com/":   mkInfos("f34ae170-055d-46bc-9208-a750a646481b", "The Lovely Moon"),
 		// "https://volaband.bandcamp.com/album/live-from-the-pool" omitted
 	} {
@@ -243,6 +244,31 @@ func TestRelease(t *testing.T) {
 				),
 			},
 			img: "https://f4.bcbits.com/img/a0574189382_0.jpg",
+		},
+		{
+			// This album has a null 'release_date' property in its JSON data.
+			// We should skip trying to parse that and use the 'publish_date' instead.
+			url: "https://tauk.bandcamp.com/track/daydreams-ft-kanika-moore",
+			rel: &seed.Release{
+				Title:     "Daydreams ft. Kanika Moore",
+				Types:     []seed.ReleaseGroupType{seed.ReleaseGroupType_Single},
+				Script:    "Latn",
+				Status:    seed.ReleaseStatus_Official,
+				Packaging: seed.ReleasePackaging_None,
+				Events:    []seed.ReleaseEvent{{Date: seed.MakeDate(2023, 3, 20), Country: "XW"}},
+				Artists:   []seed.ArtistCredit{{Name: "Tauk Ft. Kanika Moore"}},
+				Mediums: []seed.Medium{{
+					Format: seed.MediumFormat_DigitalMedia,
+					Tracks: []seed.Track{
+						{Title: "Daydreams ft. Kanika Moore", Length: sec(250.768)},
+					},
+				}},
+				URLs: urlLinks("https://tauk.bandcamp.com/track/daydreams-ft-kanika-moore",
+					seed.LinkType_PurchaseForDownload_Release_URL,
+					seed.LinkType_FreeStreaming_Release_URL,
+				),
+			},
+			img: "https://f4.bcbits.com/img/a1325172425_0.jpg",
 		},
 		{
 			// This album has a Creative Commons license.

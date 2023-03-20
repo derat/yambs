@@ -254,6 +254,10 @@ func (d *jsonDate) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
+	if s == "" {
+		*d = jsonDate(time.Time{})
+		return nil
+	}
 	t, err := time.Parse("02 Jan 2006 15:04:05 MST", s)
 	*d = jsonDate(t)
 	return err
