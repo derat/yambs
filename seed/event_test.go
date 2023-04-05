@@ -30,7 +30,7 @@ func TestEvent_Params(t *testing.T) {
 		Disambiguation: "for testing",
 		Type:           EventType_Festival,
 		Cancelled:      true,
-		Setlist:        "First Song\nSecond Song",
+		Setlist:        "* First Song\n* Second Song",
 		BeginDate:      Date{2003, 12, 1},
 		EndDate:        Date{2005, 4, 23},
 		Time:           "20:15",

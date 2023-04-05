@@ -33,7 +33,7 @@ func TestRead_Event_All(t *testing.T) {
 		relType     = seed.LinkType_HeldIn_Area_Event
 		relAttrText = "4"
 		relAttrType = seed.LinkAttributeType_Number
-		setlist     = "First Song\nSecondSong"
+		setlist     = "* First Song\n* Second Song"
 		time        = "16:15"
 		url         = "https://www.example.org/foo"
 		urlType     = seed.LinkType_OfficialHomepage_Event_URL
