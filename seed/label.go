@@ -22,7 +22,7 @@ type Label struct {
 	MBID string
 	// Name contains the label's name.
 	Name string
-	// Disambiguation differentiates this label from other label with similar names.
+	// Disambiguation differentiates this label from other labels with similar names.
 	// See https://musicbrainz.org/doc/Disambiguation_Comment.
 	Disambiguation string
 	// Type describes the label's main activity.

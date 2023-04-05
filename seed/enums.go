@@ -35,6 +35,38 @@ const (
 	ArtistType_Choir ArtistType = 6
 )
 
+// EventType describes the kind of event that an event is.
+type EventType int
+
+const (
+	// An individual concert by a single artist or collaboration, often with
+	// supporting artists who perform before the main act.
+	EventType_Concert EventType = 1
+	// An event where a number of different acts perform across the course of the
+	// day. Larger festivals may be spread across multiple days.
+	EventType_Festival EventType = 2
+	// A party, reception or other event held specifically for the launch of a
+	// release.
+	EventType_LaunchEvent EventType = 3
+	// A convention, expo or trade fair is an event which is not typically
+	// orientated around music performances, but can include them as side
+	// activities.
+	EventType_ConventionExpo EventType = 4
+	// A masterclass or clinic is an event where an artist meets with a small to
+	// medium-sized audience and instructs them individually and/or takes questions
+	// intended to improve the audience members' playing skills.
+	EventType_MasterclassClinic EventType = 5
+	// A performance of one or more plays, musicals, operas, ballets or other
+	// similar works for the stage in their staged form (as opposed to a <a
+	// href="https://en.wikipedia.org/wiki/Concert_performance">concert
+	// performance</a> without staging).
+	EventType_StagePerformance EventType = 6
+	// An award ceremony is an event which is focused on the granting of prizes,
+	// but often includes musical performances in between the awarding of said
+	// prizes, especially for musical awards.
+	EventType_AwardCeremony EventType = 7
+)
+
 // Gender describes how the artist (if a person or character) identifies.
 type Gender int
 
@@ -1334,6 +1366,9 @@ const (
 	// This relationship type links an artist to its corresponding page at
 	// Bandsintown.
 	LinkType_Bandsintown_Artist_URL LinkType = 862
+	// This relationship type links an event to its corresponding page at
+	// Bandsintown.
+	LinkType_Bandsintown_Event_URL LinkType = 860
 	// This links two <a href="/doc/Work" title="Work">works</a>, where the second
 	// work is based on music or text from the first, but isn't directly a revision
 	// or an arrangement of it.
@@ -1489,6 +1524,9 @@ const (
 	// This links an artist to their profile at a crowdfunding site like
 	// Kickstarter or Indiegogo.
 	LinkType_Crowdfunding_Artist_URL LinkType = 902
+	// This links an event to the relevant crowdfunding project at a crowdfunding
+	// site like Kickstarter or Indiegogo.
+	LinkType_Crowdfunding_Event_URL LinkType = 904
 	// This links a label to their profile at a crowdfunding site like Kickstarter
 	// or Indiegogo.
 	LinkType_Crowdfunding_Label_URL LinkType = 903
@@ -1692,6 +1730,11 @@ const (
 	// This relationship is used to link a catalogue work series to a person whose
 	// work it catalogues.
 	LinkType_HasCatalogue_Artist_Series LinkType = 750
+	// Links an event to the place where it was held.
+	LinkType_HeldAt_Event_Place LinkType = 794
+	// Links an event to the area where it was held. Use only if the exact place is
+	// unknown.
+	LinkType_HeldIn_Area_Event LinkType = 793
 	// This links to a site describing relevant details about a label's history.
 	LinkType_HistorySite_Label_URL LinkType = 211
 	// Links an event to its host/MC. Event hosts usually do introductions to the
@@ -1826,6 +1869,8 @@ const (
 	LinkType_LacquerCutIn_Area_Release LinkType = 967
 	// This relationship type links an artist to its corresponding page at Last.fm
 	LinkType_Lastfm_Artist_URL LinkType = 840
+	// This relationship type links an event to its corresponding page at Last.fm
+	LinkType_Lastfm_Event_URL LinkType = 839
 	// This relationship type links a label to its corresponding page at Last.fm
 	LinkType_Lastfm_Label_URL LinkType = 838
 	// Links a release with a launch event for it.
@@ -2026,6 +2071,8 @@ const (
 	LinkType_NonPerformingRelationships_Artist_Event LinkType = 935
 	// Indicates the official homepage for an artist.
 	LinkType_OfficialHomepage_Artist_URL LinkType = 183
+	// Indicates the official homepage for an event.
+	LinkType_OfficialHomepage_Event_URL LinkType = 782
 	// This relationship type is used to link a release group to an official
 	// website created specifically for the release group.
 	LinkType_OfficialHomepage_ReleaseGroup_URL LinkType = 287
@@ -2078,6 +2125,10 @@ const (
 	// This links an entity to the equivalent entry in another database. Please
 	// respect the <a
 	// href="/doc/Other_Databases_Relationship_Type/Whitelist">whitelist</a>.
+	LinkType_OtherDatabases_Event_URL LinkType = 803
+	// This links an entity to the equivalent entry in another database. Please
+	// respect the <a
+	// href="/doc/Other_Databases_Relationship_Type/Whitelist">whitelist</a>.
 	LinkType_OtherDatabases_Label_URL LinkType = 222
 	// This links an entity to the equivalent entry in another database. Please
 	// respect the <a
@@ -2111,6 +2162,8 @@ const (
 	LinkType_Parent_Artist_Artist LinkType = 109
 	// Indicates that the artist is part of a series.
 	LinkType_PartOf_Artist_Series LinkType = 996
+	// Indicates that the event is part of a series.
+	LinkType_PartOf_Event_Series LinkType = 802
 	// Indicates that the recording is part of a series.
 	LinkType_PartOf_Recording_Series LinkType = 740
 	// Indicates that the release is part of a series.
@@ -2122,12 +2175,18 @@ const (
 	// This relationship type is <strong>deprecated</strong>! Please enter a
 	// release with multiple discs as a single release containing multiple discs.
 	LinkType_PartOfSet_Release_Release LinkType = 1
+	// This indicates that an event is made up of multiple parts (e.g. a festival
+	// happening on multiple venues over the course of a few days).
+	LinkType_Parts_Event_Event LinkType = 818
 	// This indicates that a work is made up of multiple parts (e.g. an orchestral
 	// suite broken into movements)
 	LinkType_Parts_Work_Work LinkType = 281
 	// This links an artist to a site where the artist can receive
 	// donations/patronage, such as Flattr or PayPal.me.
 	LinkType_Patronage_Artist_URL LinkType = 897
+	// This links an event to a site where the event organisers can receive
+	// donations/patronage, such as Flattr or PayPal.me.
+	LinkType_Patronage_Event_URL LinkType = 898
 	// This links a label to a site where the label can receive
 	// donations/patronage, such as Flattr or PayPal.me.
 	LinkType_Patronage_Label_URL          LinkType = 899
@@ -2180,6 +2239,8 @@ const (
 	// This credits a person or agency whose photographs are included as part of a
 	// release.
 	LinkType_Photography_Artist_Release LinkType = 20
+	// This relationship type links an event to a promotional poster for the event.
+	LinkType_Poster_Event_URL LinkType = 808
 	// Indicates the area where the work had its first performance
 	LinkType_Premiere_Area_Work LinkType = 715
 	// Indicates the artist(s) who gave the first performance of the work; this is
@@ -2385,11 +2446,15 @@ const (
 	// defect, but sometimes just to change the artist credits) to a new release
 	// put out to replaced it.
 	LinkType_ReplacedBy_Release_Release LinkType = 1009
+	// This links a postponed event to the later rescheduled event.
+	LinkType_RescheduledAs_Event_Event LinkType = 836
 	// This relationship links a <a
 	// href="https://en.wikipedia.org/wiki/Concert_residency"
 	// target="_blank">concert residency</a> to the artist(s) who held the
 	// residency.
 	LinkType_Residency_Artist_Series LinkType = 994
+	// Indicates a webpage that reviews the event in question.
+	LinkType_Review_Event_URL LinkType = 842
 	// Indicates a webpage that reviews the release (group) in question.
 	LinkType_Review_ReleaseGroup_URL LinkType = 94
 	// This links a work with the place it was revised at.
@@ -2436,6 +2501,9 @@ const (
 	// This relationship type links an artist to its corresponding page at
 	// setlist.fm
 	LinkType_Setlistfm_Artist_URL LinkType = 816
+	// This relationship type links an event to its corresponding page at
+	// setlist.fm
+	LinkType_Setlistfm_Event_URL LinkType = 811
 	// This relationship links the release of a show's episode (for example a
 	// podcast) to the show notes for this episode.
 	LinkType_ShowNotes_Release_URL LinkType = 729
@@ -2453,6 +2521,12 @@ const (
 	// things that they post. Examples include Facebook pages and profiles, Last.fm
 	// users and accounts on Twitter, Instagram and Flickr.
 	LinkType_SocialNetwork_Artist_URL LinkType = 192
+	// A social network page is an event's own page on a <a
+	// href="https://en.wikipedia.org/wiki/Social_networking_service">social
+	// network</a> which only people involved with the event can post content to.
+	// Examples include Facebook pages and event entries, and accounts on Twitter,
+	// Instagram and Flickr.
+	LinkType_SocialNetwork_Event_URL LinkType = 783
 	// A social network page is a label's own page on a <a
 	// href="https://en.wikipedia.org/wiki/Social_networking_service">social
 	// network</a> which only people involved with the label can post content to.
@@ -2465,6 +2539,8 @@ const (
 	// This relationship type links an artist to its corresponding page at
 	// Songkick.
 	LinkType_Songkick_Artist_URL LinkType = 785
+	// This relationship type links an event to its corresponding page at Songkick.
+	LinkType_Songkick_Event_URL LinkType = 786
 	// This describes an engineer responsible for ensuring that the sounds that the
 	// artists make reach the microphones sounding pleasant, without unwanted
 	// resonance or noise. Sometimes known as acoustical engineering.
@@ -2568,6 +2644,10 @@ const (
 	// href="http://vgmdb.net/">VGMdb</a>. VGMdb is a community project dedicated
 	// to cataloguing the music of video games and anime.
 	LinkType_VGMdb_Artist_URL LinkType = 191
+	// This relationship type links an event to its corresponding page at <a
+	// href="http://vgmdb.net/">VGMdb</a>. VGMdb is a community project dedicated
+	// to cataloguing the music of video games and anime.
+	LinkType_VGMdb_Event_URL LinkType = 788
 	// This relationship type links a label to its corresponding page at <a
 	// href="http://vgmdb.net/">VGMdb</a>. VGMdb is a community project dedicated
 	// to cataloguing the music of video games and anime.
@@ -2611,6 +2691,9 @@ const (
 	// This links an artist to a channel, playlist, or user page on a video sharing
 	// site containing videos curated by it.
 	LinkType_VideoChannel_Artist_URL LinkType = 303
+	// This links an event to a channel, playlist, or user page on a video sharing
+	// site containing videos curated by it.
+	LinkType_VideoChannel_Event_URL LinkType = 804
 	// This links a label to a channel, playlist, or user page on a video sharing
 	// site containing videos curated by it.
 	LinkType_VideoChannel_Label_URL LinkType = 304
@@ -2651,6 +2734,9 @@ const (
 	// Points to the Wikidata page for this artist, and will be used to fetch
 	// Wikipedia summaries
 	LinkType_Wikidata_Artist_URL LinkType = 352
+	// Points to the Wikidata page for this event, and will be used to fetch
+	// Wikipedia summaries
+	LinkType_Wikidata_Event_URL LinkType = 790
 	// Points to the Wikidata page for this label, and will be used to fetch
 	// Wikipedia summaries
 	LinkType_Wikidata_Label_URL LinkType = 354
@@ -2662,6 +2748,8 @@ const (
 	LinkType_Wikidata_URL_Work LinkType = 351
 	// Points to the Wikipedia page for this artist.
 	LinkType_Wikipedia_Artist_URL LinkType = 179
+	// Points to the Wikipedia page for this event.
+	LinkType_Wikipedia_Event_URL LinkType = 789
 	// This is used to link a label to its corresponding Wikipedia page.
 	LinkType_Wikipedia_Label_URL LinkType = 216
 	// Points to the Wikipedia page for this album.
@@ -2690,6 +2778,10 @@ const (
 	LinkType_WrittenIn_Area_Work LinkType = 873
 	// This links an artist to the equivalent entry at YouTube.
 	LinkType_YouTube_Artist_URL LinkType = 193
+	// This relationship type can be used to link an event to the equivalent entry
+	// in YouTube. URLs should follow the format
+	// http://www.youtube.com/user/&lt;username&gt;
+	LinkType_YouTube_Event_URL LinkType = 791
 	// This links a label to the equivalent entry at YouTube.
 	LinkType_YouTube_Label_URL LinkType = 225
 	// This links an artist to its channel at YouTube Music.

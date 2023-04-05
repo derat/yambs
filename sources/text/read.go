@@ -210,6 +210,8 @@ func newEdit(typ seed.Entity) seed.Edit {
 	switch typ {
 	case seed.ArtistEntity:
 		return &seed.Artist{}
+	case seed.EventEntity:
+		return &seed.Event{}
 	case seed.LabelEntity:
 		return &seed.Label{}
 	case seed.RecordingEntity:

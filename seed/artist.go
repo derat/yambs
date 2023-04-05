@@ -25,7 +25,7 @@ type Artist struct {
 	// SortName contains a variant of the artist's name that should be used for sorting.
 	// See https://musicbrainz.org/doc/Style/Artist/Sort_Name.
 	SortName string
-	// Disambiguation differentiates this artist from other artist with similar names.
+	// Disambiguation differentiates this artist from other artists with similar names.
 	// See https://musicbrainz.org/doc/Disambiguation_Comment.
 	Disambiguation string
 	// Type describes whether the artist is a person, group, or something else.

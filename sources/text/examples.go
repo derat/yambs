@@ -17,6 +17,8 @@ func SetExample(typ seed.Entity) string {
 	switch typ {
 	case seed.ArtistEntity:
 		return "type=1\ngender=1\n" + editNote
+	case seed.EventEntity:
+		return "type=1\n" + editNote
 	case seed.LabelEntity:
 		return "type=7\n" + editNote
 	case seed.RecordingEntity:
@@ -34,6 +36,8 @@ func FieldsExample(typ seed.Entity) string {
 	switch typ {
 	case seed.ArtistEntity:
 		return "name,area_name,begin_date"
+	case seed.EventEntity:
+		return "name,begin_date,time"
 	case seed.LabelEntity:
 		return "name,begin_date"
 	case seed.RecordingEntity:
@@ -55,6 +59,14 @@ func InputExample(typ seed.Entity, format Format) string {
 mbid=7e84f845-ac16-41fe-9ff8-df12eb32af55
 rel0_target=43bcfb95-f26c-4f8d-84f8-7b2ac5b8ab72
 rel0_type=709
+edit_note=https://www.example.org/`, "\n")
+		case seed.EventEntity:
+			return strings.TrimLeft(`
+name=Concert Name
+type=1
+begin_date=2015-08-20
+end_date=2015-08-23
+time=20:00
 edit_note=https://www.example.org/`, "\n")
 		case seed.LabelEntity:
 			return strings.TrimLeft(`
@@ -106,6 +118,11 @@ edit_note=https://www.example.org/`, "\n")
 		rows = [][]string{
 			{"John Smith", "United States", "1985"},
 			{"近藤 浩治", "Japan", "1961-08-13"},
+		}
+	case seed.EventEntity:
+		rows = [][]string{
+			{"Late Show", "2021-12-31", "21:00"},
+			{"Rise 'n Shine", "2001-05-03", "09:30"},
 		}
 	case seed.LabelEntity:
 		rows = [][]string{

@@ -116,6 +116,20 @@ func main() {
 		})
 	})
 
+	eventTypes := enums.add(&enumType{
+		Name:    "EventType",
+		Type:    "int",
+		Comment: `EventType describes the kind of event that an event is.`,
+		sort:    sortValue,
+	})
+	readTable("event_type", func(row []string) {
+		eventTypes.add(enumValue{
+			Name:    clean(row[1]),
+			Value:   row[0],
+			Comment: row[4],
+		})
+	})
+
 	genders := enums.add(&enumType{
 		Name:    "Gender",
 		Type:    "int",
@@ -479,6 +493,7 @@ var linkAttrTypeMappings = map[string]string{
 // entity_type1 columns.
 var seedEntityTypes = map[string]bool{
 	"artist":        true,
+	"event":         true,
 	"label":         true,
 	"recording":     true,
 	"release":       true,

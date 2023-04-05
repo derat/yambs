@@ -6,6 +6,7 @@ package text
 const (
 	godocURL        = "https://pkg.go.dev/github.com/derat/yambs/seed@main"
 	artistTypeURL   = godocURL + "#ArtistType"
+	eventTypeURL    = godocURL + "#EventType"
 	formatURL       = godocURL + "#MediumFormat"
 	genderURL       = godocURL + "#Gender"
 	labelTypeURL    = godocURL + "#LabelType"
