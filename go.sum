@@ -17,6 +17,8 @@ github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGX
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/derat/mpeg v0.0.0-20221111004622-1eb9a3d8515a h1:nVlC/+Q25amlJKH7+adwJxUtn+/+SIXFcbEcN9lNlaI=
 github.com/derat/mpeg v0.0.0-20221111004622-1eb9a3d8515a/go.mod h1:Bks5u5jkfFWMbUswC18uoLbDdrj9fluhloqvv+vnfjA=
+github.com/derat/mpeg v0.0.0-20230408141713-c1dd2fd5e8e8 h1:Jl2x6eeJasPQDQ6jt2onT+nK1OQOV1blWB1bLyMRJig=
+github.com/derat/mpeg v0.0.0-20230408141713-c1dd2fd5e8e8/go.mod h1:Bks5u5jkfFWMbUswC18uoLbDdrj9fluhloqvv+vnfjA=
 github.com/derat/taglib-go v0.0.0-20200408183415-49d1875d1328 h1:vL5y2JeRI7/ZVSKdT4PPKQMuAq2R/IOkRrvYaYmajrA=
 github.com/derat/taglib-go v0.0.0-20200408183415-49d1875d1328/go.mod h1:qwWjliZMVa4OH8+uv4VFv7r19h1Gl4JPykItAcWR+fM=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=

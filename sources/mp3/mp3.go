@@ -120,8 +120,7 @@ func readSongInfo(f *os.File) (*songInfo, error) {
 		headerLen = int64(v2.TagSize())
 	}
 
-	song.length, _, _, err = mpeg.ComputeAudioDuration(f, fi, headerLen, footerLen)
-	if err != nil {
+	if song.length, _, err = mpeg.ComputeAudioDuration(f, fi, headerLen, footerLen); err != nil {
 		return nil, err
 	}
 	return &song, nil
